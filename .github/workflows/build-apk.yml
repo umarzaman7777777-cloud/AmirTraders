@@ -1,0 +1,66 @@
+name: Build Amir Traders APK
+
+# Runs automatically every time index.html (or anything else) is pushed to
+# main, and can also be triggered manually from the Actions tab ("Run
+# workflow" button) without needing to push anything.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+# Needed so this workflow is allowed to publish/update the GitHub Release
+# the finished APK gets attached to.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Capacitor dependencies
+        run: npm ci
+
+      - name: Copy www/ into the native Android project
+        run: npx cap sync android
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build the debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Find the built APK
+        id: apk
+        run: echo "path=$(find android/app/build/outputs/apk/debug -name '*.apk' | head -n 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload as a build artifact (every run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: amir-traders-debug-apk
+          path: ${{ steps.apk.outputs.path }}
+
+      - name: Publish/update the "latest build" release (easiest way to install on your phone)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-debug-build
+          name: Latest debug build
+          body: |
+            Automatically built from the latest `index.html` on `main`.
+            Open this page on your phone, tap the `.apk` file below to
+            download it, then tap the downloaded file to install
+            (Android will ask you to allow "install from this source"
+            the first time — that's expected for a debug build).
+          prerelease: true
+          files: ${{ steps.apk.outputs.path }}
