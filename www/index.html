@@ -1641,35 +1641,63 @@
       </div>
     </div>
     <p class="brand-tag" style="display:inline-block; font-weight:700; background:var(--panel-raised); border:1px solid var(--steel-line); border-radius:20px; padding:5px 16px; margin:0 0 14px;">Gujrat</p>
-    <div style="position:relative; display:block; width:190px; margin:0 auto;">
-      <input type="text" id="user-display" class="pin-input-box" value="Amir" readonly tabindex="-1" style="letter-spacing:0.5px; cursor:default;">
-      <span style="position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--text-dim); display:flex; align-items:center;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </span>
-    </div>
-    <p class="brand-tag" style="margin:-14px 0 18px;">Username</p>
-    <div style="position:relative; display:block; width:190px; margin:0 auto;">
-      <input type="password" id="pin-input" class="pin-input-box" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
-      <button type="button" id="pin-toggle-visibility" title="Show/Hide PIN" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px; display:flex; align-items:center;">
-        <svg id="pin-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+
+    <!-- FIX (2026-08-20): "gmail signup for lock screen ... lets build
+         this with biometric also" — Google sign-in REPLACES the PIN as
+         the primary unlock method (user's explicit choice), with
+         fingerprint as a fast day-to-day shortcut once linked. Kept as a
+         separate block (#google-unlock-block) from the original PIN UI
+         (#pin-unlock-block) rather than deleting the PIN code outright:
+         googleSignInAvailable_() decides which one shows at render time
+         (see renderLockScreenMode_ near the lock-screen JS), so an
+         already-installed APK that hasn't yet been rebuilt with the
+         native Google Sign-In plugin keeps working on its PIN instead of
+         locking the owner out of their own data mid-transition. Once the
+         plugin is installed and this is rebuilt, the PIN block never
+         shows again. -->
+    <div id="google-unlock-block" style="display:none; width:230px; margin:0 auto;">
+      <div id="google-unlock-status" style="font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-bottom:16px; min-height:16px;"></div>
+      <button type="button" id="google-signin-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#1f1f1f; border:1px solid var(--steel-line); padding:12px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13.5px; cursor:pointer;">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.6 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34 5.1 29.3 3 24 3 16.3 3 9.6 7.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 36.6 26.8 37.5 24 37.5c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.4 40.5 16.1 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.2 5.2C40.9 36 44 30.5 44 24c0-1.4-.1-2.4-.4-3.5z"/></svg>
+        <span id="google-signin-btn-label">Sign in with Google</span>
+      </button>
+      <button type="button" id="fingerprint-unlock-btn" style="display:none; width:100%; align-items:center; justify-content:center; gap:8px; background:none; color:var(--text-dim); border:1px solid var(--steel-line); padding:10px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12.5px; cursor:pointer; margin-top:10px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11c0-3.87-2.69-7-6-7s-6 3.13-6 7v2c0 4.42 2.69 8 6 8"/><path d="M12 4c3.31 0 6 3.13 6 7v2"/><path d="M9 11a3 3 0 0 1 6 0v2c0 3.87-1.79 7-4 7"/><path d="M6 11c0-5.52 3.13-10 7-10"/></svg>
+        <span>Use Fingerprint</span>
       </button>
     </div>
-    <p class="brand-tag" style="margin:-14px 0 18px;">Enter PIN</p>
-    <div class="keypad" id="keypad">
-      <button class="key" data-k="1">1</button>
-      <button class="key" data-k="2">2</button>
-      <button class="key" data-k="3">3</button>
-      <button class="key" data-k="4">4</button>
-      <button class="key" data-k="5">5</button>
-      <button class="key" data-k="6">6</button>
-      <button class="key" data-k="7">7</button>
-      <button class="key" data-k="8">8</button>
-      <button class="key" data-k="9">9</button>
-      <button class="key wide" data-k="clear">CLEAR</button>
-      <button class="key" data-k="0">0</button>
-      <button class="key wide" data-k="back">⌫</button>
+
+    <div id="pin-unlock-block">
+      <div style="position:relative; display:block; width:190px; margin:0 auto;">
+        <input type="text" id="user-display" class="pin-input-box" value="Amir" readonly tabindex="-1" style="letter-spacing:0.5px; cursor:default;">
+        <span style="position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--text-dim); display:flex; align-items:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </span>
+      </div>
+      <p class="brand-tag" style="margin:-14px 0 18px;">Username</p>
+      <div style="position:relative; display:block; width:190px; margin:0 auto;">
+        <input type="password" id="pin-input" class="pin-input-box" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
+        <button type="button" id="pin-toggle-visibility" title="Show/Hide PIN" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px; display:flex; align-items:center;">
+          <svg id="pin-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <p class="brand-tag" style="margin:-14px 0 18px;">Enter PIN</p>
+      <div class="keypad" id="keypad">
+        <button class="key" data-k="1">1</button>
+        <button class="key" data-k="2">2</button>
+        <button class="key" data-k="3">3</button>
+        <button class="key" data-k="4">4</button>
+        <button class="key" data-k="5">5</button>
+        <button class="key" data-k="6">6</button>
+        <button class="key" data-k="7">7</button>
+        <button class="key" data-k="8">8</button>
+        <button class="key" data-k="9">9</button>
+        <button class="key wide" data-k="clear">CLEAR</button>
+        <button class="key" data-k="0">0</button>
+        <button class="key wide" data-k="back">⌫</button>
+      </div>
+      <button class="lock-hint" id="forgot-pin-link" style="background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;">Forgot PIN?</button>
     </div>
-    <button class="lock-hint" id="forgot-pin-link" style="background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;">Forgot PIN?</button>
   </div>
 </div>
 
@@ -2271,9 +2299,35 @@
         </div>
       </div>
 
-      <div style="background:var(--panel); border:1px dashed var(--steel-line); border-radius:10px; padding:18px; max-width:520px; opacity:0.75;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="account_login_title">Account &amp; Login</div>
-        <div style="font-size:12.5px; color:var(--text-dim);" data-i18n="account_login_coming_soon">Email/password login with a "forgot password" reset link emailed to you will appear here once it's set up. For now, use the PIN above.</div>
+      <!-- FIX (2026-08-20): the old "Account & Login" card was a
+           placeholder for a future email+password login. The user has
+           since asked to build Gmail sign-in (replacing the PIN
+           entirely) plus fingerprint quick-unlock instead — this card
+           now reflects that. Google sign-in itself is native-plugin work
+           (see googleSignInAvailable_/nativeBiometricAvailable_ below) —
+           on a build without those plugins installed yet, this card
+           still renders but the buttons explain that native setup is
+           still pending rather than silently doing nothing. -->
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="google_account_title">Google Sign-In &amp; Lock Screen</div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="google_account_desc">The lock screen now unlocks with your Google account instead of a PIN. Turn on fingerprint below for a faster day-to-day unlock — you'll still confirm with Google the first time on a device, or whenever fingerprint isn't available.</div>
+        <div id="settings-google-account-status" style="font-family:var(--mono); font-size:12.5px; margin-bottom:12px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line);"></div>
+        <button type="button" id="settings-google-signin-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="google_account_switch_btn">Sign In / Switch Account</button>
+
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--steel-line);">
+          <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" id="settings-biometric-toggle" style="width:16px; height:16px; flex-shrink:0;">
+            <span data-i18n="biometric_toggle_label">Use fingerprint for quick unlock</span>
+          </label>
+          <div id="settings-biometric-note" style="font-size:11.5px; color:var(--text-dim); margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="backup_title">Gmail Backup</div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="backup_desc">A full backup of your Google Sheet is emailed to you automatically every week. You can also send one right now, any time.</div>
+        <button type="button" id="settings-backup-now-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="backup_now_btn">Send Backup Now</button>
+        <p id="settings-backup-status" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0; display:none;"></p>
       </div>
     </div>
 
@@ -5536,6 +5590,31 @@
       }
     }
 
+    // Settings > "Send Backup Now" — an on-demand email backup, calling
+    // Code.gs's sendBackupNow action (see Code.gs's GMAIL BACKUP section).
+    // Purely a backend call: no native plugin needed, works on any build,
+    // same jsonpRequest helper the sync widget already uses.
+    let backupSending_ = false;
+    async function sendBackupNow_(){
+      if(backupSending_) return;
+      const statusEl = document.getElementById('settings-backup-status');
+      if(!sheetConfigured()){
+        showSuccessDialog('Gmail backup needs the Google Sheet sync to be set up first — see the sync widget at the top of the app.', 'Not Set Up Yet');
+        return;
+      }
+      backupSending_ = true;
+      if(statusEl){ statusEl.style.display = 'block'; statusEl.style.color = 'var(--text-dim)'; statusEl.textContent = 'Sending…'; }
+      try{
+        const json = await jsonpRequest(SHEET_API_URL + '?action=sendBackupNow', 30000);
+        if(json && json.error) throw new Error(json.error);
+        if(statusEl){ statusEl.style.color = 'var(--green)'; statusEl.textContent = 'Backup sent — check your Gmail inbox.'; }
+        showToast_('Backup emailed.');
+      }catch(err){
+        if(statusEl){ statusEl.style.color = 'var(--red)'; statusEl.textContent = 'Failed: ' + (err && err.message ? err.message : String(err)); }
+      }finally{
+        backupSending_ = false;
+      }
+    }
 
     let PIN = "321";
     try{ const savedPin = localStorage.getItem('pos-pin'); if(savedPin && /^[0-9]{4}$/.test(savedPin)) PIN = savedPin; }catch(e){}
@@ -5730,8 +5809,13 @@
         ledger_settings_sort_label: "Default Entry Sort Order",
         sort_oldest_first: "Oldest First", sort_newest_first: "Newest First",
         ledger_settings_overview_label: "Show on Overview Dashboard",
-        account_login_title: "Account & Login",
-        account_login_coming_soon: "Email/password login with a \"forgot password\" reset link emailed to you will appear here once it's set up. For now, use the PIN above.",
+        google_account_title: "Google Sign-In & Lock Screen",
+        google_account_desc: "The lock screen now unlocks with your Google account instead of a PIN. Turn on fingerprint below for a faster day-to-day unlock — you'll still confirm with Google the first time on a device, or whenever fingerprint isn't available.",
+        google_account_switch_btn: "Sign In / Switch Account",
+        biometric_toggle_label: "Use fingerprint for quick unlock",
+        backup_title: "Gmail Backup",
+        backup_desc: "A full backup of your Google Sheet is emailed to you automatically every week. You can also send one right now, any time.",
+        backup_now_btn: "Send Backup Now",
         payment_history: "Payment History", payment_recorded: "Payment recorded", amount_rs: "Amount (Rs)",
         completed_sales_appear: "Completed sales will appear here", no_x_transactions: "No {x} transactions",
         try_different_filter: "Try a different filter",
@@ -5993,8 +6077,13 @@
         ledger_settings_sort_label: "ڈیفالٹ انٹری ترتیب",
         sort_oldest_first: "پرانی پہلے", sort_newest_first: "نئی پہلے",
         ledger_settings_overview_label: "اوور ویو ڈیش بورڈ پر دکھائیں",
-        account_login_title: "اکاؤنٹ اور لاگ ان",
-        account_login_coming_soon: "ای میل/پاس ورڈ لاگ ان، جس میں \"پاس ورڈ بھول گئے\" ری سیٹ لنک آپ کو ای میل کیا جائے گا، سیٹ اپ ہونے کے بعد یہاں ظاہر ہوگا۔ فی الحال اوپر دیا گیا پن استعمال کریں۔",
+        google_account_title: "گوگل سائن اِن اور لاک اسکرین",
+        google_account_desc: "لاک اسکرین اب پن کی بجائے آپ کے گوگل اکاؤنٹ سے کھلتی ہے۔ روزمرہ تیز انلاک کے لیے نیچے فنگر پرنٹ آن کریں — پہلی بار (یا جب فنگر پرنٹ دستیاب نہ ہو) آپ کو گوگل سے تصدیق کرنی ہوگی۔",
+        google_account_switch_btn: "سائن اِن / اکاؤنٹ تبدیل کریں",
+        biometric_toggle_label: "تیز انلاک کے لیے فنگر پرنٹ استعمال کریں",
+        backup_title: "جی میل بیک اپ",
+        backup_desc: "آپ کی گوگل شیٹ کا مکمل بیک اپ ہر ہفتے خودکار طور پر آپ کو ای میل کیا جاتا ہے۔ آپ کبھی بھی ابھی ایک بھیج سکتے ہیں۔",
+        backup_now_btn: "ابھی بیک اپ بھیجیں",
         payment_history: "ادائیگی کی تاریخ", payment_recorded: "ادائیگی درج ہو گئی", amount_rs: "رقم (روپے)",
         completed_sales_appear: "مکمل سیلز یہاں ظاہر ہوں گی", no_x_transactions: "کوئی {x} ٹرانزیکشن نہیں",
         try_different_filter: "مختلف فلٹر آزمائیں",
@@ -6618,6 +6707,160 @@
     const lockScreen = document.getElementById('lock-screen');
     const posShell = document.getElementById('pos');
 
+    // ---------------- GOOGLE SIGN-IN + BIOMETRIC LOCK ----------------
+    // Replaces the PIN as the primary unlock method (user's explicit
+    // choice — see claude/setup-guide-gmail-signin-biometric.md and the
+    // 2026-08-20 "gmail signup for lock screen ... with biometric also"
+    // request). Both plugins are native-only — this code degrades
+    // gracefully to the original PIN flow below when running on a build
+    // that doesn't have them yet (desktop testing, or an APK built before
+    // the native setup steps are done), so nobody gets locked out of
+    // their own data mid-transition.
+    const googleUnlockBlock = document.getElementById('google-unlock-block');
+    const pinUnlockBlock = document.getElementById('pin-unlock-block');
+    const googleSignInBtn = document.getElementById('google-signin-btn');
+    const googleSignInBtnLabel = document.getElementById('google-signin-btn-label');
+    const googleUnlockStatus = document.getElementById('google-unlock-status');
+    const fingerprintUnlockBtn = document.getElementById('fingerprint-unlock-btn');
+
+    // The one Google account allowed to open this app. Blank until the
+    // owner signs in for the first time (see signInWithGoogle_ below),
+    // then remembered so the SAME account is required every time after —
+    // signing in with a different Google account is treated as
+    // unauthorized rather than silently swapping who can get in. Settings
+    // > "Sign In / Switch Account" is the only way to deliberately change
+    // this (calls signInWithGoogle_ with forceSwitch=true).
+    let GOOGLE_LINKED_EMAIL = "";
+    try{ GOOGLE_LINKED_EMAIL = localStorage.getItem('pos-google-linked-email') || ""; }catch(e){}
+    let BIOMETRIC_ENABLED = false;
+    try{ BIOMETRIC_ENABLED = localStorage.getItem('pos-biometric-enabled') === '1'; }catch(e){}
+
+    // Capacitor exposes native plugins on window.Capacitor.Plugins only
+    // once the actual native project (not just this web build) has the
+    // plugin installed and synced — checking for its presence, rather
+    // than assuming it exists, is what lets this same index.html run
+    // safely both before and after that native setup is done.
+    function capacitorPlugin_(name){
+      try{
+        if(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform() && window.Capacitor.Plugins && window.Capacitor.Plugins[name]){
+          return window.Capacitor.Plugins[name];
+        }
+      }catch(e){}
+      return null;
+    }
+    function googleSignInPlugin_(){ return capacitorPlugin_('GoogleSignIn'); }
+    function biometricPlugin_(){ return capacitorPlugin_('NativeBiometric'); }
+
+    // Set this to the Web application OAuth client ID created in Google
+    // Cloud Console (see the setup guide) before rebuilding — a blank
+    // value means Google Sign-In can't actually initialize yet even once
+    // the plugin itself is installed, and the status line below says so
+    // rather than failing silently.
+    const GOOGLE_OAUTH_WEB_CLIENT_ID = "";
+    let googleSignInInitialized_ = false;
+    async function ensureGoogleSignInInitialized_(){
+      const plugin = googleSignInPlugin_();
+      if(!plugin || googleSignInInitialized_) return !!plugin;
+      if(!GOOGLE_OAUTH_WEB_CLIENT_ID) return false;
+      try{
+        await plugin.initialize({ clientId: GOOGLE_OAUTH_WEB_CLIENT_ID });
+        googleSignInInitialized_ = true;
+        return true;
+      }catch(e){
+        return false;
+      }
+    }
+
+    // Decides, every time the lock screen is shown, which unlock method
+    // to display: Google (+fingerprint shortcut) once the native plugin
+    // is present, otherwise the original PIN keypad as a safe fallback.
+    async function renderLockScreenMode_(){
+      const hasGoogle = !!googleSignInPlugin_();
+      if(hasGoogle){
+        pinUnlockBlock.style.display = 'none';
+        googleUnlockBlock.style.display = 'block';
+        googleSignInBtnLabel.textContent = GOOGLE_LINKED_EMAIL ? ('Continue as ' + GOOGLE_LINKED_EMAIL) : 'Sign in with Google';
+        googleUnlockStatus.textContent = GOOGLE_OAUTH_WEB_CLIENT_ID ? '' : 'Google sign-in isn\'t fully set up yet (missing OAuth client ID) — ask Claude to finish the native setup.';
+        const bioPlugin = biometricPlugin_();
+        let bioAvailable = false;
+        if(bioPlugin && BIOMETRIC_ENABLED && GOOGLE_LINKED_EMAIL){
+          try{ const r = await bioPlugin.isAvailable(); bioAvailable = !!(r && r.isAvailable); }catch(e){}
+        }
+        fingerprintUnlockBtn.style.display = bioAvailable ? 'flex' : 'none';
+        if(bioAvailable) tryBiometricUnlock_();
+      } else {
+        googleUnlockBlock.style.display = 'none';
+        pinUnlockBlock.style.display = 'block';
+        if(pinInput) pinInput.focus();
+      }
+    }
+
+    async function signInWithGoogle_(forceSwitch){
+      const plugin = googleSignInPlugin_();
+      if(!plugin){
+        showSuccessDialog('Google Sign-In isn\'t available on this build yet — this app needs to be rebuilt with the Google Sign-In plugin first. See the setup guide, or ask Claude to walk through it.', 'Not Set Up Yet');
+        return;
+      }
+      const ready = await ensureGoogleSignInInitialized_();
+      if(!ready){
+        showSuccessDialog('Google Sign-In is installed but not fully configured (missing OAuth client ID) — ask Claude to finish the native setup steps.', 'Not Configured');
+        return;
+      }
+      googleUnlockStatus.textContent = 'Signing in…';
+      try{
+        const result = await plugin.signIn();
+        const email = (result && result.email || '').toLowerCase().trim();
+        if(!email){
+          googleUnlockStatus.textContent = '';
+          showSuccessDialog('Sign-in didn\'t return a Google account email — try again.', 'Sign-In Failed');
+          return;
+        }
+        if(!GOOGLE_LINKED_EMAIL || forceSwitch){
+          // First-ever sign-in on this device, OR a deliberate "Switch
+          // Account" from Settings — either way, this account becomes
+          // (or replaces) the one authorized account for this device.
+          GOOGLE_LINKED_EMAIL = email;
+          try{ localStorage.setItem('pos-google-linked-email', GOOGLE_LINKED_EMAIL); }catch(e){}
+          googleUnlockStatus.textContent = '';
+          unlock();
+          return;
+        }
+        if(email !== GOOGLE_LINKED_EMAIL){
+          googleUnlockStatus.textContent = '';
+          try{ await plugin.signOut(); }catch(e){}
+          showSuccessDialog('This device is set up for ' + GOOGLE_LINKED_EMAIL + ' — "' + email + '" isn\'t authorized. Use Settings > Sign In / Switch Account if you meant to change this.', 'Account Not Authorized');
+          return;
+        }
+        googleUnlockStatus.textContent = '';
+        unlock();
+      }catch(e){
+        googleUnlockStatus.textContent = '';
+        showSuccessDialog('Google sign-in was cancelled or failed' + (e && e.message ? (': ' + e.message) : '') + '. If you\'re offline, note that the very first sign-in on a device needs an internet connection; after that, Android usually remembers your session for a while.', 'Sign-In Failed');
+      }
+    }
+    if(googleSignInBtn) googleSignInBtn.addEventListener('click', ()=> signInWithGoogle_(false));
+
+    let biometricPromptInFlight_ = false;
+    async function tryBiometricUnlock_(){
+      const bioPlugin = biometricPlugin_();
+      if(!bioPlugin || !BIOMETRIC_ENABLED || !GOOGLE_LINKED_EMAIL || biometricPromptInFlight_) return;
+      biometricPromptInFlight_ = true;
+      try{
+        await bioPlugin.verifyIdentity({
+          title: 'Amir Traders',
+          subtitle: 'Unlock with your fingerprint',
+          reason: 'Confirm it\'s you to open the app'
+        });
+        unlock();
+      }catch(e){
+        // Cancelled or failed — just leave the Google button available,
+        // no error dialog needed for what's meant to be a quick shortcut.
+      }finally{
+        biometricPromptInFlight_ = false;
+      }
+    }
+    if(fingerprintUnlockBtn) fingerprintUnlockBtn.addEventListener('click', tryBiometricUnlock_);
+
     const pinInput = document.getElementById('pin-input');
     const pinToggleBtn = document.getElementById('pin-toggle-visibility');
     const pinEyeIcon = document.getElementById('pin-eye-icon');
@@ -6701,6 +6944,9 @@
     }
 
     document.getElementById('logout-btn').addEventListener('click', lockNow_);
+    // Initial decision for the very first (cold-start) lock screen show —
+    // every later re-lock goes through lockNow_(), which calls this too.
+    renderLockScreenMode_();
 
     // ---------------- AUTO-LOCK (Settings > Auto-Lock) ----------------
     // "add something extra just like a real apk" → Security polish. Before
@@ -6726,6 +6972,7 @@
       posShell.classList.remove('active');
       lockScreen.style.display = 'flex';
       clearTimeout(idleLockTimer_);
+      renderLockScreenMode_();
     }
     let appHiddenAt_ = null;
     let idleLockTimer_ = null;
@@ -6839,6 +7086,7 @@
       if(autoLockSel) autoLockSel.value = String(autoLockMinutes_);
       const sortSel = document.getElementById('settings-ledger-sort-order');
       if(sortSel) sortSel.value = ledgerSortNewestFirst_ ? 'newest' : 'oldest';
+      renderGoogleAccountSettingsCard_();
     }
     document.getElementById('settings-pin-save').addEventListener('click', ()=>{
       const errorEl = document.getElementById('settings-pin-error');
@@ -6902,6 +7150,76 @@
       successEl.style.display = 'block';
       showToast_(tr('device_name_saved_msg'));
     });
+
+    // ---------------- SETTINGS: Google Sign-In / Biometric / Backup card ----------------
+    // Reflects the current linked account + biometric availability every
+    // time Settings is opened (renderGoogleAccountSettingsCard_, called
+    // from renderSettingsView_ above). All three click/change handlers are
+    // bound once here, matching the file's existing "bind once outside the
+    // re-run-per-visit render function" pattern (see the settings-collapse
+    // toggles' comment further below for why that matters).
+    function renderGoogleAccountSettingsCard_(){
+      const statusEl = document.getElementById('settings-google-account-status');
+      const signInBtn = document.getElementById('settings-google-signin-btn');
+      const bioToggle = document.getElementById('settings-biometric-toggle');
+      const bioNote = document.getElementById('settings-biometric-note');
+      if(!statusEl) return;
+      const hasGoogle = !!googleSignInPlugin_();
+      if(!hasGoogle){
+        statusEl.textContent = 'Not set up yet — this build doesn\'t have the Google Sign-In plugin installed. The PIN is still your unlock method until this app is rebuilt with it (see the setup guide).';
+        signInBtn.textContent = tr('google_account_switch_btn');
+        bioToggle.checked = false;
+        bioToggle.disabled = true;
+        bioNote.textContent = 'Available once Google Sign-In is set up.';
+        return;
+      }
+      statusEl.textContent = GOOGLE_LINKED_EMAIL
+        ? ('Linked account: ' + GOOGLE_LINKED_EMAIL)
+        : 'No Google account linked yet — tap below to sign in for the first time.';
+      signInBtn.textContent = GOOGLE_LINKED_EMAIL ? 'Switch Account' : tr('google_account_switch_btn');
+      const bioPlugin = biometricPlugin_();
+      if(!bioPlugin){
+        bioToggle.checked = false;
+        bioToggle.disabled = true;
+        bioNote.textContent = 'Available once the fingerprint plugin is set up (see the setup guide).';
+      } else if(!GOOGLE_LINKED_EMAIL){
+        bioToggle.checked = false;
+        bioToggle.disabled = true;
+        bioNote.textContent = 'Sign in with Google first, then fingerprint can be turned on.';
+      } else {
+        bioToggle.disabled = false;
+        bioToggle.checked = BIOMETRIC_ENABLED;
+        bioNote.textContent = 'Uses this device\'s existing fingerprint lock — no separate fingerprint is stored by this app.';
+      }
+    }
+    document.getElementById('settings-google-signin-btn').addEventListener('click', ()=>{
+      signInWithGoogle_(true).then(renderGoogleAccountSettingsCard_);
+    });
+    document.getElementById('settings-biometric-toggle').addEventListener('change', async (e)=>{
+      const wantOn = e.target.checked;
+      if(!wantOn){
+        BIOMETRIC_ENABLED = false;
+        try{ localStorage.setItem('pos-biometric-enabled', '0'); }catch(err){}
+        return;
+      }
+      const bioPlugin = biometricPlugin_();
+      if(!bioPlugin){ e.target.checked = false; return; }
+      try{
+        const avail = await bioPlugin.isAvailable();
+        if(!avail || !avail.isAvailable){
+          e.target.checked = false;
+          showSuccessDialog('No fingerprint is set up on this device yet — add one in the phone\'s own Settings app first, then try again here.', 'Fingerprint Unavailable');
+          return;
+        }
+        await bioPlugin.verifyIdentity({ title: 'Amir Traders', subtitle: 'Confirm your fingerprint', reason: 'Turning on fingerprint unlock' });
+        BIOMETRIC_ENABLED = true;
+        try{ localStorage.setItem('pos-biometric-enabled', '1'); }catch(err){}
+        showToast_('Fingerprint unlock turned on.');
+      }catch(err){
+        e.target.checked = false;
+      }
+    });
+    document.getElementById('settings-backup-now-btn').addEventListener('click', sendBackupNow_);
 
     // ---------------- OVERVIEW CALENDAR PANEL (full month view, lives on the Overview page) ----------------
     // Rebuilt once per day (or on load) rather than on every render — the month

@@ -16,7 +16,28 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // FIX (2026-08-20): a debug build with no explicit signingConfig gets
+    // signed with a NEW auto-generated debug keystore on every machine
+    // that doesn't already have one — including a fresh GitHub Actions
+    // runner on every single build. That would give a DIFFERENT SHA-1
+    // fingerprint each time, breaking Google Sign-In (its Android OAuth
+    // client is pinned to one specific SHA-1) unpredictably after every
+    // rebuild. Committing a fixed debug.keystore (see debug.keystore next
+    // to this file) and pointing the debug build at it explicitly keeps
+    // the fingerprint identical across every CI build, matching the SHA-1
+    // registered once in Google Cloud Console.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
