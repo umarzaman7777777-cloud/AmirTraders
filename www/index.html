@@ -1542,6 +1542,20 @@
     .btn-cancel{ background:none; border:1px solid var(--steel-line) !important; color:var(--text-dim); }
     .btn-confirm{ background:var(--yellow); color:#1C1F22; }
     .btn-confirm:disabled{ background:var(--steel); color:var(--text-dim); cursor:not-allowed; }
+    /* FIX (2026-08-21): visually identical to .btn-cancel / its red-danger
+       variant, but deliberately NOT the .btn-cancel class itself — the
+       app-wide "discard changes?" dirty-form guard (search
+       document.addEventListener('click'... .btn-cancel below) intercepts
+       every .btn-cancel click in capture phase and can swallow it entirely.
+       That's correct for real data-entry forms, but the receipt date-check
+       modal's Skip/Cancel/Attach-Anyway buttons are lightweight flow
+       controls, not something to prompt "discard changes?" over — and for
+       Attach Anyway specifically, stacking that confirm in front of it would
+       make a one-tap override take two taps (or silently do nothing if the
+       user declines the unrelated discard prompt). Using separate classes
+       here sidesteps the guard while keeping the exact same look. */
+    .btn-modal-secondary{ background:none; border:1px solid var(--steel-line) !important; color:var(--text-dim); }
+    .btn-modal-danger{ background:none; border:1px solid var(--red) !important; color:var(--red); }
 
     .change-due{ text-align:center; padding:14px 0; }
     .change-due .lbl{ font-family:var(--mono); font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; }
@@ -3495,6 +3509,47 @@
   </div>
 </div>
 
+<!-- ================= RECEIPT DATE SAFETY CHECK (shared across every ledger) ================= -->
+<!-- User-requested safety net (2026-08-21): before a freshly-picked receipt
+     photo actually attaches to an entry, ask what date is written on it and
+     compare against the entry's own date — catches the wrong photo getting
+     attached by mistake before it's saved. A mismatch WARNS (with a
+     full-size view of the photo, via the existing receipt-view-modal above)
+     rather than blocking outright — a receipt can genuinely predate the
+     entry it's logged against (e.g. an expense entered a day after the
+     actual purchase), so this stays an informed override, not a hard wall.
+     Every ledger's receipt file-input handler routes through
+     receiptDateCheck_() below instead of calling fileToLocalReceipt_
+     directly — see that function for the full flow. -->
+<div class="modal-overlay" id="receipt-datecheck-modal">
+  <div class="modal-box" style="max-width:360px;">
+    <div id="receipt-datecheck-step1">
+      <h3 data-i18n="receipt_datecheck_title">Check This Receipt</h3>
+      <p style="font-size:12.5px; color:var(--text-dim); margin:0 0 14px;" data-i18n="receipt_datecheck_desc">What date is written on this receipt? This helps catch the wrong photo getting attached by mistake.</p>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+        <img id="receipt-datecheck-thumb" src="" alt="" style="width:52px; height:52px; object-fit:cover; border-radius:8px; border:1px solid var(--steel-line); display:none; flex:none;">
+        <div id="receipt-datecheck-pdf-icon" style="display:none; width:52px; height:52px; border-radius:8px; border:1px solid var(--steel-line); align-items:center; justify-content:center; font-family:var(--mono); font-size:10px; color:var(--text-dim); flex:none;">PDF</div>
+        <button type="button" id="receipt-datecheck-viewbig" class="btn-export" style="flex:none;" data-i18n="view_full_size">View Full Size</button>
+      </div>
+      <label class="field-label" data-i18n="receipt_date_label">Date On Receipt</label>
+      <input class="field-input" id="receipt-datecheck-input" type="date">
+      <div class="modal-actions" style="margin-top:16px;">
+        <button type="button" class="btn-modal-secondary" id="receipt-datecheck-skip" data-i18n="cant_tell_skip">Can't Tell / Skip</button>
+        <button type="button" class="btn-confirm" id="receipt-datecheck-confirm" data-i18n="confirm">Confirm</button>
+      </div>
+    </div>
+    <div id="receipt-datecheck-step2" style="display:none;">
+      <h3 style="color:var(--red);" data-i18n="receipt_datecheck_mismatch_title">Dates Don't Match</h3>
+      <p id="receipt-datecheck-mismatch-text" style="font-size:12.5px; color:var(--text-dim); margin:0 0 14px;"></p>
+      <button type="button" id="receipt-datecheck-viewbig2" class="btn-export" style="margin-bottom:16px;" data-i18n="view_full_size">View Full Size</button>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-secondary" id="receipt-datecheck-cancel" data-i18n="cancel">Cancel</button>
+        <button type="button" class="btn-modal-danger" id="receipt-datecheck-attach-anyway" data-i18n="attach_anyway">Attach Anyway</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= ADD EXPENSE MODAL ================= -->
 <div class="modal-overlay" id="expense-modal">
   <div class="modal-box">
@@ -4144,6 +4199,84 @@
       });
     }
 
+    // ---------------- RECEIPT DATE SAFETY CHECK (shared across every ledger) ----------------
+    // User-requested safety net (2026-08-21): before a freshly-picked receipt
+    // photo actually attaches to an entry, ask what date is written on it and
+    // compare against the entry's own date — catches the wrong photo getting
+    // attached by mistake before it's ever saved. A mismatch WARNS (with a
+    // full-size view of the photo, reusing the receipt viewer above) rather
+    // than blocking outright, since a receipt can genuinely predate the
+    // entry it's logged against (e.g. an expense entered a day after the
+    // actual purchase) — this stays an informed override, not a hard wall.
+    // Every ledger's receipt file-input handler calls receiptDateCheck_()
+    // below instead of fileToLocalReceipt_ directly; the modal itself is a
+    // singleton (see #receipt-datecheck-modal), so this is written around
+    // one pending-promise resolver rather than per-call listeners.
+    const receiptDatecheckModal = document.getElementById('receipt-datecheck-modal');
+    const receiptDatecheckStep1 = document.getElementById('receipt-datecheck-step1');
+    const receiptDatecheckStep2 = document.getElementById('receipt-datecheck-step2');
+    const receiptDatecheckThumb = document.getElementById('receipt-datecheck-thumb');
+    const receiptDatecheckPdfIcon = document.getElementById('receipt-datecheck-pdf-icon');
+    const receiptDatecheckInput = document.getElementById('receipt-datecheck-input');
+    const receiptDatecheckMismatchText = document.getElementById('receipt-datecheck-mismatch-text');
+    let receiptDatecheckRf_ = null;        // the freshly-picked receipt, held while the modal is open
+    let receiptDatecheckEntryDate_ = null; // the entry's own date (YYYY-MM-DD), to compare against
+    let receiptDatecheckResolve_ = null;   // resolver for the in-flight receiptDateCheck_() promise
+    function closeReceiptDatecheckModal_(result){
+      receiptDatecheckModal.classList.remove('active');
+      const resolve = receiptDatecheckResolve_;
+      receiptDatecheckRf_ = null;
+      receiptDatecheckEntryDate_ = null;
+      receiptDatecheckResolve_ = null;
+      if(resolve) resolve(result);
+    }
+    // Reads the file, then asks the user to confirm the date on it against
+    // entryDateStr (that ledger's own date field, 'YYYY-MM-DD'; pass '' for
+    // Record Payment, which has no editable date field — falls back to
+    // today, since a payment is always stamped "now"). Resolves with the
+    // receipt object {name, kind, dataUrl, localPath?} to attach it, or null
+    // if the user cancels out of a mismatch warning. Rejects only if the
+    // file itself can't be read (mirrors fileToLocalReceipt_'s own errors).
+    function receiptDateCheck_(file, entryDateStr){
+      return new Promise((resolve, reject)=>{
+        fileToLocalReceipt_(file).then(rf=>{
+          receiptDatecheckRf_ = rf;
+          receiptDatecheckEntryDate_ = entryDateStr || todayISO_();
+          receiptDatecheckResolve_ = resolve;
+          receiptDatecheckStep1.style.display = '';
+          receiptDatecheckStep2.style.display = 'none';
+          receiptDatecheckInput.value = '';
+          if(rf.kind === 'pdf'){
+            receiptDatecheckThumb.style.display = 'none';
+            receiptDatecheckPdfIcon.style.display = 'flex';
+          } else {
+            receiptDatecheckThumb.src = rf.dataUrl;
+            receiptDatecheckThumb.style.display = '';
+            receiptDatecheckPdfIcon.style.display = 'none';
+          }
+          receiptDatecheckModal.classList.add('active');
+        }).catch(reject);
+      });
+    }
+    document.getElementById('receipt-datecheck-viewbig').addEventListener('click', ()=>{ if(receiptDatecheckRf_) viewReceiptFile_(receiptDatecheckRf_); });
+    document.getElementById('receipt-datecheck-viewbig2').addEventListener('click', ()=>{ if(receiptDatecheckRf_) viewReceiptFile_(receiptDatecheckRf_); });
+    document.getElementById('receipt-datecheck-skip').addEventListener('click', ()=> closeReceiptDatecheckModal_(receiptDatecheckRf_));
+    document.getElementById('receipt-datecheck-cancel').addEventListener('click', ()=> closeReceiptDatecheckModal_(null));
+    document.getElementById('receipt-datecheck-attach-anyway').addEventListener('click', ()=> closeReceiptDatecheckModal_(receiptDatecheckRf_));
+    document.getElementById('receipt-datecheck-confirm').addEventListener('click', ()=>{
+      const typed = receiptDatecheckInput.value;
+      if(!typed){ alert(tr('pick_date_or_skip')); return; }
+      if(typed === receiptDatecheckEntryDate_){
+        closeReceiptDatecheckModal_(receiptDatecheckRf_);
+        return;
+      }
+      receiptDatecheckMismatchText.textContent = tr('receipt_datecheck_mismatch_text')
+        .replace('{receiptDate}', isoToDMY_(typed))
+        .replace('{entryDate}', isoToDMY_(receiptDatecheckEntryDate_));
+      receiptDatecheckStep1.style.display = 'none';
+      receiptDatecheckStep2.style.display = '';
+    });
+
     // FIX (2026-08-19): on the packaged native Android app, fileToLocalReceipt_
     // above deliberately swaps rf.dataUrl for a fast local-file view URL
     // (capacitor://... / http://localhost/_capacitor_file_/...) instead of the
@@ -4660,6 +4793,36 @@
       });
       return local;
     }
+    // FIX (2026-08-21): same reasoning as mergeRosterWithEntries_ above, but
+    // for Custom Ledgers, which are id-keyed (not name-keyed like the four
+    // roster ledgers) and were previously merged with a plain mergeById_
+    // call — that only ever ADDS a whole custom ledger that's missing
+    // locally; when a ledger with that id already exists on both sides
+    // (the normal case for any shared/ongoing custom ledger), the remote
+    // copy's `entries` were never looked at, so a new entry another device
+    // added to a custom ledger this device already knows about was silently
+    // dropped from the merge — and then silently overwritten AWAY on the
+    // sheet the moment this device's own next save rewrote that ledger's
+    // entries from its own (entry-missing) local copy, with no error of any
+    // kind. Mirrors mergeRosterWithEntries_'s per-item entries reconciliation,
+    // keyed by id instead of name; tombstone buckets match the ones already
+    // used elsewhere for custom ledgers ('customLedgers' for a whole deleted
+    // ledger, 'customLedgerEntries' for one deleted entry inside a ledger
+    // that still exists — see markDeleted_ call sites for both).
+    function mergeCustomLedgersWithEntries_(localList, remoteList){
+      if(!Array.isArray(remoteList) || !remoteList.length) return Array.isArray(localList) ? localList : [];
+      const local = Array.isArray(localList) ? localList.map(x=>Object.assign({}, x)) : [];
+      const byId = {};
+      local.forEach(item=>{ if(item && item.id) byId[item.id] = item; });
+      remoteList.forEach(rItem=>{
+        if(!rItem || !rItem.id) return;
+        if(isDeleted_('customLedgers', rItem.id)) return;
+        const lItem = byId[rItem.id];
+        if(!lItem){ local.push(rItem); byId[rItem.id] = rItem; return; }
+        lItem.entries = mergeById_(lItem.entries, rItem.entries, 'customLedgerEntries');
+      });
+      return local;
+    }
     // Populated by mergeLatestRemoteBeforeSave_ with whatever roster each
     // bucket held on the SHEET at the moment of the freshest pre-save fetch
     // — used right after by computeConfirmedEmptyLedgers_ to tell a genuine
@@ -4705,9 +4868,44 @@
         lastRemoteCustomLedgers_ = Array.isArray(d.customLedgers) ? d.customLedgers : [];
         transactionsLog = mergeById_(transactionsLog, (d.transactionsLog || []).map(migrateTxnPayment_), 'transactionsLog');
         customerPayments = mergeById_(customerPayments, d.customerPayments, 'customerPayments');
+        // FIX (2026-08-21): this only ever stashed the sheet's Products into
+        // lastRemoteProducts_ for computeConfirmedEmptyProducts_'s tombstone
+        // check below — it never actually merged them into the live PRODUCTS
+        // array the way every other bucket here does. On a device where
+        // PRODUCTS is locally empty (a fresh install, since PRODUCTS now
+        // starts as [] — see the demo-product cleanup) but the sheet already
+        // has real products from another device, PRODUCTS never got repaired
+        // here, so every save kept sending an empty products list while the
+        // sheet had rows — computeConfirmedEmptyProducts_() correctly refused
+        // to treat that as an intentional deletion (no tombstone exists for
+        // those ids), and the backend's "Refused to overwrite Products"
+        // guard rejected the ENTIRE saveAll_ call, forever, on a 10-second
+        // auto-retry loop that could never succeed on its own. Merging here,
+        // same as every other bucket, lets a genuinely-fresh device pick up
+        // the real product list on the very next merge instead of staying
+        // permanently stuck.
+        PRODUCTS = mergeById_(PRODUCTS, d.products, 'products');
         expenses = mergeById_(expenses, d.expenses, 'expenses');
         factories = mergeByName_(factories, d.factories, 'factories');
-        if(Array.isArray(d.customLedgers)) customLedgers = mergeById_(customLedgers, d.customLedgers, 'customLedgers');
+        // FIX (2026-08-21): was mergeById_(...) — see mergeCustomLedgersWithEntries_'s
+        // comment above for why that silently dropped entries another device
+        // added to a custom ledger this device already had locally.
+        if(Array.isArray(d.customLedgers)) customLedgers = mergeCustomLedgersWithEntries_(customLedgers, d.customLedgers);
+        // FIX (2026-08-21): txnNumber mints every new order's id (txnId =
+        // String(txnNumber).padStart(4,'0')) and was never looked at here at
+        // all — a save from a device that's behind could regress this
+        // counter on the sheet, and worse, a device that creates a new order
+        // using its own stale (lower) counter can mint the SAME id another
+        // device already used for a real, different order; mergeById_ keeps
+        // whichever copy of a colliding id is already local, so that other
+        // device's real order would be silently dropped from this device's
+        // next save. Taking the higher of the two here — every time this
+        // device merges before a save — keeps it caught up to the freshest
+        // counter any device has confirmed, closing most of that window.
+        // (Code.gs's Meta write also now refuses to store a lower value than
+        // what's already on the sheet, as a second, backend-side guard that
+        // covers saves from any device/build, not just this one.)
+        if(typeof d.txnNumber === 'number' && d.txnNumber > txnNumber) txnNumber = d.txnNumber;
         if(d.inventory){
           lastRemoteRosters_ = {
             paint: Array.isArray(d.inventory.paint) ? d.inventory.paint : [],
@@ -5992,6 +6190,11 @@
         expenses_title: "Daily Expenses", expenses_sub: "Money spent running the workshop — materials, bills, transport, and more.",
         add_expense: "Add Expense", edit_expense: "Edit Expense", todays_expenses: "Today's Expenses", total_expenses: "Total Expenses",
         receipt_optional: "Receipt (optional)", remove: "Remove", receipt_attached: "Receipt attached",
+        receipt_datecheck_title: "Check This Receipt", receipt_datecheck_desc: "What date is written on this receipt? This helps catch the wrong photo getting attached by mistake.",
+        receipt_date_label: "Date On Receipt", cant_tell_skip: "Can't Tell / Skip", view_full_size: "View Full Size",
+        receipt_datecheck_mismatch_title: "Dates Don't Match", attach_anyway: "Attach Anyway",
+        receipt_datecheck_mismatch_text: "This receipt is dated {receiptDate}, but the entry is dated {entryDate}. Check the photo below before deciding.",
+        pick_date_or_skip: "Type the date on the receipt, or tap \"Can't Tell / Skip\".",
         add_receipt: "Add Receipt", add_order_receipt_sub: "Attach the factory's gate pass / receiving receipt against an order number.",
         add_or_replace_receipt: "Add / Replace Receipt",
         order_number: "Order Number", order_receipt_search_placeholder: "Search by order # or factory…",
@@ -6272,6 +6475,11 @@
         expenses_title: "روزانہ کے اخراجات", expenses_sub: "ورکشاپ چلانے پر خرچ ہونے والی رقم — مواد، بل، نقل و حمل، وغیرہ۔",
         add_expense: "خرچہ شامل کریں", edit_expense: "خرچہ میں ترمیم", todays_expenses: "آج کے اخراجات", total_expenses: "کل اخراجات",
         receipt_optional: "رسید (اختیاری)", remove: "ہٹائیں", receipt_attached: "رسید منسلک ہے",
+        receipt_datecheck_title: "یہ رسید چیک کریں", receipt_datecheck_desc: "اس رسید پر کون سی تاریخ لکھی ہے؟ اس سے غلط تصویر غلطی سے منسلک ہونے سے بچا جا سکتا ہے۔",
+        receipt_date_label: "رسید پر تاریخ", cant_tell_skip: "پتا نہیں / نظر انداز کریں", view_full_size: "پوری تصویر دیکھیں",
+        receipt_datecheck_mismatch_title: "تاریخیں مماثل نہیں ہیں", attach_anyway: "پھر بھی منسلک کریں",
+        receipt_datecheck_mismatch_text: "یہ رسید {receiptDate} کی تاریخ کی ہے، لیکن اندراج {entryDate} کا ہے۔ فیصلہ کرنے سے پہلے نیچے دی گئی تصویر چیک کریں۔",
+        pick_date_or_skip: "رسید پر لکھی تاریخ درج کریں، یا \"پتا نہیں / نظر انداز کریں\" پر ٹیپ کریں۔",
         add_receipt: "رسید شامل کریں", add_order_receipt_sub: "فیکٹری کا گیٹ پاس / وصولی رسید آرڈر نمبر کے خلاف منسلک کریں۔",
         add_or_replace_receipt: "رسید شامل / تبدیل کریں",
         order_number: "آرڈر نمبر", order_receipt_search_placeholder: "آرڈر نمبر یا فیکٹری تلاش کریں…",
@@ -8040,8 +8248,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.20.2";
-    const APP_VERSION_NOTE = "Redesigned Settings, category icons, sidebar accents, tap-to-type cart qty, button polish";
+    const APP_VERSION = "2026.08.21.3";
+    const APP_VERSION_NOTE = "Added receipt date safety check: attaching any receipt photo now asks for the date on it and warns (with a full-size preview) if it doesn't match the entry's date";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -9086,8 +9294,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingCustomerReceipt = await fileToLocalReceipt_(file);
-        clReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('cl-date').value);
+        if(!rf){ clReceiptFileInput.value = ''; return; }
+        pendingCustomerReceipt = rf;
+        clReceiptCurrentName.textContent = rf.name;
         clReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -10585,8 +10795,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingPaintReceipt = await fileToLocalReceipt_(file);
-        plReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('pl-date').value);
+        if(!rf){ plReceiptFileInput.value = ''; return; }
+        pendingPaintReceipt = rf;
+        plReceiptCurrentName.textContent = rf.name;
         plReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -10931,8 +11143,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingRawReceipt = await fileToLocalReceipt_(file);
-        rlReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('rl-date').value);
+        if(!rf){ rlReceiptFileInput.value = ''; return; }
+        pendingRawReceipt = rf;
+        rlReceiptCurrentName.textContent = rf.name;
         rlReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -11385,8 +11599,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingCustomLedgerReceipt = await fileToLocalReceipt_(file);
-        culReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('cul-date').value);
+        if(!rf){ culReceiptFileInput.value = ''; return; }
+        pendingCustomLedgerReceipt = rf;
+        culReceiptCurrentName.textContent = rf.name;
         culReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -13299,8 +13515,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingLabourReceipt = await fileToLocalReceipt_(file);
-        wlReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('wl-date').value);
+        if(!rf){ wlReceiptFileInput.value = ''; return; }
+        pendingLabourReceipt = rf;
+        wlReceiptCurrentName.textContent = rf.name;
         wlReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -14235,9 +14453,11 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingExpenseReceipt = await fileToLocalReceipt_(file);
+        const rf = await receiptDateCheck_(file, document.getElementById('exp-date').value);
+        if(!rf){ expReceiptFileInput.value = ''; return; }
+        pendingExpenseReceipt = rf;
         removeExpenseReceiptFlag = false;
-        expReceiptCurrentName.textContent = file.name;
+        expReceiptCurrentName.textContent = rf.name;
         expReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -15767,8 +15987,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingPaymentReceipt = await fileToLocalReceipt_(file);
-        rpReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, '');
+        if(!rf){ rpReceiptFileInput.value = ''; return; }
+        pendingPaymentReceipt = rf;
+        rpReceiptCurrentName.textContent = rf.name;
         rpReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -16045,9 +16267,13 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingOrderReceipt = await fileToLocalReceipt_(file);
+        const selectedOrder = transactionsLog.find(x => String(x.id) === String(selectedOrderReceiptId));
+        const orderDateIso = selectedOrder ? (dmyToISO_(selectedOrder.date) || '') : '';
+        const rf = await receiptDateCheck_(file, orderDateIso);
+        if(!rf){ aorReceiptFileInput.value = ''; aorUpdateSaveState_(); return; }
+        pendingOrderReceipt = rf;
         pendingOrderReceiptFile = file;
-        aorReceiptCurrentName.textContent = file.name;
+        aorReceiptCurrentName.textContent = rf.name;
         aorReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
       aorUpdateSaveState_();
