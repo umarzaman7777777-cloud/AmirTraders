@@ -1693,11 +1693,15 @@
   <script src="./vendor/jspdf.umd.min.js"></script>
   <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
   <script src="./vendor/html2canvas.min.js"></script>
-  <!-- Capacitor bridge (core + Filesystem plugin), bundled at build time from
-       bridge-src.js — see package.json's "build:bridge" script. Exposes
-       window.CapApp for fileToLocalReceipt_ to save receipt photos as real
-       files on the device instead of base64 blobs in localStorage. -->
-  <script src="./capacitor-bridge.js"></script>
+  <!-- FIX (2026-08-21): the old window.CapApp bridge this used to load from
+       capacitor-bridge.js was never actually filled in (the file was just
+       `window.CapApp = {}`) — no build step ever bundled a real Filesystem
+       plugin into it, so every native file save silently no-op'd on every
+       device. Removed; file saves now go through Capacitor's own real
+       plugin bridge (window.Capacitor.Plugins, via capacitorPlugin_()
+       further down) — the same, actually-working mechanism Google Sign-In
+       and fingerprint unlock already used. See package.json for the real
+       @capacitor/filesystem dependency this now relies on. -->
 </head>
 <body>
 
@@ -4175,17 +4179,16 @@
         reader.onload = async (ev)=>{
           const dataUrl = ev.target.result;
           try{
-            const cap = window.CapApp && window.CapApp.Capacitor;
-            if(cap && cap.isNativePlatform && cap.isNativePlatform()){
-              const Filesystem = window.CapApp.Filesystem;
-              const Directory = window.CapApp.Directory;
+            const Filesystem = filesystemPlugin_();
+            if(capacitorIsNative_() && Filesystem){
+              const Directory = CapDirectory_;
               const base64 = String(dataUrl).split(',')[1];
               const extMatch = /\.([a-z0-9]+)$/i.exec(file.name || '');
               const ext = (extMatch ? extMatch[1] : (kind === 'pdf' ? 'pdf' : 'jpg')).toLowerCase();
               const path = LOCAL_RECEIPT_DIR + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
               await Filesystem.writeFile({ path, data: base64, directory: Directory.Data, recursive: true });
               const uriRes = await Filesystem.getUri({ path, directory: Directory.Data });
-              const localSrc = cap.convertFileSrc(uriRes.uri);
+              const localSrc = capacitorFileSrc_(uriRes.uri);
               resolve({ name: file.name, kind, dataUrl: localSrc, localPath: path });
               return;
             }
@@ -4301,10 +4304,9 @@
       if(!rf) return null;
       if(typeof rf.dataUrl === 'string' && /^data:/i.test(rf.dataUrl)) return rf.dataUrl;
       try{
-        const cap = window.CapApp && window.CapApp.Capacitor;
-        const Filesystem = window.CapApp && window.CapApp.Filesystem;
-        const Directory = window.CapApp && window.CapApp.Directory;
-        if(rf.localPath && cap && Filesystem && Directory){
+        const Filesystem = filesystemPlugin_();
+        const Directory = CapDirectory_;
+        if(rf.localPath && capacitorIsNative_() && Filesystem){
           const res = await Filesystem.readFile({ path: rf.localPath, directory: Directory.Data });
           const extMatch = /\.([a-z0-9]+)$/i.exec(rf.localPath || '');
           const ext = (extMatch ? extMatch[1] : '').toLowerCase();
@@ -4417,11 +4419,11 @@
     // Returns a short note describing where it ended up.
     async function saveBackupToDevice_(json, filename){
       let savedNote = '';
-      const cap = window.CapApp && window.CapApp.Capacitor;
-      if(cap && cap.isNativePlatform && cap.isNativePlatform() && window.CapApp.Filesystem){
+      const Filesystem_bkp = filesystemPlugin_();
+      if(capacitorIsNative_() && Filesystem_bkp){
         try{
-          const Filesystem = window.CapApp.Filesystem;
-          const Directory = window.CapApp.Directory;
+          const Filesystem = Filesystem_bkp;
+          const Directory = CapDirectory_;
           // Same base64-write pattern as fileToLocalReceipt_ above — encode
           // the JSON as base64 so it matches the plugin's default (binary)
           // write mode without needing a separate text-encoding option.
@@ -7137,6 +7139,36 @@
     function googleSignInPlugin_(){ return capacitorPlugin_('GoogleSignIn'); }
     function biometricPlugin_(){ return capacitorPlugin_('NativeBiometric'); }
     function statusBarPlugin_(){ return capacitorPlugin_('StatusBar'); }
+    // FIX (2026-08-21): root cause of "receipts/exports don't save to real
+    // device storage" (worked on a newer phone by luck, always failed on
+    // the older Tab A). Every receipt-save/export call in this file used to
+    // reach for a `window.CapApp.Filesystem` bridge that was never actually
+    // wired up — www/capacitor-bridge.js only ever set `window.CapApp = {}`
+    // and nothing filled in .Capacitor/.Filesystem/.Directory, and
+    // @capacitor/filesystem was never even installed as a real dependency
+    // (see package.json), so every save silently fell back to an in-app
+    // copy that never touched the device's real storage on ANY device. Now
+    // wired the same correct way GoogleSignIn/NativeBiometric/StatusBar
+    // already work above — via window.Capacitor.Plugins, Capacitor's own
+    // real bridge — so this only works once @capacitor/filesystem is an
+    // actual project dependency and `npx cap sync android` has registered
+    // it (see package.json/build workflow).
+    function filesystemPlugin_(){ return capacitorPlugin_('Filesystem'); }
+    // Plain string constants — Capacitor's Directory enum, mirrored here so
+    // no import/bundler step is needed for this one enum. DATA is the
+    // app's own private storage (works on every Android version, no
+    // permission ever needed). DOCUMENTS is the app-specific Documents
+    // folder — visible in a normal file manager, but needs
+    // READ/WRITE_EXTERNAL_STORAGE on Android 10 and older (see
+    // AndroidManifest.xml) since it isn't scoped-storage-exempt the way
+    // DATA is.
+    const CapDirectory_ = { Data: 'DATA', Documents: 'DOCUMENTS', Cache: 'CACHE', External: 'EXTERNAL' };
+    function capacitorIsNative_(){
+      try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }catch(e){ return false; }
+    }
+    function capacitorFileSrc_(uri){
+      try{ return (window.Capacitor && window.Capacitor.convertFileSrc) ? window.Capacitor.convertFileSrc(uri) : uri; }catch(e){ return uri; }
+    }
 
     // Set this to the Web application OAuth client ID created in Google
     // Cloud Console (see the setup guide) before rebuilding — a blank
@@ -16693,11 +16725,11 @@
     }
     async function saveGeneratedFile_(blob, filename, folder){
       const path = folder ? (sanitizeFilePart_(folder) + '/' + filename) : filename;
-      const cap = window.CapApp && window.CapApp.Capacitor;
-      if(cap && cap.isNativePlatform && cap.isNativePlatform() && window.CapApp.Filesystem){
+      const Filesystem_exp = filesystemPlugin_();
+      if(capacitorIsNative_() && Filesystem_exp){
         try{
-          const Filesystem = window.CapApp.Filesystem;
-          const Directory = window.CapApp.Directory;
+          const Filesystem = Filesystem_exp;
+          const Directory = CapDirectory_;
           const base64 = await blobToBase64_(blob);
           await Filesystem.writeFile({ path, data: base64, directory: Directory.Documents, recursive: true });
           showToast_('Saved to Documents/' + path);
@@ -18009,7 +18041,7 @@
         return;
       }
       try{
-        const App = window.CapApp && window.CapApp.App;
+        const App = capacitorPlugin_('App');
         if(App && App.exitApp) App.exitApp();
       } catch(e){ /* plugin not available on this build — next back press closes it instead */ }
     });
