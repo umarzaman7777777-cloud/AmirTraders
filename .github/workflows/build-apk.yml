@@ -26,18 +26,13 @@ jobs:
           node-version: 22
 
       - name: Install Capacitor dependencies
-        # FIX (2026-08-21): switched from `npm ci` to `npm install` —
-        # `npm ci` requires package-lock.json to already have an exact
-        # matching entry for every dependency in package.json, and refuses
-        # to run otherwise. @capacitor/filesystem and @capacitor/app were
-        # just added to package.json to fix receipts/exports not saving to
-        # real device storage; package-lock.json doesn't have them pinned
-        # yet. `npm install` resolves and adds them fine. Once this build
-        # runs once and the regenerated package-lock.json is committed back
-        # (this step won't do that automatically — commit the updated
-        # package-lock.json from a local `npm install` run, or just leave
-        # this as `npm install` going forward), it's safe to switch back to
-        # `npm ci` for the faster, fully-locked installs it normally gives.
+        # CHANGE (2026-08-22): switched from `npm ci` to `npm install` —
+        # ci requires package-lock.json to already exactly match
+        # package.json, and adding @capacitor/push-notifications updated
+        # package.json without a matching regenerated lockfile (no way to
+        # run npm here to produce one). `npm install` resolves and
+        # updates the lockfile itself on this run, same as it would on
+        # your own machine after adding a new dependency.
         run: npm install
 
       - name: Copy www/ into the native Android project

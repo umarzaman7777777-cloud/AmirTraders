@@ -40,16 +40,4 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Needed for fingerprint quick-unlock (@capgo/capacitor-native-biometric) -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-    <!-- FIX (2026-08-21): root cause of receipts/exports saving fine on a
-         newer phone (Android 11+, where an app's own Documents folder needs
-         no permission at all) but silently failing on an older device like
-         a 2016-era tablet on Android 10 or below — that older tier still
-         REQUIRES these two declared, or @capacitor/filesystem has no legal
-         way to ask for the storage access Directory.Documents writes need.
-         maxSdkVersion=32 means devices on Android 13+ (which deprecated
-         these in favor of scoped storage / media permissions) never even
-         see them requested — this only matters for, and only affects,
-         older devices. -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 </manifest>

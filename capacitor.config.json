@@ -1,5 +1,10 @@
 {
   "appId": "com.amirtraders.app",
   "appName": "Amir Traders",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
 }

@@ -632,16 +632,8 @@
       background:var(--yellow); color:#1C1F22; font-weight:600;
       box-shadow:0 2px 10px -2px color-mix(in srgb, var(--yellow) 55%, transparent);
     }
-    /* FIX (2026-08-20): every sidebar icon was one flat color (var(--text))
-       at rest, disconnected from the distinct accent colors the Overview
-       dashboard already uses per module. --nav-accent is set inline per
-       button (see NAV_ACCENT map in JS) only for sections that have a real
-       Overview-module counterpart; falls back to var(--text) for anything
-       that doesn't set it, so this never breaks a button that has no
-       assigned accent. Active/hover states are untouched — both are set by
-       higher-specificity rules below, which still win the cascade. */
     .side-nav-item svg, .side-subnav-item svg{
-      color:var(--nav-accent, var(--text)); opacity:0.82; stroke-width:2;
+      color:var(--text); opacity:0.82; stroke-width:2;
       transition:opacity 0.15s, filter 0.15s, transform 0.15s;
     }
     .side-nav-item:hover svg, .side-subnav-item:hover svg{
@@ -808,11 +800,7 @@
     .export-dropdown-btn{
       display:flex; align-items:center; gap:6px;
     }
-    /* FIX (2026-08-20): was a raw "▾" text glyph — replaced with an inline
-       SVG chevron (matching the sidebar's own .chevron icon) since a bare
-       text glyph is the one place in the file that broke the all-SVG icon
-       system and could render inconsistently across Android font stacks. */
-    .export-dropdown-btn .caret{ flex-shrink:0; transition:transform 0.15s; }
+    .export-dropdown-btn .caret{ font-size:9px; transition:transform 0.15s; }
     .export-dropdown.open .export-dropdown-btn .caret{ transform:rotate(180deg); }
     .export-dropdown-menu{
       position:absolute; top:calc(100% + 6px); right:0; z-index:40;
@@ -1153,7 +1141,7 @@
        above) already keeps real space between them; the piece that was too
        small to tap safely was the button itself. */
     .ledger-entry-del{
-      width:32px; height:32px; border-radius:6px; border:1px solid var(--steel-line);
+      width:28px; height:28px; border-radius:6px; border:1px solid var(--steel-line);
       background:var(--panel-raised); color:var(--text-dim); cursor:pointer; flex-shrink:0;
       display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s;
     }
@@ -1210,17 +1198,10 @@
        longer contributes to that notification (see getPendingSlips_). */
     .cheque-badge.receipt{ background:rgba(76,154,90,0.18); color:var(--green); text-transform:none; letter-spacing:0.2px; display:inline-flex; align-items:center; gap:3px; }
     .cheque-badge.receipt svg{ display:block; }
-    /* FIX (2026-08-20): matched to the same accidental-touch-protection
-       standard as .inv-row-actions/.ledger-entry-del (min 32px touch
-       target) — this button family was left out of that pass, with only a
-       3px/8px padding hit area (well under 32px tall) and no plain
-       (non-variant) hover fallback. */
     .cheque-action-btn{
-      font-family:var(--mono); font-size:9.5px; padding:8px 12px; border-radius:6px;
-      min-height:32px; border:1px solid var(--steel-line); background:var(--panel-raised);
-      color:var(--text-dim); cursor:pointer; transition:all 0.15s;
+      font-family:var(--mono); font-size:9.5px; padding:3px 8px; border-radius:4px;
+      border:1px solid var(--steel-line); background:var(--panel-raised); color:var(--text-dim); cursor:pointer;
     }
-    .cheque-action-btn:hover{ border-color:var(--yellow); color:var(--text); }
     .cheque-action-btn.clear:hover{ border-color:var(--green); color:var(--green); }
     .cheque-action-btn.bounce:hover{ border-color:var(--red); color:var(--red); }
     .ledger-entry-spec-row.steelweight-pending{ background:rgba(var(--logo-a-rgb),0.14); border-radius:6px; padding:4px 6px; margin:2px 0; }
@@ -1338,34 +1319,22 @@
     .cart-line .name{ font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .cart-line .unit{ font-family:var(--mono); font-size:10.5px; color:var(--text-dim); }
     .qty-ctrl{ display:flex; align-items:center; gap:6px; }
+    .qty-ctrl button{
+      width:22px;height:22px; border-radius:5px; border:1px solid var(--steel-line); background:var(--panel-raised);
+      color:var(--text); cursor:pointer; font-family:var(--mono); font-size:12px; line-height:1;
+    }
     .qty-ctrl span{ font-family:var(--mono); font-size:12.5px; min-width:16px; text-align:center; }
-    /* Tap-to-type quantity box (2026-08-20): +/- buttons were removed — this
-       is now the ONLY way to change a cart line's quantity, so it needs to
-       visibly read as an editable field (border + background), not the old
-       bare underlined number that only worked well next to +/- buttons. */
     .qty-ctrl .qty-input{
-      font-family:var(--mono); font-size:13px; font-weight:600; text-align:center; width:40px;
-      background:var(--panel-raised); border:1px solid var(--steel-line); border-radius:6px;
-      color:var(--text); padding:5px 2px;
+      font-family:var(--mono); font-size:12.5px; text-align:center; width:32px;
+      background:none; border:none; color:var(--text); padding:2px 0;
       -moz-appearance:textfield;
     }
     .qty-ctrl .qty-input::-webkit-outer-spin-button,
     .qty-ctrl .qty-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
-    .qty-ctrl .qty-input:focus{ outline:none; border-color:var(--yellow); }
+    .qty-ctrl .qty-input:focus{ outline:none; border-bottom:1px solid var(--yellow); }
     .line-total{ font-family:var(--mono); font-size:12.5px; font-weight:600; min-width:62px; text-align:right; }
-    /* FIX (2026-08-20): was a bare, borderless "✕" text glyph (with a
-       completely different bordered-rectangle "Remove" text button used
-       only for custom cart items) — unified to the same bordered/square
-       button treatment as .ledger-entry-del elsewhere in the app, so both
-       cart-line types (and the ledger delete buttons) read as one
-       consistent button family, and this is no longer a tap target smaller
-       than the 32px standard used everywhere else. */
-    .remove-x{
-      width:32px; height:32px; border-radius:6px; border:1px solid var(--steel-line);
-      background:var(--panel-raised); color:var(--text-dim); cursor:pointer; flex-shrink:0;
-      display:inline-flex; align-items:center; justify-content:center; font-size:14px; transition:all 0.15s;
-    }
-    .remove-x:hover{ border-color:var(--red); color:var(--red); }
+    .remove-x{ background:none;border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:0 2px; }
+    .remove-x:hover{ color:var(--red); }
 
     .cart-summary{ border-top:1px solid var(--steel-line); padding:14px 18px; }
     .sum-row{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px; color:var(--text-dim); font-family:var(--mono); }
@@ -1435,32 +1404,6 @@
     .settings-collapse-toggle.open .settings-collapse-chevron{ transform:rotate(180deg); }
     .settings-collapse-body{ max-height:0; overflow:hidden; transition:max-height .18s ease; }
     .settings-collapse-body.open{ max-height:800px; }
-    /* ADD (2026-08-20): every Settings card used an identical inline style
-       block, repeated ~9 times, with none of the shadow/hover polish
-       .product-card/.stat-card/.notif-row already got — this was the one
-       screen the earlier card-polish pass never reached. Also adds an
-       icon+colored-badge header (matching .erp-module-header's pattern)
-       and section-label grouping so the page isn't one long unsectioned
-       scroll of nine near-identical cards. */
-    .settings-card{
-      background:var(--panel); border:1px solid var(--steel-line); border-radius:10px;
-      padding:18px; margin-bottom:16px; max-width:520px;
-      box-shadow:var(--card-shadow); transition:box-shadow 0.15s ease;
-    }
-    .settings-card:hover{ box-shadow:var(--card-shadow-hover); }
-    .settings-card-header{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-    .settings-card-header .settings-icon{
-      width:30px; height:30px; border-radius:8px; flex-shrink:0;
-      display:flex; align-items:center; justify-content:center;
-      background:var(--settings-accent, var(--yellow)); color:#fff;
-      box-shadow:0 3px 8px -2px color-mix(in srgb, var(--settings-accent, var(--yellow)) 55%, transparent);
-    }
-    .settings-card-header .settings-card-title{ font-weight:600; font-size:14px; }
-    .settings-section-label{
-      font-family:var(--mono); font-size:10.5px; letter-spacing:1.5px; text-transform:uppercase;
-      color:var(--text-dim); margin:26px 0 10px; max-width:520px;
-    }
-    .settings-section-label:first-of-type{ margin-top:4px; }
     .field-input{
       width:100%; background:var(--panel-raised); border:1px solid var(--steel-line); border-radius:7px;
       padding:10px 12px; color:var(--text); font-family:var(--mono); font-size:14px; margin-bottom:14px;
@@ -1542,20 +1485,6 @@
     .btn-cancel{ background:none; border:1px solid var(--steel-line) !important; color:var(--text-dim); }
     .btn-confirm{ background:var(--yellow); color:#1C1F22; }
     .btn-confirm:disabled{ background:var(--steel); color:var(--text-dim); cursor:not-allowed; }
-    /* FIX (2026-08-21): visually identical to .btn-cancel / its red-danger
-       variant, but deliberately NOT the .btn-cancel class itself — the
-       app-wide "discard changes?" dirty-form guard (search
-       document.addEventListener('click'... .btn-cancel below) intercepts
-       every .btn-cancel click in capture phase and can swallow it entirely.
-       That's correct for real data-entry forms, but the receipt date-check
-       modal's Skip/Cancel/Attach-Anyway buttons are lightweight flow
-       controls, not something to prompt "discard changes?" over — and for
-       Attach Anyway specifically, stacking that confirm in front of it would
-       make a one-tap override take two taps (or silently do nothing if the
-       user declines the unrelated discard prompt). Using separate classes
-       here sidesteps the guard while keeping the exact same look. */
-    .btn-modal-secondary{ background:none; border:1px solid var(--steel-line) !important; color:var(--text-dim); }
-    .btn-modal-danger{ background:none; border:1px solid var(--red) !important; color:var(--red); }
 
     .change-due{ text-align:center; padding:14px 0; }
     .change-due .lbl{ font-family:var(--mono); font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; }
@@ -1637,11 +1566,8 @@
          mobile (to 23px) right after the desktop size was widened for
          accidental-touch protection — exactly backwards, since mobile is
          where fat-fingering these actually happens. Sized at least as big
-         as desktop here, not smaller. (2026-08-20 later same day: desktop
-         itself grew from 28px to 32px for consistency with the other
-         widened button families — this mobile override bumped to match,
-         same rule: never smaller than desktop.) */
-      .ledger-entry-del{ width:32px; height:32px; }
+         as desktop here, not smaller. */
+      .ledger-entry-del{ width:30px; height:30px; }
       .ledger-entry-kind{ font-size:10px; padding:2px 6px; }
       .ledger-entry-spec-row{ white-space:normal; font-size:11.5px; }
 
@@ -1693,15 +1619,11 @@
   <script src="./vendor/jspdf.umd.min.js"></script>
   <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
   <script src="./vendor/html2canvas.min.js"></script>
-  <!-- FIX (2026-08-21): the old window.CapApp bridge this used to load from
-       capacitor-bridge.js was never actually filled in (the file was just
-       `window.CapApp = {}`) — no build step ever bundled a real Filesystem
-       plugin into it, so every native file save silently no-op'd on every
-       device. Removed; file saves now go through Capacitor's own real
-       plugin bridge (window.Capacitor.Plugins, via capacitorPlugin_()
-       further down) — the same, actually-working mechanism Google Sign-In
-       and fingerprint unlock already used. See package.json for the real
-       @capacitor/filesystem dependency this now relies on. -->
+  <!-- Capacitor bridge (core + Filesystem plugin), bundled at build time from
+       bridge-src.js — see package.json's "build:bridge" script. Exposes
+       window.CapApp for fileToLocalReceipt_ to save receipt photos as real
+       files on the device instead of base64 blobs in localStorage. -->
+  <script src="./capacitor-bridge.js"></script>
 </head>
 <body>
 
@@ -2020,7 +1942,7 @@
           <div class="header-actions">
             <button type="button" class="btn-export" id="txn-add-receipt-btn"><span data-i18n="add_receipt">Add Receipt</span></button>
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('transactions','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="openExportFilterModal('transactions','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -2056,7 +1978,7 @@
           </div>
           <div class="header-actions">
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
               <div class="export-dropdown-menu">
                 <button onclick="exportExpensesPDF(); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="exportExpensesJPG(); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -2087,7 +2009,7 @@
           </div>
           <div class="header-actions">
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('rawledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="openExportFilterModal('rawledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -2118,7 +2040,7 @@
           </div>
           <div class="header-actions">
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
               <div class="export-dropdown-menu">
                 <button onclick="exportInventoryPDF('labour'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="exportInventoryJPG('labour'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -2138,7 +2060,7 @@
           </div>
           <div class="header-actions">
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('paint','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="openExportFilterModal('paint','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -2160,7 +2082,7 @@
           <div class="header-actions">
             <button class="btn-export" id="ll-mark-attendance-btn" data-i18n="mark_attendance">Mark Attendance</button>
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('labourledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="openExportFilterModal('labourledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -2266,13 +2188,8 @@
         </div>
       </div>
 
-      <div class="settings-section-label" data-i18n="settings_section_security">Security</div>
-
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--yellow);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
-          <div class="settings-card-title" data-i18n="change_pin_title">Change PIN</div>
-        </div>
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="change_pin_title">Change PIN</div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="change_pin_desc">Enter your current 4-digit PIN, then choose a new one.</div>
         <label class="field-label" data-i18n="current_pin">Current PIN</label>
         <input type="password" id="settings-pin-current" class="field-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
@@ -2285,11 +2202,8 @@
         <button type="button" id="settings-pin-save" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="save">Save</button>
       </div>
 
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--logo-a);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a2.9 2.9 0 1 1 4.4 2.5c-.9.6-1.5 1.1-1.5 2.3"/><line x1="12" y1="17" x2="12" y2="17.1"/></svg></div>
-          <div class="settings-card-title" data-i18n="security_question_title">Security Question</div>
-        </div>
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="security_question_title">Security Question</div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="security_question_desc">Used by "Forgot PIN?" on the lock screen to let you reset your PIN without losing access. Question: "What is the shop owner's name?" — enter your current PIN to change the saved answer.</div>
         <label class="field-label" data-i18n="current_pin">Current PIN</label>
         <input type="password" id="settings-answer-pin" class="field-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
@@ -2311,11 +2225,8 @@
            it re-shows the lock screen automatically — see lockNow_(),
            armAutoLockWatch_() and the visibilitychange/idle-timer wiring
            near the lock-screen code below. -->
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--orange);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></div>
-          <div class="settings-card-title" data-i18n="autolock_title">Auto-Lock</div>
-        </div>
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="autolock_title">Auto-Lock</div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="autolock_desc">Automatically show the PIN lock screen after the app has been idle or minimized for this long — protects your ledger if the phone is left unattended.</div>
         <label class="field-label" data-i18n="autolock_label">Auto-Lock After</label>
         <select id="settings-autolock" class="field-input">
@@ -2327,43 +2238,8 @@
         </select>
       </div>
 
-      <!-- FIX (2026-08-20): the old "Account & Login" card was a
-           placeholder for a future email+password login. The user has
-           since asked to build Gmail sign-in (replacing the PIN
-           entirely) plus fingerprint quick-unlock instead — this card
-           now reflects that. Google sign-in itself is native-plugin work
-           (see googleSignInAvailable_/nativeBiometricAvailable_ below) —
-           on a build without those plugins installed yet, this card
-           still renders but the buttons explain that native setup is
-           still pending rather than silently doing nothing. Moved into
-           the Security section (2026-08-20, later same day) — it's the
-           app's actual lock screen mechanism, so it belongs with Change
-           PIN/Security Question/Auto-Lock, not off on its own. -->
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--green);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6Z"/><polyline points="9 12 11 14 15 10"/></svg></div>
-          <div class="settings-card-title" data-i18n="google_account_title">Google Sign-In &amp; Lock Screen</div>
-        </div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="google_account_desc">The lock screen now unlocks with your Google account instead of a PIN. Turn on fingerprint below for a faster day-to-day unlock — you'll still confirm with Google the first time on a device, or whenever fingerprint isn't available.</div>
-        <div id="settings-google-account-status" style="font-family:var(--mono); font-size:12.5px; margin-bottom:12px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line);"></div>
-        <button type="button" id="settings-google-signin-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="google_account_switch_btn">Sign In / Switch Account</button>
-
-        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--steel-line);">
-          <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-            <input type="checkbox" id="settings-biometric-toggle" style="width:16px; height:16px; flex-shrink:0;">
-            <span data-i18n="biometric_toggle_label">Use fingerprint for quick unlock</span>
-          </label>
-          <div id="settings-biometric-note" style="font-size:11.5px; color:var(--text-dim); margin-top:6px;"></div>
-        </div>
-      </div>
-
-      <div class="settings-section-label" data-i18n="settings_section_device">Device</div>
-
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--logo-b);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="10" y1="19" x2="14" y2="19"/></svg></div>
-          <div class="settings-card-title" data-i18n="device_name_title">This Phone's Name</div>
-        </div>
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="device_name_title">This Phone's Name</div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="device_name_desc">Every entry this phone adds gets tagged with this name on the Google Sheet, so you can tell which phone an entry came from. Set a different name on each phone you use (e.g. "Shop Counter", "Amir's Phone").</div>
         <label class="field-label" data-i18n="device_name_label">Device Name</label>
         <input type="text" id="settings-device-name" class="field-input" placeholder="e.g. Shop Counter" data-i18n-placeholder="device_name_placeholder" autocomplete="off">
@@ -2371,41 +2247,8 @@
         <button type="button" id="settings-device-name-save" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="save">Save</button>
       </div>
 
-      <div class="settings-section-label" data-i18n="settings_section_data">Data &amp; Sync</div>
-
-      <!-- ADD (2026-08-20): sync status was only ever visible as a topbar
-           pill + hover tooltip (tooltips don't fire on touch) — this card
-           surfaces the same last-synced/pending/error state persistently,
-           and a manual "Sync Now" button (reuses testSheetConnection_,
-           the exact same check the topbar widget's tap already runs).
-           Kept live via renderSyncSettingsCard_(), called from the single
-           choke point every sync state change already funnels through
-           (setSyncStatus). -->
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--green);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
-          <div class="settings-card-title" data-i18n="sync_settings_title">Sync</div>
-        </div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="sync_settings_desc">Your data syncs to a Google Sheet automatically. Check the status below or force a check any time.</div>
-        <div id="settings-sync-status" style="font-family:var(--mono); font-size:12.5px; margin-bottom:12px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line);"></div>
-        <button type="button" id="settings-sync-now-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="sync_now_btn">Sync Now</button>
-      </div>
-
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--logo-a);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
-          <div class="settings-card-title" data-i18n="backup_title">Gmail Backup</div>
-        </div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="backup_desc">A full backup of your Google Sheet is emailed to you automatically every week. You can also send one right now, any time.</div>
-        <button type="button" id="settings-backup-now-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="backup_now_btn">Send Backup Now</button>
-        <p id="settings-backup-status" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0; display:none;"></p>
-      </div>
-
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--orange);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><polyline points="7 10 12 15 17 10"/><path d="M5 21h14"/></svg></div>
-          <div class="settings-card-title" data-i18n="export_settings_title">Export Settings</div>
-        </div>
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="export_settings_title">Export Settings</div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="export_settings_desc">Choose which columns show up in this ledger's exports. One setting covers PDF, JPG and CSV together — hide a column here and it disappears from all three. Changes save automatically.</div>
         <label class="field-label" data-i18n="export_settings_ledger_label">Ledger</label>
         <select id="settings-export-ledger" class="field-input"></select>
@@ -2426,11 +2269,8 @@
         </div>
       </div>
 
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-accent:var(--logo-b);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2"/></svg></div>
-          <div class="settings-card-title" data-i18n="ledger_settings_title">Ledger Settings</div>
-        </div>
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="ledger_settings_title">Ledger Settings</div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="ledger_settings_desc">Defaults for how every ledger exports and displays. Changes save automatically.</div>
 
         <label class="field-label" data-i18n="ledger_settings_range_label">Default Export Date Range</label>
@@ -2458,13 +2298,71 @@
           <div id="settings-overview-modules-list" style="display:flex; flex-direction:column; gap:8px; margin-top:8px; padding-top:2px;"></div>
         </div>
       </div>
+
+      <!-- ADD (2026-08-22): per-type mute + check-frequency controls for
+           the Notifications tab's alerts, PLUS real outside-app delivery
+           via Firebase Cloud Messaging — see enablePushNotifications_/
+           renderNotifPushStatus_ in the script below for the actual
+           permission-request + registration flow, and
+           checkAndSendPushNotifications_ in Code.gs for the backend
+           trigger that does the actual sending. -->
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="notif_settings_title">Notification Alerts</div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="notif_settings_desc">Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.</div>
+        <div id="settings-notif-push-status" style="font-family:var(--mono); font-size:11.5px; margin-bottom:10px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line); color:var(--text-dim);"></div>
+        <button id="settings-notif-enable-btn" type="button" style="background:var(--yellow); color:#1C1F22; border:none; padding:9px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase; margin-bottom:16px;" data-i18n="notif_enable_btn">Enable Push Notifications</button>
+
+        <label class="field-label" data-i18n="notif_settings_frequency_label">Check For New Alerts Every</label>
+        <select id="settings-notif-frequency" class="field-input">
+          <option value="5" data-i18n="notif_freq_5">5 minutes</option>
+          <option value="15" data-i18n="notif_freq_15">15 minutes</option>
+          <option value="30" data-i18n="notif_freq_30">30 minutes</option>
+          <option value="60" data-i18n="notif_freq_60">1 hour</option>
+        </select>
+
+        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--steel-line);">
+          <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;" data-i18n="notif_settings_types_label">Alert Me About</div>
+          <div id="settings-notif-types-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </div>
+
+
+      <!-- FIX (2026-08-20): the old "Account & Login" card was a
+           placeholder for a future email+password login. The user has
+           since asked to build Gmail sign-in (replacing the PIN
+           entirely) plus fingerprint quick-unlock instead — this card
+           now reflects that. Google sign-in itself is native-plugin work
+           (see googleSignInAvailable_/nativeBiometricAvailable_ below) —
+           on a build without those plugins installed yet, this card
+           still renders but the buttons explain that native setup is
+           still pending rather than silently doing nothing. -->
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="google_account_title">Google Sign-In &amp; Lock Screen</div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="google_account_desc">The lock screen now unlocks with your Google account instead of a PIN. Turn on fingerprint below for a faster day-to-day unlock — you'll still confirm with Google the first time on a device, or whenever fingerprint isn't available.</div>
+        <div id="settings-google-account-status" style="font-family:var(--mono); font-size:12.5px; margin-bottom:12px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line);"></div>
+        <button type="button" id="settings-google-signin-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="google_account_switch_btn">Sign In / Switch Account</button>
+
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--steel-line);">
+          <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" id="settings-biometric-toggle" style="width:16px; height:16px; flex-shrink:0;">
+            <span data-i18n="biometric_toggle_label">Use fingerprint for quick unlock</span>
+          </label>
+          <div id="settings-biometric-note" style="font-size:11.5px; color:var(--text-dim); margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; max-width:520px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="backup_title">Gmail Backup</div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="backup_desc">A full backup of your Google Sheet is emailed to you automatically every week. You can also send one right now, any time.</div>
+        <button type="button" id="settings-backup-now-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="backup_now_btn">Send Backup Now</button>
+        <p id="settings-backup-status" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0; display:none;"></p>
+      </div>
     </div>
 
     <aside class="cart-panel" id="cart-panel" style="display:none;">
       <div class="cart-header">
         <h2 style="display:flex; align-items:center; gap:8px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          <span data-i18n="current_invoice">Current Invoice</span>
         </h2>
         <div class="txn" id="txn-id">Order #1</div>
       </div>
@@ -2566,7 +2464,7 @@
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <h3 id="pl-title" style="margin:0;">Painter</h3>
       <div class="export-dropdown" data-export-dropdown>
-        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
         <div class="export-dropdown-menu">
           <button onclick="openExportFilterModal('painterledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
           <button onclick="openExportFilterModal('painterledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -3083,7 +2981,7 @@
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <h3 id="cul-title" style="margin:0;">Custom Ledger</h3>
       <div class="export-dropdown" data-export-dropdown>
-        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
         <div class="export-dropdown-menu">
           <button onclick="openExportFilterModal('customledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
           <button onclick="openExportFilterModal('customledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -3256,7 +3154,7 @@
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <h3 id="cl-title" style="margin:0;">Customer</h3>
       <div class="export-dropdown" data-export-dropdown>
-        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
         <div class="export-dropdown-menu">
           <button onclick="openExportFilterModal('factoryledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
           <button onclick="openExportFilterModal('factoryledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -3513,47 +3411,6 @@
   </div>
 </div>
 
-<!-- ================= RECEIPT DATE SAFETY CHECK (shared across every ledger) ================= -->
-<!-- User-requested safety net (2026-08-21): before a freshly-picked receipt
-     photo actually attaches to an entry, ask what date is written on it and
-     compare against the entry's own date — catches the wrong photo getting
-     attached by mistake before it's saved. A mismatch WARNS (with a
-     full-size view of the photo, via the existing receipt-view-modal above)
-     rather than blocking outright — a receipt can genuinely predate the
-     entry it's logged against (e.g. an expense entered a day after the
-     actual purchase), so this stays an informed override, not a hard wall.
-     Every ledger's receipt file-input handler routes through
-     receiptDateCheck_() below instead of calling fileToLocalReceipt_
-     directly — see that function for the full flow. -->
-<div class="modal-overlay" id="receipt-datecheck-modal">
-  <div class="modal-box" style="max-width:360px;">
-    <div id="receipt-datecheck-step1">
-      <h3 data-i18n="receipt_datecheck_title">Check This Receipt</h3>
-      <p style="font-size:12.5px; color:var(--text-dim); margin:0 0 14px;" data-i18n="receipt_datecheck_desc">What date is written on this receipt? This helps catch the wrong photo getting attached by mistake.</p>
-      <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
-        <img id="receipt-datecheck-thumb" src="" alt="" style="width:52px; height:52px; object-fit:cover; border-radius:8px; border:1px solid var(--steel-line); display:none; flex:none;">
-        <div id="receipt-datecheck-pdf-icon" style="display:none; width:52px; height:52px; border-radius:8px; border:1px solid var(--steel-line); align-items:center; justify-content:center; font-family:var(--mono); font-size:10px; color:var(--text-dim); flex:none;">PDF</div>
-        <button type="button" id="receipt-datecheck-viewbig" class="btn-export" style="flex:none;" data-i18n="view_full_size">View Full Size</button>
-      </div>
-      <label class="field-label" data-i18n="receipt_date_label">Date On Receipt</label>
-      <input class="field-input" id="receipt-datecheck-input" type="date">
-      <div class="modal-actions" style="margin-top:16px;">
-        <button type="button" class="btn-modal-secondary" id="receipt-datecheck-skip" data-i18n="cant_tell_skip">Can't Tell / Skip</button>
-        <button type="button" class="btn-confirm" id="receipt-datecheck-confirm" data-i18n="confirm">Confirm</button>
-      </div>
-    </div>
-    <div id="receipt-datecheck-step2" style="display:none;">
-      <h3 style="color:var(--red);" data-i18n="receipt_datecheck_mismatch_title">Dates Don't Match</h3>
-      <p id="receipt-datecheck-mismatch-text" style="font-size:12.5px; color:var(--text-dim); margin:0 0 14px;"></p>
-      <button type="button" id="receipt-datecheck-viewbig2" class="btn-export" style="margin-bottom:16px;" data-i18n="view_full_size">View Full Size</button>
-      <div class="modal-actions">
-        <button type="button" class="btn-modal-secondary" id="receipt-datecheck-cancel" data-i18n="cancel">Cancel</button>
-        <button type="button" class="btn-modal-danger" id="receipt-datecheck-attach-anyway" data-i18n="attach_anyway">Attach Anyway</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ================= ADD EXPENSE MODAL ================= -->
 <div class="modal-overlay" id="expense-modal">
   <div class="modal-box">
@@ -3637,7 +3494,6 @@
       <p style="margin:0 0 10px;"><strong style="color:var(--text);">Amir Traders — Fan Accessories — Point of Sale</strong></p>
       <p style="margin:0 0 10px;">Built for tracking daily counter sales of fan guards, mounting accessories and workshop services.</p>
       <p style="margin:0;">Sales totals reset when the page is closed or refreshed — this runs entirely in your browser with no external server.</p>
-      <p id="about-version" style="margin:14px 0 0; padding-top:10px; border-top:1px solid var(--steel-line); font-size:12px;"></p>
     </div>
     <div class="modal-actions" style="margin-top:16px;">
       <button class="btn-confirm" id="about-close" style="flex:1;" data-i18n="close">Close</button>
@@ -3863,16 +3719,12 @@
       if(sideFullscreenBtn) sideFullscreenBtn.classList.toggle('is-on', active);
       if(sideFullscreenLabel) sideFullscreenLabel.textContent = active ? 'Exit Fullscreen' : 'Fullscreen';
     }
-    // Native status bar hide/show — real edge-to-edge fullscreen, not just
-    // the CSS "fake fullscreen" viewport lock above. Uses the same proven
-    // window.Capacitor.Plugins[name] lookup as Google Sign-In/biometric
-    // (capacitorPlugin_/statusBarPlugin_, defined further below — safe to
-    // reference here since function declarations are hoisted). Quietly
-    // no-ops on any build without the @capacitor/status-bar plugin, so this
-    // never breaks a build that doesn't have it yet.
+    // Best-effort native status bar hide/show — only does anything if the
+    // app's Capacitor bridge happens to expose the StatusBar plugin; quietly
+    // no-ops otherwise so this never breaks on a build that doesn't have it.
     async function setNativeStatusBar_(hidden){
       try{
-        const StatusBar = statusBarPlugin_();
+        const StatusBar = window.CapApp && window.CapApp.StatusBar;
         if(!StatusBar) return;
         if(hidden && StatusBar.hide) await StatusBar.hide();
         if(!hidden && StatusBar.show) await StatusBar.show();
@@ -4012,39 +3864,12 @@
         lastSyncedDisplayAt_ = Date.now();
         try{ localStorage.setItem(LAST_SYNCED_DISPLAY_KEY_, String(lastSyncedDisplayAt_)); }catch(e){}
       }
-      renderSyncSettingsCard_();
       if(!sheetConfigured()) return; // local-only build's tooltip is set once in initApp and never needs to change
       const lastSyncedNote = lastSyncedDisplayAt_ ? ('Last synced ' + formatSyncedAt_(lastSyncedDisplayAt_) + '.') : 'Not synced yet this install.';
       if(state === 'error' && detail){
         syncWidget.title = 'Sync problem: ' + detail + '\n' + lastSyncedNote + '\nTap to test the connection.';
       } else {
         syncWidget.title = lastSyncedNote + ' Tap to test the Google Sheet connection.';
-      }
-    }
-    // ADD (2026-08-20): the app already tracked last-synced-time, pending-
-    // change, and error-detail state (all used above for the topbar
-    // widget's hover tooltip) — but a tooltip never fires on touch, so none
-    // of it was ever actually visible on a phone. This mirrors that same
-    // state into a persistent, always-visible line in Settings > Sync.
-    // Called from setSyncStatus() itself (the one place every sync state
-    // change already funnels through) so it always reflects the current
-    // state without needing a separate hook at every call site.
-    function renderSyncSettingsCard_(){
-      const statusEl = document.getElementById('settings-sync-status');
-      if(!statusEl) return;
-      if(!sheetConfigured()){
-        statusEl.textContent = tr('sync_status_local_only');
-        return;
-      }
-      const timeStr = lastSyncedDisplayAt_ ? formatSyncedAt_(lastSyncedDisplayAt_) : '';
-      if(syncWidget.classList.contains('is-error') && lastSyncErrorDetail_){
-        statusEl.textContent = tr('sync_status_error').replace('{detail}', lastSyncErrorDetail_);
-      } else if(dataDirty){
-        statusEl.textContent = timeStr ? tr('sync_status_pending').replace('{time}', timeStr) : tr('sync_status_pending_never');
-      } else if(lastSyncedDisplayAt_){
-        statusEl.textContent = tr('sync_status_synced').replace('{time}', timeStr);
-      } else {
-        statusEl.textContent = tr('sync_status_never');
       }
     }
     function sheetConfigured(){
@@ -4179,16 +4004,17 @@
         reader.onload = async (ev)=>{
           const dataUrl = ev.target.result;
           try{
-            const Filesystem = filesystemPlugin_();
-            if(capacitorIsNative_() && Filesystem){
-              const Directory = CapDirectory_;
+            const cap = window.CapApp && window.CapApp.Capacitor;
+            if(cap && cap.isNativePlatform && cap.isNativePlatform()){
+              const Filesystem = window.CapApp.Filesystem;
+              const Directory = window.CapApp.Directory;
               const base64 = String(dataUrl).split(',')[1];
               const extMatch = /\.([a-z0-9]+)$/i.exec(file.name || '');
               const ext = (extMatch ? extMatch[1] : (kind === 'pdf' ? 'pdf' : 'jpg')).toLowerCase();
               const path = LOCAL_RECEIPT_DIR + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
               await Filesystem.writeFile({ path, data: base64, directory: Directory.Data, recursive: true });
               const uriRes = await Filesystem.getUri({ path, directory: Directory.Data });
-              const localSrc = capacitorFileSrc_(uriRes.uri);
+              const localSrc = cap.convertFileSrc(uriRes.uri);
               resolve({ name: file.name, kind, dataUrl: localSrc, localPath: path });
               return;
             }
@@ -4201,84 +4027,6 @@
         reader.readAsDataURL(file);
       });
     }
-
-    // ---------------- RECEIPT DATE SAFETY CHECK (shared across every ledger) ----------------
-    // User-requested safety net (2026-08-21): before a freshly-picked receipt
-    // photo actually attaches to an entry, ask what date is written on it and
-    // compare against the entry's own date — catches the wrong photo getting
-    // attached by mistake before it's ever saved. A mismatch WARNS (with a
-    // full-size view of the photo, reusing the receipt viewer above) rather
-    // than blocking outright, since a receipt can genuinely predate the
-    // entry it's logged against (e.g. an expense entered a day after the
-    // actual purchase) — this stays an informed override, not a hard wall.
-    // Every ledger's receipt file-input handler calls receiptDateCheck_()
-    // below instead of fileToLocalReceipt_ directly; the modal itself is a
-    // singleton (see #receipt-datecheck-modal), so this is written around
-    // one pending-promise resolver rather than per-call listeners.
-    const receiptDatecheckModal = document.getElementById('receipt-datecheck-modal');
-    const receiptDatecheckStep1 = document.getElementById('receipt-datecheck-step1');
-    const receiptDatecheckStep2 = document.getElementById('receipt-datecheck-step2');
-    const receiptDatecheckThumb = document.getElementById('receipt-datecheck-thumb');
-    const receiptDatecheckPdfIcon = document.getElementById('receipt-datecheck-pdf-icon');
-    const receiptDatecheckInput = document.getElementById('receipt-datecheck-input');
-    const receiptDatecheckMismatchText = document.getElementById('receipt-datecheck-mismatch-text');
-    let receiptDatecheckRf_ = null;        // the freshly-picked receipt, held while the modal is open
-    let receiptDatecheckEntryDate_ = null; // the entry's own date (YYYY-MM-DD), to compare against
-    let receiptDatecheckResolve_ = null;   // resolver for the in-flight receiptDateCheck_() promise
-    function closeReceiptDatecheckModal_(result){
-      receiptDatecheckModal.classList.remove('active');
-      const resolve = receiptDatecheckResolve_;
-      receiptDatecheckRf_ = null;
-      receiptDatecheckEntryDate_ = null;
-      receiptDatecheckResolve_ = null;
-      if(resolve) resolve(result);
-    }
-    // Reads the file, then asks the user to confirm the date on it against
-    // entryDateStr (that ledger's own date field, 'YYYY-MM-DD'; pass '' for
-    // Record Payment, which has no editable date field — falls back to
-    // today, since a payment is always stamped "now"). Resolves with the
-    // receipt object {name, kind, dataUrl, localPath?} to attach it, or null
-    // if the user cancels out of a mismatch warning. Rejects only if the
-    // file itself can't be read (mirrors fileToLocalReceipt_'s own errors).
-    function receiptDateCheck_(file, entryDateStr){
-      return new Promise((resolve, reject)=>{
-        fileToLocalReceipt_(file).then(rf=>{
-          receiptDatecheckRf_ = rf;
-          receiptDatecheckEntryDate_ = entryDateStr || todayISO_();
-          receiptDatecheckResolve_ = resolve;
-          receiptDatecheckStep1.style.display = '';
-          receiptDatecheckStep2.style.display = 'none';
-          receiptDatecheckInput.value = '';
-          if(rf.kind === 'pdf'){
-            receiptDatecheckThumb.style.display = 'none';
-            receiptDatecheckPdfIcon.style.display = 'flex';
-          } else {
-            receiptDatecheckThumb.src = rf.dataUrl;
-            receiptDatecheckThumb.style.display = '';
-            receiptDatecheckPdfIcon.style.display = 'none';
-          }
-          receiptDatecheckModal.classList.add('active');
-        }).catch(reject);
-      });
-    }
-    document.getElementById('receipt-datecheck-viewbig').addEventListener('click', ()=>{ if(receiptDatecheckRf_) viewReceiptFile_(receiptDatecheckRf_); });
-    document.getElementById('receipt-datecheck-viewbig2').addEventListener('click', ()=>{ if(receiptDatecheckRf_) viewReceiptFile_(receiptDatecheckRf_); });
-    document.getElementById('receipt-datecheck-skip').addEventListener('click', ()=> closeReceiptDatecheckModal_(receiptDatecheckRf_));
-    document.getElementById('receipt-datecheck-cancel').addEventListener('click', ()=> closeReceiptDatecheckModal_(null));
-    document.getElementById('receipt-datecheck-attach-anyway').addEventListener('click', ()=> closeReceiptDatecheckModal_(receiptDatecheckRf_));
-    document.getElementById('receipt-datecheck-confirm').addEventListener('click', ()=>{
-      const typed = receiptDatecheckInput.value;
-      if(!typed){ alert(tr('pick_date_or_skip')); return; }
-      if(typed === receiptDatecheckEntryDate_){
-        closeReceiptDatecheckModal_(receiptDatecheckRf_);
-        return;
-      }
-      receiptDatecheckMismatchText.textContent = tr('receipt_datecheck_mismatch_text')
-        .replace('{receiptDate}', isoToDMY_(typed))
-        .replace('{entryDate}', isoToDMY_(receiptDatecheckEntryDate_));
-      receiptDatecheckStep1.style.display = 'none';
-      receiptDatecheckStep2.style.display = '';
-    });
 
     // FIX (2026-08-19): on the packaged native Android app, fileToLocalReceipt_
     // above deliberately swaps rf.dataUrl for a fast local-file view URL
@@ -4304,9 +4052,10 @@
       if(!rf) return null;
       if(typeof rf.dataUrl === 'string' && /^data:/i.test(rf.dataUrl)) return rf.dataUrl;
       try{
-        const Filesystem = filesystemPlugin_();
-        const Directory = CapDirectory_;
-        if(rf.localPath && capacitorIsNative_() && Filesystem){
+        const cap = window.CapApp && window.CapApp.Capacitor;
+        const Filesystem = window.CapApp && window.CapApp.Filesystem;
+        const Directory = window.CapApp && window.CapApp.Directory;
+        if(rf.localPath && cap && Filesystem && Directory){
           const res = await Filesystem.readFile({ path: rf.localPath, directory: Directory.Data });
           const extMatch = /\.([a-z0-9]+)$/i.exec(rf.localPath || '');
           const ext = (extMatch ? extMatch[1] : '').toLowerCase();
@@ -4419,11 +4168,11 @@
     // Returns a short note describing where it ended up.
     async function saveBackupToDevice_(json, filename){
       let savedNote = '';
-      const Filesystem_bkp = filesystemPlugin_();
-      if(capacitorIsNative_() && Filesystem_bkp){
+      const cap = window.CapApp && window.CapApp.Capacitor;
+      if(cap && cap.isNativePlatform && cap.isNativePlatform() && window.CapApp.Filesystem){
         try{
-          const Filesystem = Filesystem_bkp;
-          const Directory = CapDirectory_;
+          const Filesystem = window.CapApp.Filesystem;
+          const Directory = window.CapApp.Directory;
           // Same base64-write pattern as fileToLocalReceipt_ above — encode
           // the JSON as base64 so it matches the plugin's default (binary)
           // write mode without needing a separate text-encoding option.
@@ -4795,36 +4544,6 @@
       });
       return local;
     }
-    // FIX (2026-08-21): same reasoning as mergeRosterWithEntries_ above, but
-    // for Custom Ledgers, which are id-keyed (not name-keyed like the four
-    // roster ledgers) and were previously merged with a plain mergeById_
-    // call — that only ever ADDS a whole custom ledger that's missing
-    // locally; when a ledger with that id already exists on both sides
-    // (the normal case for any shared/ongoing custom ledger), the remote
-    // copy's `entries` were never looked at, so a new entry another device
-    // added to a custom ledger this device already knows about was silently
-    // dropped from the merge — and then silently overwritten AWAY on the
-    // sheet the moment this device's own next save rewrote that ledger's
-    // entries from its own (entry-missing) local copy, with no error of any
-    // kind. Mirrors mergeRosterWithEntries_'s per-item entries reconciliation,
-    // keyed by id instead of name; tombstone buckets match the ones already
-    // used elsewhere for custom ledgers ('customLedgers' for a whole deleted
-    // ledger, 'customLedgerEntries' for one deleted entry inside a ledger
-    // that still exists — see markDeleted_ call sites for both).
-    function mergeCustomLedgersWithEntries_(localList, remoteList){
-      if(!Array.isArray(remoteList) || !remoteList.length) return Array.isArray(localList) ? localList : [];
-      const local = Array.isArray(localList) ? localList.map(x=>Object.assign({}, x)) : [];
-      const byId = {};
-      local.forEach(item=>{ if(item && item.id) byId[item.id] = item; });
-      remoteList.forEach(rItem=>{
-        if(!rItem || !rItem.id) return;
-        if(isDeleted_('customLedgers', rItem.id)) return;
-        const lItem = byId[rItem.id];
-        if(!lItem){ local.push(rItem); byId[rItem.id] = rItem; return; }
-        lItem.entries = mergeById_(lItem.entries, rItem.entries, 'customLedgerEntries');
-      });
-      return local;
-    }
     // Populated by mergeLatestRemoteBeforeSave_ with whatever roster each
     // bucket held on the SHEET at the moment of the freshest pre-save fetch
     // — used right after by computeConfirmedEmptyLedgers_ to tell a genuine
@@ -4870,44 +4589,9 @@
         lastRemoteCustomLedgers_ = Array.isArray(d.customLedgers) ? d.customLedgers : [];
         transactionsLog = mergeById_(transactionsLog, (d.transactionsLog || []).map(migrateTxnPayment_), 'transactionsLog');
         customerPayments = mergeById_(customerPayments, d.customerPayments, 'customerPayments');
-        // FIX (2026-08-21): this only ever stashed the sheet's Products into
-        // lastRemoteProducts_ for computeConfirmedEmptyProducts_'s tombstone
-        // check below — it never actually merged them into the live PRODUCTS
-        // array the way every other bucket here does. On a device where
-        // PRODUCTS is locally empty (a fresh install, since PRODUCTS now
-        // starts as [] — see the demo-product cleanup) but the sheet already
-        // has real products from another device, PRODUCTS never got repaired
-        // here, so every save kept sending an empty products list while the
-        // sheet had rows — computeConfirmedEmptyProducts_() correctly refused
-        // to treat that as an intentional deletion (no tombstone exists for
-        // those ids), and the backend's "Refused to overwrite Products"
-        // guard rejected the ENTIRE saveAll_ call, forever, on a 10-second
-        // auto-retry loop that could never succeed on its own. Merging here,
-        // same as every other bucket, lets a genuinely-fresh device pick up
-        // the real product list on the very next merge instead of staying
-        // permanently stuck.
-        PRODUCTS = mergeById_(PRODUCTS, d.products, 'products');
         expenses = mergeById_(expenses, d.expenses, 'expenses');
         factories = mergeByName_(factories, d.factories, 'factories');
-        // FIX (2026-08-21): was mergeById_(...) — see mergeCustomLedgersWithEntries_'s
-        // comment above for why that silently dropped entries another device
-        // added to a custom ledger this device already had locally.
-        if(Array.isArray(d.customLedgers)) customLedgers = mergeCustomLedgersWithEntries_(customLedgers, d.customLedgers);
-        // FIX (2026-08-21): txnNumber mints every new order's id (txnId =
-        // String(txnNumber).padStart(4,'0')) and was never looked at here at
-        // all — a save from a device that's behind could regress this
-        // counter on the sheet, and worse, a device that creates a new order
-        // using its own stale (lower) counter can mint the SAME id another
-        // device already used for a real, different order; mergeById_ keeps
-        // whichever copy of a colliding id is already local, so that other
-        // device's real order would be silently dropped from this device's
-        // next save. Taking the higher of the two here — every time this
-        // device merges before a save — keeps it caught up to the freshest
-        // counter any device has confirmed, closing most of that window.
-        // (Code.gs's Meta write also now refuses to store a lower value than
-        // what's already on the sheet, as a second, backend-side guard that
-        // covers saves from any device/build, not just this one.)
-        if(typeof d.txnNumber === 'number' && d.txnNumber > txnNumber) txnNumber = d.txnNumber;
+        if(Array.isArray(d.customLedgers)) customLedgers = mergeById_(customLedgers, d.customLedgers, 'customLedgers');
         if(d.inventory){
           lastRemoteRosters_ = {
             paint: Array.isArray(d.inventory.paint) ? d.inventory.paint : [],
@@ -5454,17 +5138,7 @@
       } catch(err){
         console.error('[sheet-sync] save failed:', err);
         lastSyncErrorDetail_ = err && err.message ? err.message : String(err);
-        // FIX (2026-08-20): the widget used to just say "Sync failed" and
-        // sit there — nothing on screen told you it was quietly retrying
-        // every 10s in the background, so it read as permanently broken
-        // rather than "working on it". Label now says so (kept short —
-        // "Retrying…", not "Sync failed — retrying" — so the pill doesn't
-        // grow wide enough to wrap the topbar on a narrow phone; the red
-        // dot/border already carry the "failed" part). This is the ONLY
-        // safe place to say this: it's the automatic-retry path, not the
-        // manual "Sync Now"/widget-tap path a few lines below, which
-        // doesn't loop on its own.
-        setSyncStatus('error', 'Retrying…', lastSyncErrorDetail_);
+        setSyncStatus('error', 'Sync failed', lastSyncErrorDetail_);
         // A guard refusal ("Refused to overwrite X: it currently has N
         // row(s) but this save would leave it empty") means the LOCAL data
         // itself is the problem, not the connection — retrying the exact
@@ -6023,6 +5697,146 @@
     // Ledger Settings — which Overview dashboard modules show. Same
     // "absent/true = visible" convention as exportColumnPrefs_ above, keyed
     // by the stable module key (see the `modules` array in renderOverview).
+    // ADD (2026-08-22): per-type mute prefs + check frequency for the
+    // Notifications tab's outside-app alerts (see settings-notif-* card
+    // in Settings). Same shape/pattern as overviewModulePrefs_ below —
+    // key missing/true = alert enabled for that type, false = muted.
+    let notifPushPrefs_ = {};
+    try{ const savedNotifPushPrefs = localStorage.getItem('pos-notif-push-prefs'); if(savedNotifPushPrefs) notifPushPrefs_ = JSON.parse(savedNotifPushPrefs) || {}; }catch(e){}
+    function saveNotifPushPrefs_(){
+      try{ localStorage.setItem('pos-notif-push-prefs', JSON.stringify(notifPushPrefs_)); }catch(e){}
+    }
+    let notifPushFrequencyMinutes_ = 15;
+    try{ const savedFreq = localStorage.getItem('pos-notif-push-frequency'); if(savedFreq) notifPushFrequencyMinutes_ = parseInt(savedFreq, 10) || 15; }catch(e){}
+    const NOTIF_TYPE_DEFS_ = [
+      { key:'pending_inquiries', labelKey:'pending_inquiries' },
+      { key:'pending_cheque_clearances', labelKey:'pending_cheque_clearances' },
+      { key:'pending_slips', labelKey:'pending_slips' },
+      { key:'pending_gate_receipts', labelKey:'pending_gate_receipts' },
+      { key:'low_stock_alerts', labelKey:'low_stock_alerts' }
+    ];
+    // ADD (2026-08-22): this phone's own FCM registration token, once
+    // PushNotifications.register() hands one back (see
+    // enablePushNotifications_ below) — kept locally so re-opening the
+    // app doesn't need to re-register every time, and so the mute-
+    // checkbox/frequency handlers know whether there's actually a row on
+    // the backend worth updating yet.
+    let PUSH_TOKEN_ = '';
+    try{ const savedPushToken = localStorage.getItem('pos-push-token'); if(savedPushToken) PUSH_TOKEN_ = savedPushToken; }catch(e){}
+    function syncPushPrefsToBackend_(){
+      if(!PUSH_TOKEN_) return; // nothing registered on this phone yet — nothing to update
+      postToBackend_('savePushToken', { fcmToken: PUSH_TOKEN_, deviceName: DEVICE_NAME, mutePrefs: notifPushPrefs_ });
+    }
+    function renderNotifSettingsList_(){
+      const list = document.getElementById('settings-notif-types-list');
+      if(!list) return;
+      list.innerHTML = NOTIF_TYPE_DEFS_.map(m => {
+        const checked = notifPushPrefs_[m.key] !== false;
+        return `<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+          <input type="checkbox" class="settings-notif-type-check" data-key="${m.key}" ${checked ? 'checked' : ''} style="width:16px; height:16px;">
+          ${tr(m.labelKey)}
+        </label>`;
+      }).join('');
+      list.querySelectorAll('.settings-notif-type-check').forEach(cb=>{
+        cb.addEventListener('change', ()=>{
+          const key = cb.dataset.key;
+          if(cb.checked) delete notifPushPrefs_[key];
+          else notifPushPrefs_[key] = false;
+          saveNotifPushPrefs_();
+          syncPushPrefsToBackend_();
+        });
+      });
+    }
+    const notifFreqSel_ = document.getElementById('settings-notif-frequency');
+    if(notifFreqSel_) notifFreqSel_.addEventListener('change', (e)=>{
+      notifPushFrequencyMinutes_ = parseInt(e.target.value, 10) || 15;
+      try{ localStorage.setItem('pos-notif-push-frequency', String(notifPushFrequencyMinutes_)); }catch(err){}
+      // One shared trigger interval on the backend, not per-phone — see
+      // setupPushCheckTrigger_/action==='setPushFrequency' in Code.gs.
+      postToBackend_('setPushFrequency', { minutes: notifPushFrequencyMinutes_ });
+    });
+
+    // ---------------- PUSH NOTIFICATIONS (2026-08-22) ----------------
+    // Requests permission, registers this phone for FCM, and saves the
+    // resulting token to the backend — from that point on, the Apps
+    // Script trigger (see checkAndSendPushNotifications_ in Code.gs)
+    // can push straight to this phone even with the app fully closed.
+    // Listeners are attached once, at startup (see wirePushListeners_,
+    // called from the app's normal init flow below) — NOT only when the
+    // button is tapped — so a phone that already granted permission on a
+    // previous visit re-registers silently on every app open, without
+    // the person needing to tap "Enable" again each time.
+    let pushListenersWired_ = false;
+    function wirePushListeners_(){
+      const plugin = pushNotificationsPlugin_();
+      if(!plugin || pushListenersWired_) return;
+      pushListenersWired_ = true;
+      plugin.addListener('registration', (tokenResult)=>{
+        PUSH_TOKEN_ = (tokenResult && tokenResult.value) || '';
+        try{ localStorage.setItem('pos-push-token', PUSH_TOKEN_); }catch(e){}
+        syncPushPrefsToBackend_();
+        renderNotifPushStatus_();
+      });
+      plugin.addListener('registrationError', ()=>{
+        renderNotifPushStatus_('error');
+      });
+      // Tapping a delivered notification (from the tray or lock screen)
+      // jumps straight into the Notifications tab, same destination every
+      // category already leads to from inside the app itself.
+      plugin.addListener('pushNotificationActionPerformed', ()=>{
+        setView('notifications');
+      });
+      // Silently re-register if this phone already granted permission on
+      // an earlier visit — avoids making someone tap "Enable" again on
+      // every single app open once they've already said yes once.
+      plugin.checkPermissions().then(status=>{
+        if(status && status.receive === 'granted') plugin.register();
+      }).catch(()=>{});
+    }
+    async function enablePushNotifications_(){
+      const plugin = pushNotificationsPlugin_();
+      if(!plugin){
+        renderNotifPushStatus_('unavailable');
+        return;
+      }
+      renderNotifPushStatus_('requesting');
+      try{
+        const perm = await plugin.requestPermissions();
+        if(!perm || perm.receive !== 'granted'){
+          renderNotifPushStatus_('denied');
+          return;
+        }
+        await plugin.register();
+        // 'registration' listener above (already wired at startup)
+        // handles saving the token once it arrives.
+      }catch(e){
+        renderNotifPushStatus_('error');
+      }
+    }
+    // Renders the status line + button in Settings > Notification Alerts
+    // to match whatever state push is actually in on this phone right
+    // now — plugin missing (old build), not yet enabled, requesting
+    // permission, denied, or already enabled.
+    function renderNotifPushStatus_(forceState){
+      const statusEl = document.getElementById('settings-notif-push-status');
+      const btn = document.getElementById('settings-notif-enable-btn');
+      if(!statusEl) return;
+      const plugin = pushNotificationsPlugin_();
+      let state = forceState;
+      if(!state) state = !plugin ? 'unavailable' : (PUSH_TOKEN_ ? 'enabled' : 'not-enabled');
+      const MESSAGES = {
+        unavailable: tr('notif_push_unavailable'),
+        'not-enabled': tr('notif_push_not_enabled'),
+        requesting: tr('notif_push_requesting'),
+        denied: tr('notif_push_denied'),
+        error: tr('notif_push_error'),
+        enabled: tr('notif_push_enabled')
+      };
+      statusEl.textContent = MESSAGES[state] || MESSAGES['not-enabled'];
+      if(btn) btn.style.display = (state === 'enabled' || state === 'unavailable') ? 'none' : '';
+    }
+    const notifEnableBtn_ = document.getElementById('settings-notif-enable-btn');
+    if(notifEnableBtn_) notifEnableBtn_.addEventListener('click', enablePushNotifications_);
     let overviewModulePrefs_ = {};
     try{ const savedOverviewPrefs = localStorage.getItem('pos-overview-module-prefs'); if(savedOverviewPrefs) overviewModulePrefs_ = JSON.parse(savedOverviewPrefs) || {}; }catch(e){}
     function saveOverviewModulePrefs_(){
@@ -6085,6 +5899,17 @@
         low_stock: "Low Stock", low_stock_product_sub: "{stock} left in stock — reorder level is {level}",
         stock_qty: "Stock Quantity", stock_qty_optional_hint: "— optional, leave blank to not track stock for this item",
         reorder_level: "Low Stock Alert Level", reorder_level_hint: "— get notified at/below this quantity (default 5)",
+        notif_settings_title: "Notification Alerts", notif_settings_desc: "Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.",
+        notif_settings_pending_note: "Outside-app delivery isn't switched on yet — these preferences will start applying automatically as soon as it is.",
+        notif_settings_frequency_label: "Check For New Alerts Every", notif_freq_5: "5 minutes", notif_freq_15: "15 minutes", notif_freq_30: "30 minutes", notif_freq_60: "1 hour",
+        notif_settings_types_label: "Alert Me About",
+        notif_enable_btn: "Enable Push Notifications",
+        notif_push_unavailable: "This build doesn't have push notifications yet — rebuild the app to enable this.",
+        notif_push_not_enabled: "Not enabled on this phone yet — tap below to turn it on.",
+        notif_push_requesting: "Requesting notification permission…",
+        notif_push_denied: "Permission was denied — enable notifications for this app in your phone's Settings, then try again.",
+        notif_push_error: "Something went wrong enabling push notifications — try again.",
+        notif_push_enabled: "Enabled on this phone — alerts below will show outside the app too.",
         nav_bracket_fan: "Bracket Fan", nav_american_fan: "American Fan",
         nav_pedestal_fan: "Pedestal Fan", nav_exhaust_fan: "Exhaust Fan", nav_universal_fan: "Universal Fan",
         nav_sales: "Sales", nav_transactions: "Order Booked", nav_factories: "Factories",
@@ -6114,7 +5939,6 @@
         m_utility_total: "Utility Bills Total", m_utility_entries: "Utility Bill Entries",
         m_total_owed: "Total Owed", m_total_advance: "Total Advance",
         current_invoice: "Current Invoice", factory_workshop: "Factory / Workshop", unpaid_order_btn: "Unpaid Order",
-        checkout_cart_empty: "Add Items to Cart", checkout_select_factory: "Select a Factory",
         invoice_empty: "Invoice is empty", tap_product_add: "Tap a product to add it",
         restore_cart_prompt: "You have an unfinished order with {n} item(s) from last time — restore it?",
         discard_changes_confirm: "Discard what you've entered here?",
@@ -6139,17 +5963,7 @@
         method_detail_placeholder: "e.g. account no. / Easypaisa number",
         received_by_optional: "Received By (optional)", received_by_placeholder: "e.g. Umar",
         received_in_optional: "Received In (optional)", received_in_placeholder: "e.g. Shop Cash Box",
-        nav_settings: "Settings", settings_title: "Settings", settings_subtitle: "Manage your PIN, sign-in, sync, and export preferences.",
-        settings_section_security: "Security", settings_section_data: "Data & Sync", settings_section_device: "Device",
-        sync_settings_title: "Sync",
-        sync_settings_desc: "Your data syncs to a Google Sheet automatically. Check the status below or force a check any time.",
-        sync_now_btn: "Sync Now",
-        sync_status_synced: "Up to date. Last synced {time}.",
-        sync_status_pending: "Changes are waiting to sync — last synced {time}.",
-        sync_status_pending_never: "Changes are waiting to sync — nothing synced yet this install.",
-        sync_status_error: "Sync problem: {detail}",
-        sync_status_never: "Not synced yet this install.",
-        sync_status_local_only: "This app is set up for local storage only — nothing syncs to a Google Sheet.",
+        nav_settings: "Settings", settings_title: "Settings", settings_subtitle: "Manage your PIN, recovery question, and (soon) account login.",
         change_pin_title: "Change PIN", change_pin_desc: "Enter your current 4-digit PIN, then choose a new one.",
         current_pin: "Current PIN", new_pin: "New PIN", confirm_new_pin: "Confirm New PIN",
         current_pin_incorrect: "Current PIN is incorrect.", pins_dont_match: "PINs don't match or aren't 4 digits.", pin_updated_msg: "PIN updated.",
@@ -6192,11 +6006,6 @@
         expenses_title: "Daily Expenses", expenses_sub: "Money spent running the workshop — materials, bills, transport, and more.",
         add_expense: "Add Expense", edit_expense: "Edit Expense", todays_expenses: "Today's Expenses", total_expenses: "Total Expenses",
         receipt_optional: "Receipt (optional)", remove: "Remove", receipt_attached: "Receipt attached",
-        receipt_datecheck_title: "Check This Receipt", receipt_datecheck_desc: "What date is written on this receipt? This helps catch the wrong photo getting attached by mistake.",
-        receipt_date_label: "Date On Receipt", cant_tell_skip: "Can't Tell / Skip", view_full_size: "View Full Size",
-        receipt_datecheck_mismatch_title: "Dates Don't Match", attach_anyway: "Attach Anyway",
-        receipt_datecheck_mismatch_text: "This receipt is dated {receiptDate}, but the entry is dated {entryDate}. Check the photo below before deciding.",
-        pick_date_or_skip: "Type the date on the receipt, or tap \"Can't Tell / Skip\".",
         add_receipt: "Add Receipt", add_order_receipt_sub: "Attach the factory's gate pass / receiving receipt against an order number.",
         add_or_replace_receipt: "Add / Replace Receipt",
         order_number: "Order Number", order_receipt_search_placeholder: "Search by order # or factory…",
@@ -6322,7 +6131,6 @@
         cat_raw_material: "Raw Material", cat_labour: "Labour", cat_paint: "Paint", cat_utilities: "Utilities",
         cat_rent: "Rent", cat_transport: "Transport", amount_rs: "Amount (Rs)",
         quick_help: "Quick Help", got_it: "Got it", about_this_till: "About This Till",
-        app_version_label: "Version",
         custom_ellipsis: "Custom…", enter_custom_colour: "Enter custom colour", ok: "OK",
         color_black: "Black", color_shine_black: "Shine Black", color_matt_black: "Matt Black",
         color_white: "White", color_moon_white: "Moon White", color_half_white: "Half White",
@@ -6370,6 +6178,17 @@
         low_stock: "کم اسٹاک", low_stock_product_sub: "اسٹاک میں {stock} باقی — دوبارہ آرڈر لیول {level} ہے",
         stock_qty: "اسٹاک مقدار", stock_qty_optional_hint: "— اختیاری، اس آئٹم کا اسٹاک ٹریک نہ کرنے کے لیے خالی چھوڑ دیں",
         reorder_level: "کم اسٹاک الرٹ لیول", reorder_level_hint: "— اس مقدار پر یا اس سے کم ہونے پر مطلع کریں (ڈیفالٹ 5)",
+        notif_settings_title: "نوٹیفیکیشن الرٹس", notif_settings_desc: "منتخب کریں کہ اطلاعات ٹیب کے کون سے الرٹس ایپ سے باہر بھی دکھائے جائیں (نوٹیفیکیشن ٹرے / لاک اسکرین)، اور ایپ کتنی دیر بعد نئے الرٹس چیک کرے۔",
+        notif_settings_pending_note: "ایپ سے باہر بھیجنا ابھی فعال نہیں ہوا — یہ ترجیحات فعال ہوتے ہی خود بخود لاگو ہو جائیں گی۔",
+        notif_settings_frequency_label: "نئے الرٹس چیک کریں ہر", notif_freq_5: "5 منٹ", notif_freq_15: "15 منٹ", notif_freq_30: "30 منٹ", notif_freq_60: "1 گھنٹہ",
+        notif_settings_types_label: "مجھے ان کے بارے میں مطلع کریں",
+        notif_enable_btn: "پش نوٹیفیکیشنز فعال کریں",
+        notif_push_unavailable: "اس بلڈ میں پش نوٹیفیکیشنز ابھی شامل نہیں — فعال کرنے کے لیے ایپ دوبارہ بنائیں۔",
+        notif_push_not_enabled: "اس فون پر ابھی فعال نہیں — فعال کرنے کے لیے نیچے تھپتھپائیں۔",
+        notif_push_requesting: "اجازت طلب کی جا رہی ہے…",
+        notif_push_denied: "اجازت مسترد ہو گئی — فون کی سیٹنگز میں اس ایپ کے لیے نوٹیفیکیشنز فعال کریں، پھر دوبارہ کوشش کریں۔",
+        notif_push_error: "پش نوٹیفیکیشنز فعال کرنے میں مسئلہ پیش آیا — دوبارہ کوشش کریں۔",
+        notif_push_enabled: "اس فون پر فعال — نیچے دیے گئے الرٹس اب ایپ سے باہر بھی دکھائے جائیں گے۔",
         nav_bracket_fan: "بریکٹ فین", nav_american_fan: "امریکن فین",
         nav_pedestal_fan: "پیڈسٹل فین", nav_exhaust_fan: "ایگزاسٹ فین", nav_universal_fan: "یونیورسل فین",
         nav_sales: "سیلز", nav_transactions: "بک شدہ آرڈرز", nav_factories: "فیکٹریاں",
@@ -6399,7 +6218,6 @@
         m_utility_total: "یوٹیلیٹی بلز کل", m_utility_entries: "یوٹیلیٹی بل اندراجات",
         m_total_owed: "کل واجب الادا", m_total_advance: "کل ایڈوانس",
         current_invoice: "موجودہ انوائس", factory_workshop: "فیکٹری / ورکشاپ", unpaid_order_btn: "غیر ادا شدہ آرڈر",
-        checkout_cart_empty: "کارٹ میں آئٹمز شامل کریں", checkout_select_factory: "فیکٹری منتخب کریں",
         invoice_empty: "انوائس خالی ہے", tap_product_add: "شامل کرنے کے لیے پروڈکٹ پر ٹیپ کریں",
         restore_cart_prompt: "پچھلی بار کا ایک ادھورا آرڈر موجود ہے جس میں {n} آئٹم ہیں — کیا اسے بحال کریں؟",
         discard_changes_confirm: "کیا آپ نے یہاں جو کچھ درج کیا ہے اسے حذف کرنا چاہتے ہیں؟",
@@ -6424,17 +6242,7 @@
         method_detail_placeholder: "مثلاً اکاؤنٹ نمبر / ایزی پیسہ نمبر",
         received_by_optional: "وصول کنندہ (اختیاری)", received_by_placeholder: "مثلاً عمر",
         received_in_optional: "کہاں وصول ہوئی (اختیاری)", received_in_placeholder: "مثلاً دکان کا کیش باکس",
-        nav_settings: "سیٹنگز", settings_title: "سیٹنگز", settings_subtitle: "اپنا پن، سائن اِن، سنک، اور ایکسپورٹ کی ترجیحات یہاں سے مینج کریں۔",
-        settings_section_security: "سیکیورٹی", settings_section_data: "ڈیٹا اور سنک", settings_section_device: "ڈیوائس",
-        sync_settings_title: "سنک",
-        sync_settings_desc: "آپ کا ڈیٹا خودکار طور پر گوگل شیٹ سے سنک ہوتا ہے۔ نیچے حیثیت چیک کریں یا کسی بھی وقت دوبارہ چیک کریں۔",
-        sync_now_btn: "ابھی سنک کریں",
-        sync_status_synced: "اپ ٹو ڈیٹ۔ آخری سنک {time}۔",
-        sync_status_pending: "تبدیلیاں سنک ہونے کا انتظار کر رہی ہیں — آخری سنک {time}۔",
-        sync_status_pending_never: "تبدیلیاں سنک ہونے کا انتظار کر رہی ہیں — اس انسٹال میں ابھی تک کچھ سنک نہیں ہوا۔",
-        sync_status_error: "سنک میں مسئلہ: {detail}",
-        sync_status_never: "اس انسٹال میں ابھی تک سنک نہیں ہوا۔",
-        sync_status_local_only: "یہ ایپ صرف لوکل اسٹوریج کے لیے سیٹ ہے — کوئی ڈیٹا گوگل شیٹ سے سنک نہیں ہوتا۔",
+        nav_settings: "سیٹنگز", settings_title: "سیٹنگز", settings_subtitle: "اپنا پن، سیکیورٹی سوال، اور (جلد) اکاؤنٹ لاگ ان یہاں سے مینج کریں۔",
         change_pin_title: "پن تبدیل کریں", change_pin_desc: "اپنا موجودہ 4 ہندسوں کا پن درج کریں، پھر نیا پن منتخب کریں۔",
         current_pin: "موجودہ پن", new_pin: "نیا پن", confirm_new_pin: "نئے پن کی تصدیق کریں",
         current_pin_incorrect: "موجودہ پن غلط ہے۔", pins_dont_match: "پن مماثل نہیں یا 4 ہندسوں کے نہیں۔", pin_updated_msg: "پن اپ ڈیٹ ہو گیا۔",
@@ -6477,11 +6285,6 @@
         expenses_title: "روزانہ کے اخراجات", expenses_sub: "ورکشاپ چلانے پر خرچ ہونے والی رقم — مواد، بل، نقل و حمل، وغیرہ۔",
         add_expense: "خرچہ شامل کریں", edit_expense: "خرچہ میں ترمیم", todays_expenses: "آج کے اخراجات", total_expenses: "کل اخراجات",
         receipt_optional: "رسید (اختیاری)", remove: "ہٹائیں", receipt_attached: "رسید منسلک ہے",
-        receipt_datecheck_title: "یہ رسید چیک کریں", receipt_datecheck_desc: "اس رسید پر کون سی تاریخ لکھی ہے؟ اس سے غلط تصویر غلطی سے منسلک ہونے سے بچا جا سکتا ہے۔",
-        receipt_date_label: "رسید پر تاریخ", cant_tell_skip: "پتا نہیں / نظر انداز کریں", view_full_size: "پوری تصویر دیکھیں",
-        receipt_datecheck_mismatch_title: "تاریخیں مماثل نہیں ہیں", attach_anyway: "پھر بھی منسلک کریں",
-        receipt_datecheck_mismatch_text: "یہ رسید {receiptDate} کی تاریخ کی ہے، لیکن اندراج {entryDate} کا ہے۔ فیصلہ کرنے سے پہلے نیچے دی گئی تصویر چیک کریں۔",
-        pick_date_or_skip: "رسید پر لکھی تاریخ درج کریں، یا \"پتا نہیں / نظر انداز کریں\" پر ٹیپ کریں۔",
         add_receipt: "رسید شامل کریں", add_order_receipt_sub: "فیکٹری کا گیٹ پاس / وصولی رسید آرڈر نمبر کے خلاف منسلک کریں۔",
         add_or_replace_receipt: "رسید شامل / تبدیل کریں",
         order_number: "آرڈر نمبر", order_receipt_search_placeholder: "آرڈر نمبر یا فیکٹری تلاش کریں…",
@@ -6590,7 +6393,6 @@
         cat_raw_material: "خام مال", cat_labour: "مزدوری", cat_paint: "پینٹ", cat_utilities: "یوٹیلیٹیز",
         cat_rent: "کرایہ", cat_transport: "نقل و حمل", amount_rs: "رقم (روپے)",
         quick_help: "فوری مدد", got_it: "سمجھ گیا", about_this_till: "اس ٹل کے بارے میں",
-        app_version_label: "ورژن",
         custom_ellipsis: "مخصوص…", enter_custom_colour: "مخصوص رنگ درج کریں", ok: "ٹھیک ہے",
         color_black: "کالا", color_shine_black: "شائن بلیک", color_matt_black: "میٹ بلیک",
         color_white: "سفید", color_moon_white: "مون وائٹ", color_half_white: "ہاف وائٹ",
@@ -6657,7 +6459,7 @@
     // saveLocalSnapshot_'s full-state snapshot, since the cart is
     // pre-checkout/ephemeral, not synced business data) via renderCart()
     // below — every single cart mutation already funnels through
-    // renderCart() (addToCart/setQty/removeLine all call it), so
+    // renderCart() (addToCart/changeQty/setQty/removeLine all call it), so
     // that's the one choke point that needs the hook, not each mutation
     // site individually.
     const CART_SNAPSHOT_KEY = 'pos-cart-snapshot';
@@ -7138,36 +6940,25 @@
     }
     function googleSignInPlugin_(){ return capacitorPlugin_('GoogleSignIn'); }
     function biometricPlugin_(){ return capacitorPlugin_('NativeBiometric'); }
-    function statusBarPlugin_(){ return capacitorPlugin_('StatusBar'); }
-    // FIX (2026-08-21): root cause of "receipts/exports don't save to real
-    // device storage" (worked on a newer phone by luck, always failed on
-    // the older Tab A). Every receipt-save/export call in this file used to
-    // reach for a `window.CapApp.Filesystem` bridge that was never actually
-    // wired up — www/capacitor-bridge.js only ever set `window.CapApp = {}`
-    // and nothing filled in .Capacitor/.Filesystem/.Directory, and
-    // @capacitor/filesystem was never even installed as a real dependency
-    // (see package.json), so every save silently fell back to an in-app
-    // copy that never touched the device's real storage on ANY device. Now
-    // wired the same correct way GoogleSignIn/NativeBiometric/StatusBar
-    // already work above — via window.Capacitor.Plugins, Capacitor's own
-    // real bridge — so this only works once @capacitor/filesystem is an
-    // actual project dependency and `npx cap sync android` has registered
-    // it (see package.json/build workflow).
-    function filesystemPlugin_(){ return capacitorPlugin_('Filesystem'); }
-    // Plain string constants — Capacitor's Directory enum, mirrored here so
-    // no import/bundler step is needed for this one enum. DATA is the
-    // app's own private storage (works on every Android version, no
-    // permission ever needed). DOCUMENTS is the app-specific Documents
-    // folder — visible in a normal file manager, but needs
-    // READ/WRITE_EXTERNAL_STORAGE on Android 10 and older (see
-    // AndroidManifest.xml) since it isn't scoped-storage-exempt the way
-    // DATA is.
-    const CapDirectory_ = { Data: 'DATA', Documents: 'DOCUMENTS', Cache: 'CACHE', External: 'EXTERNAL' };
-    function capacitorIsNative_(){
-      try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }catch(e){ return false; }
-    }
-    function capacitorFileSrc_(uri){
-      try{ return (window.Capacitor && window.Capacitor.convertFileSrc) ? window.Capacitor.convertFileSrc(uri) : uri; }catch(e){ return uri; }
+    // ADD (2026-08-22): see PUSH NOTIFICATIONS below.
+    function pushNotificationsPlugin_(){ return capacitorPlugin_('PushNotifications'); }
+
+    // Small reusable POST helper for the handful of simple backend calls
+    // (push token / mute prefs / check frequency) that don't need the
+    // full saveAll_ machinery above — same fetch shape as saveAll_ uses,
+    // just without the sync-state bookkeeping that only saveAll needs.
+    async function postToBackend_(action, extra){
+      if(!sheetConfigured()) return null;
+      try{
+        const response = await fetch(SHEET_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(Object.assign({ action: action, token: SHEET_API_TOKEN }, extra))
+        });
+        return await response.json();
+      }catch(e){
+        return null;
+      }
     }
 
     // Set this to the Web application OAuth client ID created in Google
@@ -7499,6 +7290,10 @@
       resetSettingsFormFeedback_();
       renderExportSettingsCard_();
       renderOverviewModulesSettingsList_();
+      renderNotifSettingsList_();
+      renderNotifPushStatus_();
+      const notifFreqSelEl = document.getElementById('settings-notif-frequency');
+      if(notifFreqSelEl) notifFreqSelEl.value = String(notifPushFrequencyMinutes_);
       const rangeSel = document.getElementById('settings-default-export-range');
       if(rangeSel) rangeSel.value = ledgerDefaultExportRange_;
       const autoLockSel = document.getElementById('settings-autolock');
@@ -7506,7 +7301,6 @@
       const sortSel = document.getElementById('settings-ledger-sort-order');
       if(sortSel) sortSel.value = ledgerSortNewestFirst_ ? 'newest' : 'oldest';
       renderGoogleAccountSettingsCard_();
-      renderSyncSettingsCard_();
     }
     document.getElementById('settings-pin-save').addEventListener('click', ()=>{
       const errorEl = document.getElementById('settings-pin-error');
@@ -7615,7 +7409,6 @@
     document.getElementById('settings-google-signin-btn').addEventListener('click', ()=>{
       signInWithGoogle_(true).then(renderGoogleAccountSettingsCard_);
     });
-    document.getElementById('settings-sync-now-btn').addEventListener('click', ()=>{ testSheetConnection_(); });
     document.getElementById('settings-biometric-toggle').addEventListener('change', async (e)=>{
       const wantOn = e.target.checked;
       if(!wantOn){
@@ -7801,24 +7594,6 @@
       "Expenses": '<circle cx="12" cy="12" r="9"/><line x1="12" y1="7" x2="12" y2="17"/><path d="M9.5 9.5a2.5 2.5 0 0 1 2.5-1 2.3 2.3 0 0 1 0 4.6 2.3 2.3 0 0 0 0 4.6 2.5 2.5 0 0 0 2.5-1"/>'
     };
     const REPORT_VIEWS = ["Factories","Sales","Transactions","Expenses"];
-    // Ties sidebar icon color to the same accent language the Overview
-    // dashboard's modules already use (var(--green)/(--red)/(--orange)/
-    // logo-a/logo-b) — purely a resting-state icon tint for scannability;
-    // active/hover states are unaffected (see the CSS rule above this map
-    // is consumed by). Sections with no obvious money-in/money-out meaning
-    // (Factories, Transactions, Fan Guards/Products) are left out on
-    // purpose and fall back to the normal neutral icon color.
-    const NAV_ACCENT = {
-      "Sales": "var(--green)",
-      "Expenses": "var(--red)",
-      "Raw Material": "var(--orange)",
-      "Paint": "var(--logo-b)",
-      "Labour Ledger": "var(--logo-a)"
-    };
-    function applyNavAccent_(btn, label){
-      const c = NAV_ACCENT[label];
-      if(c) btn.style.setProperty('--nav-accent', c);
-    }
     const reportsNav = document.getElementById('side-reports-nav');
 
     const INVENTORY_ICONS = {
@@ -7895,7 +7670,6 @@
       b.className = 'side-nav-item side-report-item';
       b.dataset.view = key;
       b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${REPORT_ICONS[label]}</svg>${i18nSpan_(label)}`;
-      applyNavAccent_(b, label);
       b.addEventListener('click', ()=> setView(key));
       reportsNav.appendChild(b);
     });
@@ -7905,7 +7679,6 @@
       b.className = 'side-nav-item side-report-item';
       b.dataset.view = key;
       b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${INVENTORY_ICONS[label]}</svg>${i18nSpan_(label)}`;
-      applyNavAccent_(b, label);
       b.addEventListener('click', ()=> setView(key));
       inventoryNav.appendChild(b);
     });
@@ -8057,49 +7830,6 @@
     });
 
     // ---------------- PRODUCT GRID ----------------
-    // FIX (2026-08-20): every product card used the exact same pinwheel/fan
-    // icon regardless of type (Pedestal/Exhaust/Universal), even though the
-    // catalog's whole category tree (NAV_GROUPS above) is organized around
-    // that exact distinction. Picks one of 3 icons by matching a keyword in
-    // the product's own category string — falls back to the original
-    // pinwheel (now the "Universal" icon) for anything that doesn't match,
-    // so nothing regresses for a category name added later.
-    function productIconSvg_(cat){
-      const c = (cat || '').toLowerCase();
-      if(c.indexOf('pedestal') !== -1){
-        // Pedestal fan: a fan head on a stand/pole with a weighted base.
-        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-          <circle cx="12" cy="8" r="5.2"/>
-          <line x1="12" y1="4.4" x2="12" y2="11.6"/>
-          <line x1="8.4" y1="8" x2="15.6" y2="8"/>
-          <line x1="9.4" y1="5" x2="14.6" y2="11"/>
-          <line x1="14.6" y1="5" x2="9.4" y2="11"/>
-          <line x1="12" y1="13.2" x2="12" y2="19"/>
-          <line x1="7.5" y1="21" x2="16.5" y2="21"/>
-        </svg>`;
-      }
-      if(c.indexOf('exhaust') !== -1){
-        // Exhaust fan: blades inside a wall/vent frame.
-        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-          <rect x="3.5" y="3.5" width="17" height="17" rx="2.2"/>
-          <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>
-          <path d="M12 12 C12 9 10.3 8 9.2 8.7 C8.1 9.4 9 12 12 12 Z"/>
-          <path d="M12 12 C15 12 16 10.3 15.3 9.2 C14.6 8.1 12 9 12 12 Z"/>
-          <path d="M12 12 C12 15 13.7 16 14.8 15.3 C15.9 14.6 15 12 12 12 Z"/>
-        </svg>`;
-      }
-      // Universal / anything else: the original pinwheel-in-a-circle icon.
-      return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <circle cx="12" cy="12" r="8"/>
-        <line x1="12" y1="4" x2="12" y2="20"/>
-        <line x1="4" y1="12" x2="20" y2="12"/>
-        <line x1="6.3" y1="6.3" x2="17.7" y2="17.7"/>
-        <line x1="17.7" y1="6.3" x2="6.3" y2="17.7"/>
-        <path d="M12 12 C12 9 10.3 8 9.2 8.7 C8.1 9.4 9 12 12 12 Z"/>
-        <path d="M12 12 C15 12 16 10.3 15.3 9.2 C14.6 8.1 12 9 12 12 Z"/>
-        <path d="M12 12 C12 15 13.7 16 14.8 15.3 C15.9 14.6 15 12 12 12 Z"/>
-      </svg>`;
-    }
     const productGrid = document.getElementById('product-grid');
     function renderProducts(){
       productGrid.innerHTML = '';
@@ -8120,7 +7850,18 @@
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
             </button>
           </div>
-          <div class="product-icon">${productIconSvg_(p.cat)}</div>
+          <div class="product-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="8"/>
+              <line x1="12" y1="4" x2="12" y2="20"/>
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <line x1="6.3" y1="6.3" x2="17.7" y2="17.7"/>
+              <line x1="17.7" y1="6.3" x2="6.3" y2="17.7"/>
+              <path d="M12 12 C12 9 10.3 8 9.2 8.7 C8.1 9.4 9 12 12 12 Z"/>
+              <path d="M12 12 C15 12 16 10.3 15.3 9.2 C14.6 8.1 12 9 12 12 Z"/>
+              <path d="M12 12 C12 15 13.7 16 14.8 15.3 C15.9 14.6 15 12 12 12 Z"/>
+            </svg>
+          </div>
           <div class="product-name">${p.name}</div>
           <div class="product-cat">${p.cat}${p.color ? ' · ' + p.color : ''}${p.size ? ' · ' + p.size : ''}${p.weight ? ' · ' + p.weight : ''}</div>
           <div class="product-price">${fmt(p.price)}</div>
@@ -8177,11 +7918,13 @@
         if(panel) panel.scrollIntoView({ behavior:'smooth', block:'start' });
       }
     }
-    // NOTE (2026-08-20): the cart used to have +/- buttons around the qty
-    // input, wired to changeQty(id, delta). User asked for them removed —
-    // quantity is now edited by tapping the number directly. changeQty()
-    // itself was removed as dead code; setQty() (tap-to-type) is the only
-    // way to change a cart line's quantity now.
+    function changeQty(id, delta){
+      const line = cart.find(l=>l.id===id);
+      if(!line) return;
+      line.qty += delta;
+      if(line.qty <= 0) cart = cart.filter(l=>l.id!==id);
+      renderCart();
+    }
     function setQty(id, value){
       const line = cart.find(l=>l.id===id);
       if(!line) return;
@@ -8213,11 +7956,18 @@
               <div class="unit">${fmt(line.price)} each${line.color ? ' · ' + line.color : ''}</div>
             </div>
             <div class="qty-ctrl">
+              <button data-act="dec">−</button>
               <input type="number" min="1" class="qty-input" data-act="qty-input" value="${line.qty}">
+              <button data-act="inc">+</button>
             </div>
             <div class="line-total">${fmt(line.price*line.qty)}</div>
-            <button class="remove-x" data-act="rm" title="${tr('remove')||'Remove'}">✕</button>
+            ${isCustom
+              ? `<button class="remove-x" data-act="rm" style="font-size:11px; font-family:var(--body); font-weight:600; text-transform:uppercase; letter-spacing:0.3px; padding:5px 10px; border:1px solid var(--steel-line); border-radius:6px;">Remove</button>`
+              : `<button class="remove-x" data-act="rm">✕</button>`
+            }
           `;
+          row.querySelector('[data-act="dec"]').addEventListener('click', ()=>changeQty(line.id,-1));
+          row.querySelector('[data-act="inc"]').addEventListener('click', ()=>changeQty(line.id,1));
           const qtyInput = row.querySelector('[data-act="qty-input"]');
           qtyInput.addEventListener('change', ()=> setQty(line.id, qtyInput.value));
           qtyInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') qtyInput.blur(); });
@@ -8229,27 +7979,9 @@
       document.getElementById('sum-total').textContent = fmt(cartTotal());
       updateCheckoutBtnState();
     }
-    // FIX (2026-08-20): the disabled checkout button always showed the same
-    // "Unpaid Order" label no matter WHY it was disabled (empty cart vs. no
-    // factory picked) — no hint which one to fix. Now shows the specific
-    // reason as the button's own label (a tooltip wouldn't work here since
-    // tooltips don't fire on tap/touch), reverting to the real "Unpaid
-    // Order" label the moment both conditions are satisfied.
     function updateCheckoutBtnState(){
       const factorySelected = !!document.getElementById('invoice-factory').value;
-      const btn = document.getElementById('checkout-btn');
-      const cartEmpty = cart.length === 0;
-      btn.disabled = cartEmpty || !factorySelected;
-      if(cartEmpty){
-        btn.removeAttribute('data-i18n');
-        btn.textContent = tr('checkout_cart_empty');
-      } else if(!factorySelected){
-        btn.removeAttribute('data-i18n');
-        btn.textContent = tr('checkout_select_factory');
-      } else {
-        btn.setAttribute('data-i18n', 'unpaid_order_btn');
-        btn.textContent = tr('unpaid_order_btn');
-      }
+      document.getElementById('checkout-btn').disabled = cart.length === 0 || !factorySelected;
     }
     document.getElementById('invoice-factory').addEventListener('change', updateCheckoutBtnState);
 
@@ -8273,20 +8005,7 @@
     const aboutModal = document.getElementById('about-modal');
     document.getElementById('side-help').addEventListener('click', ()=> helpModal.classList.add('active'));
     document.getElementById('help-close').addEventListener('click', ()=> helpModal.classList.remove('active'));
-    // ---------------- APP VERSION (shown in the About modal) ----------------
-    // IMPORTANT: bump APP_VERSION (and update APP_VERSION_NOTE with a short
-    // one-line summary of what changed) every time index.html is changed in
-    // a way that ships in a real APK build. This is manual and intentional —
-    // nothing computes it automatically — so the user can always tell which
-    // build they're on by opening About, and a future session can tell what
-    // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.21.3";
-    const APP_VERSION_NOTE = "Added receipt date safety check: attaching any receipt photo now asks for the date on it and warns (with a full-size preview) if it doesn't match the entry's date";
-    function renderAboutVersion_(){
-      const el = document.getElementById('about-version');
-      if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
-    }
-    document.getElementById('side-about').addEventListener('click', ()=>{ renderAboutVersion_(); aboutModal.classList.add('active'); });
+    document.getElementById('side-about').addEventListener('click', ()=> aboutModal.classList.add('active'));
     document.getElementById('about-close').addEventListener('click', ()=> aboutModal.classList.remove('active'));
 
     // ---------------- EDIT / ADD / DELETE PRODUCT ----------------
@@ -9326,10 +9045,8 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        const rf = await receiptDateCheck_(file, document.getElementById('cl-date').value);
-        if(!rf){ clReceiptFileInput.value = ''; return; }
-        pendingCustomerReceipt = rf;
-        clReceiptCurrentName.textContent = rf.name;
+        pendingCustomerReceipt = await fileToLocalReceipt_(file);
+        clReceiptCurrentName.textContent = file.name;
         clReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -10827,10 +10544,8 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        const rf = await receiptDateCheck_(file, document.getElementById('pl-date').value);
-        if(!rf){ plReceiptFileInput.value = ''; return; }
-        pendingPaintReceipt = rf;
-        plReceiptCurrentName.textContent = rf.name;
+        pendingPaintReceipt = await fileToLocalReceipt_(file);
+        plReceiptCurrentName.textContent = file.name;
         plReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -11175,10 +10890,8 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        const rf = await receiptDateCheck_(file, document.getElementById('rl-date').value);
-        if(!rf){ rlReceiptFileInput.value = ''; return; }
-        pendingRawReceipt = rf;
-        rlReceiptCurrentName.textContent = rf.name;
+        pendingRawReceipt = await fileToLocalReceipt_(file);
+        rlReceiptCurrentName.textContent = file.name;
         rlReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -11631,10 +11344,8 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        const rf = await receiptDateCheck_(file, document.getElementById('cul-date').value);
-        if(!rf){ culReceiptFileInput.value = ''; return; }
-        pendingCustomLedgerReceipt = rf;
-        culReceiptCurrentName.textContent = rf.name;
+        pendingCustomLedgerReceipt = await fileToLocalReceipt_(file);
+        culReceiptCurrentName.textContent = file.name;
         culReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -13547,10 +13258,8 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        const rf = await receiptDateCheck_(file, document.getElementById('wl-date').value);
-        if(!rf){ wlReceiptFileInput.value = ''; return; }
-        pendingLabourReceipt = rf;
-        wlReceiptCurrentName.textContent = rf.name;
+        pendingLabourReceipt = await fileToLocalReceipt_(file);
+        wlReceiptCurrentName.textContent = file.name;
         wlReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -14485,11 +14194,9 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        const rf = await receiptDateCheck_(file, document.getElementById('exp-date').value);
-        if(!rf){ expReceiptFileInput.value = ''; return; }
-        pendingExpenseReceipt = rf;
+        pendingExpenseReceipt = await fileToLocalReceipt_(file);
         removeExpenseReceiptFlag = false;
-        expReceiptCurrentName.textContent = rf.name;
+        expReceiptCurrentName.textContent = file.name;
         expReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -16019,10 +15726,8 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        const rf = await receiptDateCheck_(file, '');
-        if(!rf){ rpReceiptFileInput.value = ''; return; }
-        pendingPaymentReceipt = rf;
-        rpReceiptCurrentName.textContent = rf.name;
+        pendingPaymentReceipt = await fileToLocalReceipt_(file);
+        rpReceiptCurrentName.textContent = file.name;
         rpReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -16299,13 +16004,9 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        const selectedOrder = transactionsLog.find(x => String(x.id) === String(selectedOrderReceiptId));
-        const orderDateIso = selectedOrder ? (dmyToISO_(selectedOrder.date) || '') : '';
-        const rf = await receiptDateCheck_(file, orderDateIso);
-        if(!rf){ aorReceiptFileInput.value = ''; aorUpdateSaveState_(); return; }
-        pendingOrderReceipt = rf;
+        pendingOrderReceipt = await fileToLocalReceipt_(file);
         pendingOrderReceiptFile = file;
-        aorReceiptCurrentName.textContent = rf.name;
+        aorReceiptCurrentName.textContent = file.name;
         aorReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
       aorUpdateSaveState_();
@@ -16725,11 +16426,11 @@
     }
     async function saveGeneratedFile_(blob, filename, folder){
       const path = folder ? (sanitizeFilePart_(folder) + '/' + filename) : filename;
-      const Filesystem_exp = filesystemPlugin_();
-      if(capacitorIsNative_() && Filesystem_exp){
+      const cap = window.CapApp && window.CapApp.Capacitor;
+      if(cap && cap.isNativePlatform && cap.isNativePlatform() && window.CapApp.Filesystem){
         try{
-          const Filesystem = Filesystem_exp;
-          const Directory = CapDirectory_;
+          const Filesystem = window.CapApp.Filesystem;
+          const Directory = window.CapApp.Directory;
           const base64 = await blobToBase64_(blob);
           await Filesystem.writeFile({ path, data: base64, directory: Directory.Documents, recursive: true });
           showToast_('Saved to Documents/' + path);
@@ -18018,6 +17719,12 @@
       if(!initialLoadOk) loadWithStartupRetries_();
     }
     initApp();
+    // Wired independently of initApp's data-loading flow — permission
+    // status/registration doesn't depend on the sheet being loaded, and
+    // this needs to run every app open (not just the first ever), so a
+    // phone that already granted permission before re-registers itself
+    // silently on every subsequent open.
+    wirePushListeners_();
 
     // ---------------- HARDWARE BACK BUTTON: CONFIRM BEFORE EXIT ----------------
     // Capacitor's default handling for the Android hardware/gesture back
@@ -18041,7 +17748,7 @@
         return;
       }
       try{
-        const App = capacitorPlugin_('App');
+        const App = window.CapApp && window.CapApp.App;
         if(App && App.exitApp) App.exitApp();
       } catch(e){ /* plugin not available on this build — next back press closes it instead */ }
     });
