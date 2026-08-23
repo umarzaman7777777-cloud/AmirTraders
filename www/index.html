@@ -1619,10 +1619,12 @@
   <script src="./vendor/jspdf.umd.min.js"></script>
   <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
   <script src="./vendor/html2canvas.min.js"></script>
-  <!-- Capacitor bridge (core + Filesystem plugin), bundled at build time from
-       bridge-src.js — see package.json's "build:bridge" script. Exposes
-       window.CapApp for fileToLocalReceipt_ to save receipt photos as real
-       files on the device instead of base64 blobs in localStorage. -->
+  <!-- Capacitor bridge stub — window.CapApp is only used by the
+       StatusBar/App plugin lookups below; Filesystem access now goes
+       through window.Capacitor.Plugins (see filesystemPlugin_/
+       capacitorPlugin_ in the script), the same real bridge Capacitor's
+       native runtime already injects for GoogleSignIn/NativeBiometric/
+       PushNotifications — no build step or bundled plugin bridge needed. -->
   <script src="./capacitor-bridge.js"></script>
 </head>
 <body>
@@ -2416,9 +2418,22 @@
       <div class="cart-items" id="cart-items">
         <div class="cart-empty"><span data-i18n="invoice_empty">Invoice is empty</span><br><span data-i18n="tap_product_add">Tap a product to add it</span></div>
       </div>
-      <div style="padding:10px 18px 0;">
-        <label class="field-label" style="margin-bottom:5px;" data-i18n="factory_workshop">Factory / Workshop</label>
-        <select class="field-input" id="invoice-factory" style="margin-bottom:0;"></select>
+      <div style="padding:10px 18px 0; display:flex; gap:10px;">
+        <div style="flex:0 0 130px;">
+          <label class="field-label" style="margin-bottom:5px;" data-i18n="entry_date">Date</label>
+          <!-- Defaults to today (see initApp/applyFutureDateGuards_) but is
+               editable — pick an earlier date here before checking out to
+               log a backdated cart entry. Capped at today (not future) by
+               applyFutureDateGuards_, same as every other entry-logging
+               date field in the app. Reset back to today after each order
+               (see addUnpaidOrder/completeSale) so a backdated pick never
+               silently carries over onto the next sale. -->
+          <input class="field-input" id="invoice-date" type="date" style="margin-bottom:0;">
+        </div>
+        <div style="flex:1; min-width:0;">
+          <label class="field-label" style="margin-bottom:5px;" data-i18n="factory_workshop">Factory / Workshop</label>
+          <select class="field-input" id="invoice-factory" style="margin-bottom:0;"></select>
+        </div>
       </div>
       <div class="cart-summary">
         <div class="sum-row"><span data-i18n="items_label">Items</span><span id="sum-items">0</span></div>
@@ -4040,9 +4055,9 @@
     // keeps working completely unchanged, because rf.dataUrl is still just
     // "a URL string the WebView can load" — it's just a local file:// URL
     // (converted to a webview-safe src) instead of a base64 blob now.
-    // Outside the packaged app (e.g. testing this file in a desktop
-    // browser), window.CapApp is undefined, so this quietly falls back to
-    // the original base64 behaviour.
+    // Outside the packaged app (desktop/Electron testing), window.Capacitor
+    // isn't a native runtime, so isNativeApp_() is false and this quietly
+    // falls back to the original base64 behaviour.
     const LOCAL_RECEIPT_DIR = 'receipts';
     function fileToLocalReceipt_(file){
       const kind = file.type.includes('pdf') ? 'pdf' : 'image';
@@ -4051,17 +4066,16 @@
         reader.onload = async (ev)=>{
           const dataUrl = ev.target.result;
           try{
-            const cap = window.CapApp && window.CapApp.Capacitor;
-            if(cap && cap.isNativePlatform && cap.isNativePlatform()){
-              const Filesystem = window.CapApp.Filesystem;
-              const Directory = window.CapApp.Directory;
+            const cap = isNativeApp_();
+            if(cap){
+              const Filesystem = filesystemPlugin_();
               const base64 = String(dataUrl).split(',')[1];
               const extMatch = /\.([a-z0-9]+)$/i.exec(file.name || '');
               const ext = (extMatch ? extMatch[1] : (kind === 'pdf' ? 'pdf' : 'jpg')).toLowerCase();
               const path = LOCAL_RECEIPT_DIR + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + ext;
-              await Filesystem.writeFile({ path, data: base64, directory: Directory.Data, recursive: true });
-              const uriRes = await Filesystem.getUri({ path, directory: Directory.Data });
-              const localSrc = cap.convertFileSrc(uriRes.uri);
+              await Filesystem.writeFile({ path, data: base64, directory: FS_DIRECTORY_.Data, recursive: true });
+              const uriRes = await Filesystem.getUri({ path, directory: FS_DIRECTORY_.Data });
+              const localSrc = window.Capacitor.convertFileSrc(uriRes.uri);
               resolve({ name: file.name, kind, dataUrl: localSrc, localPath: path });
               return;
             }
@@ -4099,11 +4113,10 @@
       if(!rf) return null;
       if(typeof rf.dataUrl === 'string' && /^data:/i.test(rf.dataUrl)) return rf.dataUrl;
       try{
-        const cap = window.CapApp && window.CapApp.Capacitor;
-        const Filesystem = window.CapApp && window.CapApp.Filesystem;
-        const Directory = window.CapApp && window.CapApp.Directory;
-        if(rf.localPath && cap && Filesystem && Directory){
-          const res = await Filesystem.readFile({ path: rf.localPath, directory: Directory.Data });
+        const cap = isNativeApp_();
+        const Filesystem = filesystemPlugin_();
+        if(rf.localPath && cap && Filesystem){
+          const res = await Filesystem.readFile({ path: rf.localPath, directory: FS_DIRECTORY_.Data });
           const extMatch = /\.([a-z0-9]+)$/i.exec(rf.localPath || '');
           const ext = (extMatch ? extMatch[1] : '').toLowerCase();
           const mime = rf.kind === 'pdf' ? 'application/pdf' : (ext === 'png' ? 'image/png' : 'image/jpeg');
@@ -4146,9 +4159,9 @@
     // Bundles every localStorage key used by this app (sales, inventory,
     // ledgers, expenses, PIN, theme, everything) into one JSON file, so it
     // can be saved off-device or moved to another phone/PC and brought back
-    // later. Uses the same window.CapApp Filesystem bridge as receipt
-    // photos above when running as the packaged Android app; falls back to
-    // a normal browser file download when running in Electron/desktop.
+    // later. Uses the same Filesystem plugin as receipt photos above when
+    // running as the packaged Android app; falls back to a normal browser
+    // file download when running in Electron/desktop.
     const BACKUP_LAST_SAVED_KEY = 'pos-last-backup-at';
     // Auto Backup — 'off' | '10m' | '1h' | '1d'. Checked once a minute (see
     // runAutoBackupIfDue_ below) while the app is open; it can't run while
@@ -4215,16 +4228,14 @@
     // Returns a short note describing where it ended up.
     async function saveBackupToDevice_(json, filename){
       let savedNote = '';
-      const cap = window.CapApp && window.CapApp.Capacitor;
-      if(cap && cap.isNativePlatform && cap.isNativePlatform() && window.CapApp.Filesystem){
+      const Filesystem = filesystemPlugin_();
+      if(isNativeApp_() && Filesystem){
         try{
-          const Filesystem = window.CapApp.Filesystem;
-          const Directory = window.CapApp.Directory;
           // Same base64-write pattern as fileToLocalReceipt_ above — encode
           // the JSON as base64 so it matches the plugin's default (binary)
           // write mode without needing a separate text-encoding option.
           const base64 = btoa(unescape(encodeURIComponent(json)));
-          await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Documents, recursive: true });
+          await Filesystem.writeFile({ path: filename, data: base64, directory: FS_DIRECTORY_.Documents, recursive: true });
           savedNote = ' — saved to Documents/' + filename;
         } catch(err){
           console.warn('[backup] native save failed, falling back to browser download:', err);
@@ -4550,6 +4561,87 @@
     function isDeleted_(bucket, key){
       return !!(bucket && key && Array.isArray(deletedIds_[bucket]) && deletedIds_[bucket].includes(key));
     }
+    // FIX: root cause of "delete it on one device, it comes back after
+    // another device syncs". markDeleted_ above only ever wrote to THIS
+    // device's own localStorage — it never reached the sheet, so a second
+    // device that already had the (now-deleted-elsewhere) row sitting in
+    // its own memory had no tombstone for it at all. mergeById_ etc. only
+    // ever ADD a remote row that's missing locally; they never remove a
+    // row that's present locally but now missing remotely, because there
+    // was no way to tell "deleted elsewhere" apart from "the sheet just
+    // hasn't seen it yet". That local row would then survive every merge
+    // untouched and get pushed straight back to the sheet on this
+    // device's next save.
+    //
+    // Fix: the backend now keeps a shared Tombstones tab (see
+    // SHEETS.tombstones/unionAndWriteTombstones_ in Code.gs) that every
+    // device's save contributes to and every load/merge reads back.
+    // mergeRemoteTombstones_ folds those into this device's own
+    // deletedIds_ (a pure union — tombstones only ever grow), and
+    // pruneLocalTombstoned_ then actively removes anything this device is
+    // still holding locally that a tombstone — its own or another
+    // device's — says was deleted. Together these mean a deletion now
+    // propagates to every device, not just the one that performed it.
+    function mergeRemoteTombstones_(remoteTombstones){
+      if(!remoteTombstones || typeof remoteTombstones !== 'object') return;
+      let changed = false;
+      Object.keys(remoteTombstones).forEach(bucket=>{
+        const keys = remoteTombstones[bucket];
+        if(!Array.isArray(keys)) return;
+        if(!Array.isArray(deletedIds_[bucket])) deletedIds_[bucket] = [];
+        keys.forEach(k=>{
+          if(k === undefined || k === null || k === '') return;
+          if(!deletedIds_[bucket].includes(k)){
+            deletedIds_[bucket].push(k);
+            changed = true;
+          }
+        });
+      });
+      if(changed) saveTombstones_();
+    }
+    // Removes anything still sitting in local in-memory state that's now
+    // tombstoned — including tombstones this device just learned about
+    // from another device via mergeRemoteTombstones_ above, which is
+    // exactly the case the additive mergeById_/mergeByName_/
+    // mergeRosterWithEntries_ functions can never handle on their own.
+    // Call this AFTER mergeRemoteTombstones_ and BEFORE the additive
+    // merges (or any time after — it's idempotent and safe to call
+    // repeatedly). Every bucket name here matches an existing
+    // markDeleted_ call site elsewhere in this file.
+    function pruneLocalTombstoned_(){
+      PRODUCTS = PRODUCTS.filter(p => !isDeleted_('products', p && p.id));
+      factories = factories.filter(f => !isDeleted_('factories', f && f.name));
+      transactionsLog = transactionsLog.filter(t => !isDeleted_('transactionsLog', t && t.id));
+      customerPayments = customerPayments.filter(p => !isDeleted_('customerPayments', p && p.id));
+      expenses = expenses.filter(e => !isDeleted_('expenses', e && e.id));
+      customLedgers = customLedgers.filter(cl => !isDeleted_('customLedgers', cl && cl.id));
+      customLedgers.forEach(cl=>{
+        if(Array.isArray(cl.entries)) cl.entries = cl.entries.filter(e => !isDeleted_('customLedgerEntries', e && e.id));
+      });
+      if(inventory.paint){
+        inventory.paint = inventory.paint.filter(p => !isDeleted_('paintRoster', p && p.name));
+        inventory.paint.forEach(p=>{
+          if(Array.isArray(p.entries)) p.entries = p.entries.filter(e => !isDeleted_('paintEntries', e && e.id));
+        });
+      }
+      if(inventory.rawledger){
+        inventory.rawledger = inventory.rawledger.filter(s => !isDeleted_('rawledgerRoster', s && s.name));
+        inventory.rawledger.forEach(s=>{
+          if(Array.isArray(s.entries)) s.entries = s.entries.filter(e => !isDeleted_('rawledgerEntries', e && e.id));
+        });
+      }
+      if(inventory.labourledger){
+        inventory.labourledger = inventory.labourledger.filter(w => !isDeleted_('labourledgerRoster', w && w.name));
+        inventory.labourledger.forEach(w=>{
+          if(Array.isArray(w.entries)) w.entries = w.entries.filter(e => !isDeleted_('labourledgerEntries', e && e.id));
+        });
+      }
+      if(inventory.customerledger){
+        inventory.customerledger.forEach(c=>{
+          if(Array.isArray(c.entries)) c.entries = c.entries.filter(e => !isDeleted_('customerledgerEntries', e && e.id));
+        });
+      }
+    }
 
     function mergeById_(localArr, remoteArr, bucket){
       if(!Array.isArray(remoteArr) || !remoteArr.length) return Array.isArray(localArr) ? localArr : [];
@@ -4634,6 +4726,15 @@
         lastRemoteProducts_ = Array.isArray(d.products) ? d.products : [];
         lastRemoteCustomerPayments_ = Array.isArray(d.customerPayments) ? d.customerPayments : [];
         lastRemoteCustomLedgers_ = Array.isArray(d.customLedgers) ? d.customLedgers : [];
+        // FIX: fold in every tombstone recorded by ANY device (not just
+        // this one), then actively drop anything this device is still
+        // holding locally that one of those tombstones covers — see
+        // mergeRemoteTombstones_/pruneLocalTombstoned_ above for why the
+        // purely-additive merges below can't handle this on their own.
+        // Must run before those merges so a deletion from elsewhere can't
+        // get merged back in first and then survive the prune.
+        mergeRemoteTombstones_(d.tombstones);
+        pruneLocalTombstoned_();
         transactionsLog = mergeById_(transactionsLog, (d.transactionsLog || []).map(migrateTxnPayment_), 'transactionsLog');
         customerPayments = mergeById_(customerPayments, d.customerPayments, 'customerPayments');
         expenses = mergeById_(expenses, d.expenses, 'expenses');
@@ -5069,7 +5170,13 @@
           customLedgers: customLedgersForSync, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
           txnNumber, sessionTotal, sessionCount, products: PRODUCTS,
           salesSummary: buildSalesSummaryRows_(), expensesSummary: buildExpensesSummaryRows_(),
-          accountsSummary: buildAccountsSummaryRows_()
+          accountsSummary: buildAccountsSummaryRows_(),
+          // FIX: send this device's own tombstones up so the backend can
+          // union them into the shared Tombstones tab (see
+          // unionAndWriteTombstones_ in Code.gs) — this is the other half
+          // of the multi-device deletion fix; without this, a deletion
+          // never leaves the device that performed it in the first place.
+          tombstones: deletedIds_
         }
       };
       try{
@@ -5508,6 +5615,14 @@
           if(d.txnNumber) txnNumber = d.txnNumber;
           if(d.sessionTotal) sessionTotal = d.sessionTotal;
           if(d.sessionCount) sessionCount = d.sessionCount;
+          // FIX: this full load already takes the sheet as the source of
+          // truth for every array above, so there's nothing to prune here
+          // — but folding in the shared tombstone set now (rather than
+          // only during mergeLatestRemoteBeforeSave_) means this device
+          // knows about every other device's deletions from the moment it
+          // opens, not just after its first save. See
+          // mergeRemoteTombstones_ above.
+          mergeRemoteTombstones_(d.tombstones);
         }
         dataDirty = false;
         // Also a confirmed-fresh sync point (see SYNC_SKIP_WINDOW_MS_) — this
@@ -7005,6 +7120,29 @@
     function biometricPlugin_(){ return capacitorPlugin_('NativeBiometric'); }
     // ADD (2026-08-22): see PUSH NOTIFICATIONS below.
     function pushNotificationsPlugin_(){ return capacitorPlugin_('PushNotifications'); }
+    // FIX: exports (and receipt-photo saving, and backups) used to reach
+    // for window.CapApp.Filesystem/Directory/Capacitor — a bridge that
+    // capacitor-bridge.js declares (`window.CapApp = window.CapApp || {}`)
+    // but never actually fills in, and @capacitor/filesystem was never
+    // even installed as a plugin (see capacitor.plugins.json). So that
+    // branch was silently dead on every device, always — every export
+    // fell through to the "<a download>" fallback, which a stock Android
+    // WebView (no DownloadListener registered) just swallows with no
+    // error. This is the same real, working pattern already used just
+    // above for GoogleSignIn/NativeBiometric/PushNotifications —
+    // window.Capacitor is the actual global the native runtime injects.
+    function filesystemPlugin_(){ return capacitorPlugin_('Filesystem'); }
+    // Capacitor's Filesystem plugin doesn't hand back its Directory enum
+    // through window.Capacitor.Plugins (that only exposes the plugin's
+    // methods) — these string values are the plugin's own stable wire
+    // format (unchanged since its first release), so they're defined
+    // directly here rather than needing a JS bundler just to import four
+    // constants.
+    const FS_DIRECTORY_ = { Documents: 'DOCUMENTS', Data: 'DATA', Cache: 'CACHE' };
+    function isNativeApp_(){
+      try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+      catch(e){ return false; }
+    }
 
     // Small reusable POST helper for the handful of simple backend calls
     // (push token / mute prefs / check frequency) that don't need the
@@ -8473,6 +8611,12 @@
       const now = new Date();
       const txnId = String(txnNumber).padStart(4,'0');
       const factoryName = document.getElementById('invoice-factory').value;
+      // The cart's own Date box (see invoice-date) lets a backdated order
+      // be logged against an earlier day instead of always today — same
+      // isoToDMY_ fallback pattern as every other ledger's date field.
+      // Time still comes from the real clock either way; only the date
+      // is editable.
+      const chosenDate = isoToDMY_(document.getElementById('invoice-date').value) || now.toLocaleDateString('en-GB');
       const cartSnapshot = cart.map(l=>Object.assign({}, l));
 
       // Commit the order to data and persist it FIRST, before any UI/DOM
@@ -8482,7 +8626,7 @@
       // error".)
       transactionsLog.unshift({
         id: txnId,
-        date: now.toLocaleDateString('en-GB'),
+        date: chosenDate,
         time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
         itemsSummary: cartSnapshot.map(l=>l.name).join('\n'),
         itemCount: cartSnapshot.reduce((s,l)=>s+l.qty,0),
@@ -8527,6 +8671,10 @@
         // cart itself gets cleared.
         const factorySel = document.getElementById('invoice-factory');
         if(factorySel) factorySel.value = '';
+        // Same reset as the factory dropdown above — a backdated pick must
+        // never silently carry over onto the next order.
+        const dateEl = document.getElementById('invoice-date');
+        if(dateEl) dateEl.value = todayISO_();
         renderCart();
         showSuccessDialog(tr('unpaid_order_added'));
       } catch(err){
@@ -8543,6 +8691,8 @@
       const now = new Date();
       const txnId = String(txnNumber).padStart(4,'0');
       const factoryName = document.getElementById('invoice-factory').value;
+      // Same backdating support as addUnpaidOrder — see the comment there.
+      const chosenDate = isoToDMY_(document.getElementById('invoice-date').value) || now.toLocaleDateString('en-GB');
       const cartSnapshot = cart.map(l=>Object.assign({}, l));
 
       // Commit the sale to data and persist it FIRST, before any receipt/
@@ -8552,7 +8702,7 @@
       // on a "Script error".)
       transactionsLog.unshift({
         id: txnId,
-        date: now.toLocaleDateString('en-GB'),
+        date: chosenDate,
         time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
         itemsSummary: cartSnapshot.map(l=>l.name).join('\n'),
         itemCount: cartSnapshot.reduce((s,l)=>s+l.qty,0),
@@ -8597,7 +8747,7 @@
           </div>
           <hr>
           <div class="receipt-row"><span>Transaction</span><span>#${txnId}</span></div>
-          <div class="receipt-row"><span>Date</span><span>${now.toLocaleDateString('en-GB')}</span></div>
+          <div class="receipt-row"><span>Date</span><span>${chosenDate}</span></div>
           <div class="receipt-row"><span>Time</span><span>${formatTime12_(now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}))}</span></div>
           ${factoryName ? `<div class="receipt-row"><span>Factory</span><span>${factoryName}</span></div>` : ''}
           <hr>
@@ -8614,7 +8764,7 @@
         lastReceiptData = {
           title: 'AMIR FAN GUARD MAKER',
           subtitle: 'Sales Receipt',
-          txnId, date: now.toLocaleDateString('en-GB'), time: formatTime12_(now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})),
+          txnId, date: chosenDate, time: formatTime12_(now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})),
           factory: factoryName || null,
           items: cartSnapshot.map(l=>({ label: `${l.qty} × ${l.name}${lineDetail_(l)}`, amount: fmt(l.price*l.qty) })),
           totals: [
@@ -8632,6 +8782,8 @@
         // factory pre-selected for the next sale.
         const factorySel = document.getElementById('invoice-factory');
         if(factorySel) factorySel.value = '';
+        const dateEl = document.getElementById('invoice-date');
+        if(dateEl) dateEl.value = todayISO_();
         renderCart();
       } catch(err){
         console.error('[complete-sale] receipt/UI step failed (sale was still saved):', err);
@@ -10333,7 +10485,7 @@
     // bound doesn't make sense for them.
     function applyFutureDateGuards_(){
       const today = todayISO_();
-      ['pl-date','wl-pieces-date','wl-date','ba-date','rl-date','cul-date','cl-date','exp-date'].forEach(id=>{
+      ['pl-date','wl-pieces-date','wl-date','ba-date','rl-date','cul-date','cl-date','exp-date','invoice-date'].forEach(id=>{
         const el = document.getElementById(id);
         if(el) el.max = today;
       });
@@ -15721,9 +15873,19 @@
           ${t.factory ? (t.confirmed === false
             ? `<button type="button" class="txn-confirm-tab" data-act="confirm" title="Mark this factory order as confirmed so it counts in Sales by Factory">Order Confirm</button>`
             : `<span class="txn-confirmed-tag" title="Counted in Sales by Factory">✓ Confirmed</span>`) : ''}
-          ${(t.factory && receiptFiles[t.id]) ? `<span class="txn-confirmed-tag" title="${tr('receipt_attached')}">${tr('receipt_received_tag')}</span>` : ''}
+          <!-- FIX: this used to check ONLY receiptFiles[t.id] -- the in-memory/
+               localStorage map that only exists on the device the receipt was
+               actually attached from. A synced receipt (t.receiptUrl, the
+               real Drive link written to the sheet -- see readTransactions_ in
+               Code.gs) was already being read back correctly on every OTHER
+               device, but this tag never looked at it, so the receipt
+               appeared to have vanished there even though it was safely on
+               the sheet/Drive the whole time. Same receiptFiles-id-or-URL
+               fallback every other ledger's receipt badge already uses (see
+               e.g. the Paint Ledger's hasReceipt check). -->
+          ${(t.factory && (receiptFiles[t.id] || t.receiptUrl)) ? `<span class="txn-confirmed-tag" title="${tr('receipt_attached')}">${tr('receipt_received_tag')}</span>` : ''}
           <div class="txn-row-actions">
-            ${receiptFiles[t.id] ? `
+            ${(receiptFiles[t.id] || t.receiptUrl) ? `
             <button data-act="receipt" title="${tr('view_attached_receipt')}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </button>` : ''}
@@ -15752,9 +15914,13 @@
         const receiptBtn = row.querySelector('[data-act="receipt"]');
         if(receiptBtn){
           receiptBtn.addEventListener('click', ()=>{
+            // Same local-file-first, synced-link-fallback pattern as every
+            // other ledger's receipt button (see the Paint Ledger's own
+            // receipt click handler) — a receipt synced from another device
+            // has no local file to show, only the Drive link.
             const rf = receiptFiles[t.id];
-            if(!rf) return;
-            viewReceiptFile_(rf);
+            if(rf) viewReceiptFile_(rf);
+            else if(t.receiptUrl) window.open(t.receiptUrl, '_blank');
           });
         }
         row.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
@@ -16606,13 +16772,11 @@
     }
     async function saveGeneratedFile_(blob, filename, folder){
       const path = folder ? (sanitizeFilePart_(folder) + '/' + filename) : filename;
-      const cap = window.CapApp && window.CapApp.Capacitor;
-      if(cap && cap.isNativePlatform && cap.isNativePlatform() && window.CapApp.Filesystem){
+      const Filesystem = filesystemPlugin_();
+      if(isNativeApp_() && Filesystem){
         try{
-          const Filesystem = window.CapApp.Filesystem;
-          const Directory = window.CapApp.Directory;
           const base64 = await blobToBase64_(blob);
-          await Filesystem.writeFile({ path, data: base64, directory: Directory.Documents, recursive: true });
+          await Filesystem.writeFile({ path, data: base64, directory: FS_DIRECTORY_.Documents, recursive: true });
           showToast_('Saved to Documents/' + path);
           return;
         } catch(err){
@@ -17830,6 +17994,9 @@
       restoreCartIfAny_();
       renderCart();
       populateInvoiceFactoryDropdown();
+      // Cart's own Date box (see addUnpaidOrder/completeSale) — defaults to
+      // today on every fresh load, same as it gets reset after each order.
+      document.getElementById('invoice-date').value = todayISO_();
       setView('overview');
       document.getElementById('txn-id').textContent = tr('order_hash') + txnNumber;
       recomputeSessionTotals();
