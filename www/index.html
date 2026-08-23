@@ -5498,22 +5498,54 @@
     // person sees an error instead of an empty app.
     function looksLikeDataLoss_(d){
       const entryCount = (arr)=> Array.isArray(arr) ? arr.reduce((n,item)=> n + ((item && item.entries || []).length), 0) : 0;
+      // FIX (2026-08-23): a genuine, fully-synced deletion (see the shared
+      // Tombstones tab / mergeRemoteTombstones_+pruneLocalTombstoned_
+      // elsewhere in this file) can legitimately take a category from
+      // "several real local entries" down to zero on the sheet — deleting
+      // a customer along with their last few ledger entries is exactly
+      // this shape. This guard used to have no idea that was a real,
+      // confirmed deletion rather than a broken/incomplete load, so it
+      // permanently refused to ever apply it — the deleted record stayed
+      // stranded forever on any device that hadn't performed the delete
+      // itself, even though the sheet (and every other device) was
+      // already correct. A category is now only flagged as suspicious if
+      // losing it ISN'T already accounted for by a tombstone — this
+      // device's own, or one it just learned about from another device
+      // (loadStateFromSheet calls mergeRemoteTombstones_ before this runs,
+      // so a same-session deletion from elsewhere is covered too).
+      const allTombstoned_ = (arr, bucket, keyOf)=>{
+        if(!Array.isArray(arr) || !arr.length) return true;
+        return arr.every(item => item && isDeleted_(bucket, keyOf(item)));
+      };
+      const rosterEntriesTombstoned_ = (rosterArr, bucket)=>{
+        if(!Array.isArray(rosterArr)) return true;
+        return rosterArr.every(item => allTombstoned_(item && item.entries, bucket, e => e && e.id));
+      };
       const checks = [
-        { label: 'sales', local: transactionsLog.length, incoming: Array.isArray(d.transactionsLog) ? d.transactionsLog.length : 0 },
-        { label: 'customer payments', local: customerPayments.length, incoming: Array.isArray(d.customerPayments) ? d.customerPayments.length : 0 },
-        { label: 'expenses', local: expenses.length, incoming: Array.isArray(d.expenses) ? d.expenses.length : 0 },
-        { label: 'raw material ledger', local: entryCount(inventory.rawledger), incoming: d.inventory ? entryCount(d.inventory.rawledger) : 0 },
-        { label: 'paint ledger', local: entryCount(inventory.paint), incoming: d.inventory ? entryCount(d.inventory.paint) : 0 },
-        { label: 'labour ledger', local: entryCount(inventory.labourledger), incoming: d.inventory ? entryCount(d.inventory.labourledger) : 0 },
-        { label: 'customer ledger', local: entryCount(inventory.customerledger), incoming: d.inventory ? entryCount(d.inventory.customerledger) : 0 }
+        { label: 'sales', local: transactionsLog.length, incoming: Array.isArray(d.transactionsLog) ? d.transactionsLog.length : 0,
+          confirmed: ()=> allTombstoned_(transactionsLog, 'transactionsLog', t => t && t.id) },
+        { label: 'customer payments', local: customerPayments.length, incoming: Array.isArray(d.customerPayments) ? d.customerPayments.length : 0,
+          confirmed: ()=> allTombstoned_(customerPayments, 'customerPayments', p => p && p.id) },
+        { label: 'expenses', local: expenses.length, incoming: Array.isArray(d.expenses) ? d.expenses.length : 0,
+          confirmed: ()=> allTombstoned_(expenses, 'expenses', e => e && e.id) },
+        { label: 'raw material ledger', local: entryCount(inventory.rawledger), incoming: d.inventory ? entryCount(d.inventory.rawledger) : 0,
+          confirmed: ()=> rosterEntriesTombstoned_(inventory.rawledger, 'rawledgerEntries') },
+        { label: 'paint ledger', local: entryCount(inventory.paint), incoming: d.inventory ? entryCount(d.inventory.paint) : 0,
+          confirmed: ()=> rosterEntriesTombstoned_(inventory.paint, 'paintEntries') },
+        { label: 'labour ledger', local: entryCount(inventory.labourledger), incoming: d.inventory ? entryCount(d.inventory.labourledger) : 0,
+          confirmed: ()=> rosterEntriesTombstoned_(inventory.labourledger, 'labourledgerEntries') },
+        { label: 'customer ledger', local: entryCount(inventory.customerledger), incoming: d.inventory ? entryCount(d.inventory.customerledger) : 0,
+          confirmed: ()=> rosterEntriesTombstoned_(inventory.customerledger, 'customerledgerEntries') }
       ];
       // Only a drop down to (effectively) zero is treated as suspicious —
       // normal syncing between devices moves counts up and down all the
       // time, that's fine. Losing everything in a category that had a real
-      // amount of data is what specifically signals a broken load.
+      // amount of data is what specifically signals a broken load — unless
+      // every one of those local entries is already known to be
+      // tombstoned, in which case it's an intentional, confirmed deletion.
       const MIN_LOCAL_TO_CARE = 3;
       for(const c of checks){
-        if(c.local >= MIN_LOCAL_TO_CARE && c.incoming === 0) return c.label;
+        if(c.local >= MIN_LOCAL_TO_CARE && c.incoming === 0 && !c.confirmed()) return c.label;
       }
       return null;
     }
@@ -5562,6 +5594,14 @@
         lastSaveBlockedByGuard = false;
         if(json && json.data){
           const d = json.data;
+          // FIX (2026-08-23): merge in the shared cross-device tombstone
+          // set (see mergeRemoteTombstones_ above) BEFORE the data-loss
+          // check just below — otherwise a deletion this device didn't
+          // perform itself has no tombstone to prove it's real yet, and
+          // looksLikeDataLoss_ has no way to tell it apart from a broken
+          // load. See looksLikeDataLoss_'s own comment for the bug this
+          // closes.
+          mergeRemoteTombstones_(d.tombstones);
           const suspiciousArea = looksLikeDataLoss_(d);
           if(suspiciousArea){
             console.error('[sheet-sync] refused to apply load — would have zeroed out: ' + suspiciousArea, d);
@@ -5726,6 +5766,56 @@
     // the person to add an entry.
     window.addEventListener('online', ()=>{
       if(sheetConfigured() && !syncWidget.classList.contains('is-synced')) loadAndRefreshFromSheet_();
+    });
+
+    // ---------------- IDLE / BACKGROUND AUTO-REFRESH ----------------
+    // FIX (2026-08-23): every path above only ever pulls fresh data as a
+    // SIDE EFFECT of something this device itself does — its own save
+    // (mergeLatestRemoteBeforeSave_), opening the app, tapping Update
+    // Overview, or regaining connectivity. A device that's just sitting
+    // open and idle — not editing anything, not tapped — had no way to
+    // find out about a sale/entry/deletion another device made in the
+    // meantime; two phones could be open side by side all day with one
+    // adding orders and the other never seeing a single one of them until
+    // someone thought to manually refresh it. This polls the cheap
+    // action==='version' endpoint (one Script Properties read, no
+    // spreadsheet access at all — see getDataVersion_ in Code.gs) on a
+    // short interval, and only pays for a real loadStateFromSheet() when
+    // the version has actually moved since this device last knew for
+    // sure — so an idle device with nothing new stays essentially free to
+    // poll, exactly the same cheap-check-first pattern
+    // remoteChangedSinceLastKnown_ already uses before a save.
+    const IDLE_SYNC_POLL_MS_ = 20000;
+    let idleSyncPolling_ = false;
+    async function idleSyncPollOnce_(){
+      if(!sheetConfigured() || idleSyncPolling_) return;
+      // Never interrupt: a save in flight, or local changes this device
+      // still owes the sheet, take priority — loadStateFromSheet() itself
+      // already refuses to overwrite those, but skip the round trip
+      // entirely here rather than let it merely no-op every 20s.
+      if(dataDirty || saveInProgress) return;
+      idleSyncPolling_ = true;
+      try{
+        const json = await jsonpRequest(SHEET_API_URL + '?action=version', 8000);
+        if(!json || typeof json.version !== 'number') return;
+        if(lastKnownRemoteVersion_ !== null && json.version === lastKnownRemoteVersion_) return;
+        await loadAndRefreshFromSheet_();
+      } catch(err){
+        // Silent — this is a background convenience poll, not a
+        // user-facing sync action. A real, ongoing sync problem still
+        // surfaces normally the next time the person actually does
+        // something (their own save, or Update Overview).
+      } finally {
+        idleSyncPolling_ = false;
+      }
+    }
+    setInterval(idleSyncPollOnce_, IDLE_SYNC_POLL_MS_);
+    // Also worth an immediate check the moment the app comes back to the
+    // foreground (switched away and back) rather than waiting up to 20s —
+    // this is the single most common moment for another device's change to
+    // actually matter to the person looking at the screen right now.
+    document.addEventListener('visibilitychange', ()=>{
+      if(!document.hidden) idleSyncPollOnce_();
     });
 
     // Manual "Test Connection" check, triggered by clicking the sync widget
@@ -8259,13 +8349,12 @@
         if(panel) panel.scrollIntoView({ behavior:'smooth', block:'start' });
       }
     }
-    function changeQty(id, delta){
-      const line = cart.find(l=>l.id===id);
-      if(!line) return;
-      line.qty += delta;
-      if(line.qty <= 0) cart = cart.filter(l=>l.id!==id);
-      renderCart();
-    }
+    // FIX (2026-08-23): the qty-ctrl −/+ buttons were removed — the number
+    // input right next to them already lets you type a quantity directly,
+    // so the buttons were redundant clutter (see renderCart's qty-ctrl
+    // markup / setQty below). changeQty() only ever existed to back those
+    // two buttons, so it's removed along with them rather than left as
+    // dead code.
     function setQty(id, value){
       const line = cart.find(l=>l.id===id);
       if(!line) return;
@@ -8297,9 +8386,7 @@
               <div class="unit">${fmt(line.price)} each${line.color ? ' · ' + line.color : ''}</div>
             </div>
             <div class="qty-ctrl">
-              <button data-act="dec">−</button>
               <input type="number" min="1" class="qty-input" data-act="qty-input" value="${line.qty}">
-              <button data-act="inc">+</button>
             </div>
             <div class="line-total">${fmt(line.price*line.qty)}</div>
             ${isCustom
@@ -8307,8 +8394,6 @@
               : `<button class="remove-x" data-act="rm">✕</button>`
             }
           `;
-          row.querySelector('[data-act="dec"]').addEventListener('click', ()=>changeQty(line.id,-1));
-          row.querySelector('[data-act="inc"]').addEventListener('click', ()=>changeQty(line.id,1));
           const qtyInput = row.querySelector('[data-act="qty-input"]');
           qtyInput.addEventListener('change', ()=> setQty(line.id, qtyInput.value));
           qtyInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') qtyInput.blur(); });
