@@ -632,8 +632,12 @@
       background:var(--yellow); color:#1C1F22; font-weight:600;
       box-shadow:0 2px 10px -2px color-mix(in srgb, var(--yellow) 55%, transparent);
     }
+    /* FIX (2026-08-23, restoring the 2026-08-20 UI polish batch): reads
+       --nav-accent when a button sets it (see NAV_ACCENT/applyNavAccent_
+       below), falling back to the plain text color for every button that
+       doesn't — so this is a no-op for the vast majority of nav items. */
     .side-nav-item svg, .side-subnav-item svg{
-      color:var(--text); opacity:0.82; stroke-width:2;
+      color:var(--nav-accent, var(--text)); opacity:0.82; stroke-width:2;
       transition:opacity 0.15s, filter 0.15s, transform 0.15s;
     }
     .side-nav-item:hover svg, .side-subnav-item:hover svg{
@@ -800,7 +804,7 @@
     .export-dropdown-btn{
       display:flex; align-items:center; gap:6px;
     }
-    .export-dropdown-btn .caret{ font-size:9px; transition:transform 0.15s; }
+    .export-dropdown-btn .caret{ flex-shrink:0; transition:transform 0.15s; }
     .export-dropdown.open .export-dropdown-btn .caret{ transform:rotate(180deg); }
     .export-dropdown-menu{
       position:absolute; top:calc(100% + 6px); right:0; z-index:40;
@@ -815,6 +819,20 @@
       padding:8px 10px; border-radius:5px; cursor:pointer; transition:background 0.12s;
     }
     .export-dropdown-menu button:hover{ background:var(--steel-line); color:var(--yellow); }
+    /* ADD (2026-08-23): small icon buttons for the per-ledger Export
+       Settings (top-right, next to that ledger's Export button) and
+       Ledger Settings (top-left, next to that ledger's own title) —
+       replacing the old global Settings-tab cards of the same name. Kept
+       visually quiet (same muted look as .btn-export) so they read as a
+       secondary action, not competing with Export/Add for attention. */
+    .ledger-icon-btn{
+      flex:none; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+      background:none; border:1px solid var(--steel-line); color:var(--text-dim);
+      border-radius:6px; cursor:pointer; transition:all 0.15s; padding:0;
+    }
+    .ledger-icon-btn:hover{ border-color:var(--yellow); color:var(--yellow); }
+    .ledger-settings-btn-row{ display:flex; align-items:center; gap:8px; margin:0 0 4px; }
+    .ledger-settings-btn-row h2{ margin:0; }
 
     .factory-card{
       background:var(--panel); border:1px solid var(--steel-line); border-radius:var(--radius);
@@ -1141,7 +1159,7 @@
        above) already keeps real space between them; the piece that was too
        small to tap safely was the button itself. */
     .ledger-entry-del{
-      width:28px; height:28px; border-radius:6px; border:1px solid var(--steel-line);
+      width:32px; height:32px; border-radius:6px; border:1px solid var(--steel-line);
       background:var(--panel-raised); color:var(--text-dim); cursor:pointer; flex-shrink:0;
       display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s;
     }
@@ -1199,9 +1217,11 @@
     .cheque-badge.receipt{ background:rgba(76,154,90,0.18); color:var(--green); text-transform:none; letter-spacing:0.2px; display:inline-flex; align-items:center; gap:3px; }
     .cheque-badge.receipt svg{ display:block; }
     .cheque-action-btn{
-      font-family:var(--mono); font-size:9.5px; padding:3px 8px; border-radius:4px;
+      font-family:var(--mono); font-size:9.5px; min-height:32px; padding:8px 12px; border-radius:4px;
       border:1px solid var(--steel-line); background:var(--panel-raised); color:var(--text-dim); cursor:pointer;
+      transition:all 0.15s;
     }
+    .cheque-action-btn:hover{ border-color:var(--yellow); color:var(--yellow); }
     .cheque-action-btn.clear:hover{ border-color:var(--green); color:var(--green); }
     .cheque-action-btn.bounce:hover{ border-color:var(--red); color:var(--red); }
     .ledger-entry-spec-row.steelweight-pending{ background:rgba(var(--logo-a-rgb),0.14); border-radius:6px; padding:4px 6px; margin:2px 0; }
@@ -1333,8 +1353,18 @@
     .qty-ctrl .qty-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
     .qty-ctrl .qty-input:focus{ outline:none; border-bottom:1px solid var(--yellow); }
     .line-total{ font-family:var(--mono); font-size:12.5px; font-weight:600; min-width:62px; text-align:right; }
-    .remove-x{ background:none;border:none; color:var(--text-dim); cursor:pointer; font-size:14px; padding:0 2px; }
-    .remove-x:hover{ color:var(--red); }
+    /* FIX (2026-08-23, restoring the 2026-08-20 UI polish batch): used to
+       be a bare borderless "✕" for normal items and a completely
+       different bordered rectangle "Remove" text button for custom items
+       (see the two inline-styled variants that used to live at this
+       button's call site) — unified to one 32×32 bordered/background
+       square, matching .ledger-entry-del's own pattern, red on hover. */
+    .remove-x{
+      width:32px; height:32px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center;
+      background:var(--panel-raised); border:1px solid var(--steel-line); border-radius:6px;
+      color:var(--text-dim); cursor:pointer; font-size:14px; padding:0; transition:all 0.15s;
+    }
+    .remove-x:hover{ border-color:var(--red); color:var(--red); }
 
     .cart-summary{ border-top:1px solid var(--steel-line); padding:14px 18px; }
     .sum-row{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px; color:var(--text-dim); font-family:var(--mono); }
@@ -1377,6 +1407,21 @@
     /* Same fix again — Set Working Dates opens from a button INSIDE the
        already-open worker ledger modal. */
     #wl-dates-modal.modal-overlay{ z-index:110; }
+    /* Same fix again — receiptDateCheck_() opens this modal from INSIDE
+       whichever ledger/expense/payment modal is currently open (the
+       receipt-file <input>'s change handler lives inside that modal), and
+       that parent modal stays open behind it. This one sits earlier in the
+       HTML than most of the modals that can trigger it (Expense, Paint,
+       Raw, Custom Ledger, Worker Ledger, Record Payment, Add Order
+       Receipt), so without this bump the still-open parent painted on top
+       and silently ate every click on Confirm/Skip/Cancel/Attach-anyway. */
+    #receipt-datecheck-modal.modal-overlay{ z-index:110; }
+    /* Same fix again — the relocated per-ledger Export Settings / Ledger
+       Settings modals (2026-08-23) open from an icon button that can live
+       INSIDE an already-open ledger modal (Painter/Custom/Customer
+       ledger), same as the two cases above. */
+    #ledger-export-settings-modal.modal-overlay{ z-index:110; }
+    #ledger-settings-modal.modal-overlay{ z-index:110; }
     .modal-box{
       background:var(--panel); border:1px solid var(--steel-line); border-radius:var(--radius);
       width:100%; max-width:360px; padding:22px; max-height:90vh; overflow-y:auto;
@@ -1404,6 +1449,35 @@
     .settings-collapse-toggle.open .settings-collapse-chevron{ transform:rotate(180deg); }
     .settings-collapse-body{ max-height:0; overflow:hidden; transition:max-height .18s ease; }
     .settings-collapse-body.open{ max-height:800px; }
+    /* ADD (2026-08-23, restoring the 2026-08-20 UI polish batch): every
+       Settings card used to be a one-off inline-styled div, repeated
+       (with tiny drift) ~9 times. .settings-card centralizes that look
+       and adds the same box-shadow/hover polish every other card family
+       already got; .settings-card-header/.settings-icon mirror the
+       Overview dashboard's own .erp-module-header/.erp-icon pattern
+       (colored icon badge + title) so Settings reads as part of the same
+       visual system instead of a plain form page. .settings-section-label
+       groups cards under a section heading (Security/Device/Data & Sync/
+       Notifications). */
+    .settings-card{
+      background:var(--panel); border:1px solid var(--steel-line); border-radius:10px;
+      padding:18px; margin-bottom:16px; max-width:520px;
+      box-shadow:var(--card-shadow); transition:box-shadow .15s ease;
+    }
+    .settings-card:hover{ box-shadow:var(--card-shadow-hover); }
+    .settings-card-header{ display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+    .settings-card-header .settings-icon{
+      width:32px; height:32px; border-radius:9px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      background:var(--settings-icon-color, var(--yellow)); color:#fff;
+      box-shadow:0 4px 10px -2px color-mix(in srgb, var(--settings-icon-color, var(--yellow)) 60%, transparent);
+    }
+    .settings-card-header .settings-card-title{ font-weight:600; font-size:14px; }
+    .settings-section-label{
+      font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:1.5px;
+      color:var(--text-dim); margin:22px 0 10px; max-width:520px;
+    }
+    .settings-section-label:first-of-type{ margin-top:0; }
     .field-input{
       width:100%; background:var(--panel-raised); border:1px solid var(--steel-line); border-radius:7px;
       padding:10px 12px; color:var(--text); font-family:var(--mono); font-size:14px; margin-bottom:14px;
@@ -1485,6 +1559,19 @@
     .btn-cancel{ background:none; border:1px solid var(--steel-line) !important; color:var(--text-dim); }
     .btn-confirm{ background:var(--yellow); color:#1C1F22; }
     .btn-confirm:disabled{ background:var(--steel); color:var(--text-dim); cursor:not-allowed; }
+    /* Visually identical to .btn-cancel / its red-danger variant, but
+       deliberately NOT the .btn-cancel class itself — the app-wide
+       "discard changes?" dirty-form guard (search document.addEventListener
+       ('click'... .btn-cancel below) intercepts every .btn-cancel click in
+       capture phase and can swallow it entirely. That's correct for real
+       data-entry forms, but a lightweight utility dialog's Skip/Cancel/
+       Attach-Anyway-style buttons shouldn't trigger a "discard changes?"
+       prompt over — and for a one-tap override action specifically,
+       stacking that confirm in front of it would make it take two taps (or
+       silently do nothing if the user declines the unrelated discard
+       prompt). Used by the receipt date-check modal below. */
+    .btn-modal-secondary{ background:none; border:1px solid var(--steel-line) !important; color:var(--text-dim); }
+    .btn-modal-danger{ background:none; border:1px solid var(--red) !important; color:var(--red); }
 
     .change-due{ text-align:center; padding:14px 0; }
     .change-due .lbl{ font-family:var(--mono); font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; }
@@ -1567,7 +1654,7 @@
          accidental-touch protection — exactly backwards, since mobile is
          where fat-fingering these actually happens. Sized at least as big
          as desktop here, not smaller. */
-      .ledger-entry-del{ width:30px; height:30px; }
+      .ledger-entry-del{ width:32px; height:32px; }
       .ledger-entry-kind{ font-size:10px; padding:2px 6px; }
       .ledger-entry-spec-row{ white-space:normal; font-size:11.5px; }
 
@@ -1975,19 +2062,23 @@
       <div id="view-transactions" style="display:none;">
         <div class="view-header">
           <div class="view-header-text">
-            <h2 data-i18n="transactions_title">Transactions</h2>
+            <div class="ledger-settings-btn-row">
+              <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openTxnLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
+              <h2 data-i18n="transactions_title">Transactions</h2>
+            </div>
             <p data-i18n="transactions_sub">All completed sales this session, most recent first.</p>
           </div>
           <div class="header-actions">
             <button type="button" class="btn-export" id="txn-add-receipt-btn"><span data-i18n="add_receipt">Add Receipt</span></button>
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('transactions','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="openExportFilterModal('transactions','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('transactions','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
             </div>
+            <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openTxnExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
           </div>
         </div>
         <div class="stat-grid" id="txn-stats" style="margin-bottom:16px;"></div>
@@ -2017,13 +2108,14 @@
           </div>
           <div class="header-actions">
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="exportExpensesPDF(); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="exportExpensesJPG(); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="exportExpensesCSV(); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
             </div>
+            <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openExpensesExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
           </div>
         </div>
         <select class="field-input" id="expenses-period-select" style="max-width:220px; margin-bottom:18px;">
@@ -2043,18 +2135,22 @@
       <div id="view-rawmaterial" style="display:none;">
         <div class="view-header">
           <div class="view-header-text">
-            <h2 data-i18n="rawledger_title">Raw Material Ledger</h2>
+            <div class="ledger-settings-btn-row">
+              <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openRawLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
+              <h2 data-i18n="rawledger_title">Raw Material Ledger</h2>
+            </div>
             <p data-i18n="rawledger_sub">Track payments (debit) and material received (credit) per supplier.</p>
           </div>
           <div class="header-actions">
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('rawledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="openExportFilterModal('rawledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('rawledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
             </div>
+            <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openRawExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
           </div>
         </div>
         <div class="stat-grid" id="rawledger-stats" style="margin-bottom:18px;"></div>
@@ -2079,7 +2175,7 @@
           </div>
           <div class="header-actions">
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="exportInventoryPDF('labour'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="exportInventoryJPG('labour'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
@@ -2094,18 +2190,22 @@
       <div id="view-paint" style="display:none;">
         <div class="view-header">
           <div class="view-header-text">
-            <h2 data-i18n="paint_title">Paint Ledger</h2>
+            <div class="ledger-settings-btn-row">
+              <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openPaintLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
+              <h2 data-i18n="paint_title">Paint Ledger</h2>
+            </div>
             <p data-i18n="paint_sub">Track payments (debit) and work provided (credit) per painter.</p>
           </div>
           <div class="header-actions">
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('paint','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="openExportFilterModal('paint','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('paint','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
             </div>
+            <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openPaintExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
           </div>
         </div>
         <div class="overdue-cheque-banner-slot"></div>
@@ -2115,19 +2215,23 @@
       <div id="view-labourledger" style="display:none;">
         <div class="view-header">
           <div class="view-header-text">
-            <h2 data-i18n="labourledger_title">Labour Ledger</h2>
+            <div class="ledger-settings-btn-row">
+              <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openLabourLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
+              <h2 data-i18n="labourledger_title">Labour Ledger</h2>
+            </div>
             <p data-i18n="labourledger_sub">Attendance, wages, payments and dues — daily, weekly, monthly or yearly.</p>
           </div>
           <div class="header-actions">
             <button class="btn-export" id="ll-mark-attendance-btn" data-i18n="mark_attendance">Mark Attendance</button>
             <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('labourledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
                 <button onclick="openExportFilterModal('labourledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('labourledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
             </div>
+            <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openLabourLedgerExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
           </div>
         </div>
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px;">
@@ -2227,8 +2331,27 @@
         </div>
       </div>
 
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="change_pin_title">Change PIN</div>
+      <!-- ADD (2026-08-23, restoring the 2026-08-20 UI polish batch):
+           every card below now uses .settings-card/.settings-card-header/
+           .settings-icon (see the CSS block above) instead of a one-off
+           inline style, and cards are grouped under .settings-section-label
+           headings instead of one long undifferentiated list.
+           NOTE: the old "Export Settings" and "Ledger Settings" cards that
+           used to live here are GONE as of 2026-08-23 — both moved onto
+           each ledger's own page/modal (a small columns icon next to that
+           ledger's Export button, and a small settings icon top-left of
+           that ledger's own header) per the user's explicit request, so
+           changing them no longer means leaving the ledger you're looking
+           at. Only the "Show on Overview Dashboard" checklist stayed here,
+           under Data & Sync — it's a global Overview-page setting, not
+           something that belongs to any one ledger. -->
+      <div class="settings-section-label" data-i18n="settings_section_security">Security</div>
+
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--yellow);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+          <div class="settings-card-title" data-i18n="change_pin_title">Change PIN</div>
+        </div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="change_pin_desc">Enter your current 4-digit PIN, then choose a new one.</div>
         <label class="field-label" data-i18n="current_pin">Current PIN</label>
         <input type="password" id="settings-pin-current" class="field-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
@@ -2241,8 +2364,11 @@
         <button type="button" id="settings-pin-save" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="save">Save</button>
       </div>
 
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="security_question_title">Security Question</div>
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--yellow);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v4"/><circle cx="12" cy="15.2" r="0.6" fill="currentColor" stroke="none"/></svg></div>
+          <div class="settings-card-title" data-i18n="security_question_title">Security Question</div>
+        </div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="security_question_desc">Used by "Forgot PIN?" on the lock screen to let you reset your PIN without losing access. Question: "What is the shop owner's name?" — enter your current PIN to change the saved answer.</div>
         <label class="field-label" data-i18n="current_pin">Current PIN</label>
         <input type="password" id="settings-answer-pin" class="field-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
@@ -2264,8 +2390,11 @@
            it re-shows the lock screen automatically — see lockNow_(),
            armAutoLockWatch_() and the visibilitychange/idle-timer wiring
            near the lock-screen code below. -->
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="autolock_title">Auto-Lock</div>
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--yellow);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></div>
+          <div class="settings-card-title" data-i18n="autolock_title">Auto-Lock</div>
+        </div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="autolock_desc">Automatically show the PIN lock screen after the app has been idle or minimized for this long — protects your ledger if the phone is left unattended.</div>
         <label class="field-label" data-i18n="autolock_label">Auto-Lock After</label>
         <select id="settings-autolock" class="field-input">
@@ -2277,8 +2406,45 @@
         </select>
       </div>
 
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="device_name_title">This Phone's Name</div>
+      <!-- FIX (2026-08-20): the old "Account & Login" card was a
+           placeholder for a future email+password login. The user has
+           since asked to build Gmail sign-in (replacing the PIN
+           entirely) plus fingerprint quick-unlock instead — this card
+           now reflects that. Google sign-in itself is native-plugin work
+           (see googleSignInAvailable_/nativeBiometricAvailable_ below) —
+           on a build without those plugins installed yet, this card
+           still renders but the buttons explain that native setup is
+           still pending rather than silently doing nothing.
+           MOVED (2026-08-23, restoring the 2026-08-20 UI polish batch):
+           grouped under Security now, right alongside PIN/Security
+           Question/Auto-Lock, since it IS the lock mechanism — it used to
+           sit all the way at the bottom of the page, far from the rest of
+           the lock-screen settings. -->
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--yellow);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.6"/><path d="M4 15l4.5-4.5a2 2 0 0 1 2.8 0L16 15"/><path d="M14 13l1.2-1.2a2 2 0 0 1 2.8 0L20 13.6"/></svg></div>
+          <div class="settings-card-title" data-i18n="google_account_title">Google Sign-In &amp; Lock Screen</div>
+        </div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="google_account_desc">The lock screen now unlocks with your Google account instead of a PIN. Turn on fingerprint below for a faster day-to-day unlock — you'll still confirm with Google the first time on a device, or whenever fingerprint isn't available.</div>
+        <div id="settings-google-account-status" style="font-family:var(--mono); font-size:12.5px; margin-bottom:12px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line);"></div>
+        <button type="button" id="settings-google-signin-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="google_account_switch_btn">Sign In / Switch Account</button>
+
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--steel-line);">
+          <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
+            <input type="checkbox" id="settings-biometric-toggle" style="width:16px; height:16px; flex-shrink:0;">
+            <span data-i18n="biometric_toggle_label">Use fingerprint for quick unlock</span>
+          </label>
+          <div id="settings-biometric-note" style="font-size:11.5px; color:var(--text-dim); margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <div class="settings-section-label" data-i18n="settings_section_device">Device</div>
+
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--logo-a);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg></div>
+          <div class="settings-card-title" data-i18n="device_name_title">This Phone's Name</div>
+        </div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="device_name_desc">Every entry this phone adds gets tagged with this name on the Google Sheet, so you can tell which phone an entry came from. Set a different name on each phone you use (e.g. "Shop Counter", "Amir's Phone").</div>
         <label class="field-label" data-i18n="device_name_label">Device Name</label>
         <input type="text" id="settings-device-name" class="field-input" placeholder="e.g. Shop Counter" data-i18n-placeholder="device_name_placeholder" autocomplete="off">
@@ -2286,50 +2452,39 @@
         <button type="button" id="settings-device-name-save" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="save">Save</button>
       </div>
 
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="export_settings_title">Export Settings</div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="export_settings_desc">Choose which columns show up in this ledger's exports. One setting covers PDF, JPG and CSV together — hide a column here and it disappears from all three. Changes save automatically.</div>
-        <label class="field-label" data-i18n="export_settings_ledger_label">Ledger</label>
-        <select id="settings-export-ledger" class="field-input"></select>
-        <!-- FIX (2026-08-19): "All these selection should be as drop down
-             in their relevant headers so space will be managed" — the
-             per-column checkbox list used to always render fully expanded
-             below the Ledger select, which for a ledger with 13+ columns
-             (Custom Ledgers) pushed the Settings page a long way down.
-             Collapsed by default behind this toggle now; tapping it
-             expands/collapses the list, reusing the same chevron-rotate +
-             max-height pattern the sidebar's own nav groups already use. -->
-        <button type="button" class="settings-collapse-toggle" id="settings-export-columns-toggle" style="margin-top:14px;">
-          <span data-i18n="export_settings_columns_label">Columns</span>
-          <svg class="settings-collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="settings-collapse-body" id="settings-export-columns-body">
-          <div id="settings-export-columns-list" style="display:flex; flex-direction:column; gap:8px; margin-top:12px; padding-top:2px;"></div>
+      <div class="settings-section-label" data-i18n="settings_section_data_sync">Data &amp; Sync</div>
+
+      <!-- ADD (2026-08-23, restoring the 2026-08-20 UI polish batch): the
+           topbar sync widget already tracked lastSyncedDisplayAt_/
+           dataDirty/lastSyncErrorDetail_, but the only place any of it was
+           ever visible was the widget's hover title — which never fires
+           on a touchscreen, so none of it was actually reachable on a
+           phone. renderSyncSettingsCard_() (see the script below) writes
+           a persistent status line here instead, covering every sync
+           state, plus a Sync Now button reusing the same
+           testSheetConnection_() the widget's own tap already runs. -->
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--green);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 1-15.3 6.4L3 16"/><path d="M3 12a9 9 0 0 1 15.3-6.4L21 8"/><polyline points="3 21 3 16 8 16"/><polyline points="21 3 21 8 16 8"/></svg></div>
+          <div class="settings-card-title" data-i18n="sync_settings_title">Sync</div>
         </div>
+        <div id="settings-sync-status" style="font-family:var(--mono); font-size:11.5px; margin-bottom:14px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line); color:var(--text-dim);"></div>
+        <button type="button" id="settings-sync-now-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="sync_now_btn">Sync Now</button>
       </div>
 
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="ledger_settings_title">Ledger Settings</div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="ledger_settings_desc">Defaults for how every ledger exports and displays. Changes save automatically.</div>
-
-        <label class="field-label" data-i18n="ledger_settings_range_label">Default Export Date Range</label>
-        <select id="settings-default-export-range" class="field-input">
-          <option value="all" data-i18n="range_all_time">All Time</option>
-          <option value="month" data-i18n="range_this_month">This Month</option>
-          <option value="30days" data-i18n="range_last_30_days">Last 30 Days</option>
-          <option value="year" data-i18n="range_this_year">This Year</option>
-        </select>
-
-        <label class="field-label" style="margin-top:14px;" data-i18n="ledger_settings_sort_label">Default Entry Sort Order</label>
-        <select id="settings-ledger-sort-order" class="field-input">
-          <option value="oldest" data-i18n="sort_oldest_first">Oldest First</option>
-          <option value="newest" data-i18n="sort_newest_first">Newest First</option>
-        </select>
-
-        <!-- FIX (2026-08-19): same collapsible treatment as the Export
-             Settings columns list above — this static 9-item checkbox
-             list used to always render fully expanded. -->
-        <button type="button" class="settings-collapse-toggle" id="settings-overview-modules-toggle" style="margin-top:14px;">
+      <!-- The Export Settings/Ledger Settings' per-column and
+           per-ledger-sort/range controls moved to each ledger's own page
+           (see the note at the top of this view) — but "Show on Overview
+           Dashboard" is a global Overview-page setting, not something any
+           one ledger owns, so it stayed here rather than being duplicated
+           onto every ledger. -->
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--green);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></div>
+          <div class="settings-card-title" data-i18n="overview_dashboard_title">Overview Dashboard</div>
+        </div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="overview_dashboard_desc">Choose which modules show up on the Overview page. Changes save automatically.</div>
+        <button type="button" class="settings-collapse-toggle" id="settings-overview-modules-toggle">
           <span data-i18n="ledger_settings_overview_label">Show on Overview Dashboard</span>
           <svg class="settings-collapse-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
@@ -2338,6 +2493,18 @@
         </div>
       </div>
 
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--green);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+          <div class="settings-card-title" data-i18n="backup_title">Gmail Backup</div>
+        </div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="backup_desc">A full backup of your Google Sheet is emailed to you automatically every week. You can also send one right now, any time.</div>
+        <button type="button" id="settings-backup-now-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="backup_now_btn">Send Backup Now</button>
+        <p id="settings-backup-status" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0; display:none;"></p>
+      </div>
+
+      <div class="settings-section-label" data-i18n="settings_section_notifications">Notifications</div>
+
       <!-- ADD (2026-08-22): per-type mute + check-frequency controls for
            the Notifications tab's alerts, PLUS real outside-app delivery
            via Firebase Cloud Messaging — see enablePushNotifications_/
@@ -2345,8 +2512,11 @@
            permission-request + registration flow, and
            checkAndSendPushNotifications_ in Code.gs for the backend
            trigger that does the actual sending. -->
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="notif_settings_title">Notification Alerts</div>
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--orange);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+          <div class="settings-card-title" data-i18n="notif_settings_title">Notification Alerts</div>
+        </div>
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="notif_settings_desc">Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.</div>
         <div id="settings-notif-push-status" style="font-family:var(--mono); font-size:11.5px; margin-bottom:10px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line); color:var(--text-dim);"></div>
         <button id="settings-notif-enable-btn" type="button" style="background:var(--yellow); color:#1C1F22; border:none; padding:9px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase; margin-bottom:16px;" data-i18n="notif_enable_btn">Enable Push Notifications</button>
@@ -2374,44 +2544,13 @@
           <div id="settings-notif-types-list" style="display:flex; flex-direction:column; gap:10px;"></div>
         </div>
       </div>
-
-
-      <!-- FIX (2026-08-20): the old "Account & Login" card was a
-           placeholder for a future email+password login. The user has
-           since asked to build Gmail sign-in (replacing the PIN
-           entirely) plus fingerprint quick-unlock instead — this card
-           now reflects that. Google sign-in itself is native-plugin work
-           (see googleSignInAvailable_/nativeBiometricAvailable_ below) —
-           on a build without those plugins installed yet, this card
-           still renders but the buttons explain that native setup is
-           still pending rather than silently doing nothing. -->
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; margin-bottom:16px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="google_account_title">Google Sign-In &amp; Lock Screen</div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="google_account_desc">The lock screen now unlocks with your Google account instead of a PIN. Turn on fingerprint below for a faster day-to-day unlock — you'll still confirm with Google the first time on a device, or whenever fingerprint isn't available.</div>
-        <div id="settings-google-account-status" style="font-family:var(--mono); font-size:12.5px; margin-bottom:12px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line);"></div>
-        <button type="button" id="settings-google-signin-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="google_account_switch_btn">Sign In / Switch Account</button>
-
-        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--steel-line);">
-          <label style="display:flex; align-items:center; gap:10px; font-size:13px; cursor:pointer;">
-            <input type="checkbox" id="settings-biometric-toggle" style="width:16px; height:16px; flex-shrink:0;">
-            <span data-i18n="biometric_toggle_label">Use fingerprint for quick unlock</span>
-          </label>
-          <div id="settings-biometric-note" style="font-size:11.5px; color:var(--text-dim); margin-top:6px;"></div>
-        </div>
-      </div>
-
-      <div style="background:var(--panel); border:1px solid var(--steel-line); border-radius:10px; padding:18px; max-width:520px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:6px;" data-i18n="backup_title">Gmail Backup</div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="backup_desc">A full backup of your Google Sheet is emailed to you automatically every week. You can also send one right now, any time.</div>
-        <button type="button" id="settings-backup-now-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="backup_now_btn">Send Backup Now</button>
-        <p id="settings-backup-status" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0; display:none;"></p>
-      </div>
     </div>
 
     <aside class="cart-panel" id="cart-panel" style="display:none;">
       <div class="cart-header">
         <h2 style="display:flex; align-items:center; gap:8px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <span data-i18n="current_invoice">Current Invoice</span>
         </h2>
         <div class="txn" id="txn-id">Order #1</div>
       </div>
@@ -2524,14 +2663,20 @@
 <div class="modal-overlay" id="painter-ledger-modal">
   <div class="modal-box" style="max-width:560px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <h3 id="pl-title" style="margin:0;">Painter</h3>
-      <div class="export-dropdown" data-export-dropdown>
-        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
-        <div class="export-dropdown-menu">
-          <button onclick="openExportFilterModal('painterledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
-          <button onclick="openExportFilterModal('painterledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
-          <button onclick="openExportFilterModal('painterledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openPainterModalLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
+        <h3 id="pl-title" style="margin:0;">Painter</h3>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <div class="export-dropdown" data-export-dropdown>
+          <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <div class="export-dropdown-menu">
+            <button onclick="openExportFilterModal('painterledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+            <button onclick="openExportFilterModal('painterledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
+            <button onclick="openExportFilterModal('painterledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
+          </div>
         </div>
+        <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openPainterModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
     <div id="pl-balance-line" style="font-family:var(--mono); font-size:13px; margin:6px 0 14px;"></div>
@@ -3041,14 +3186,20 @@
 <div class="modal-overlay" id="customledger-modal">
   <div class="modal-box" style="max-width:560px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <h3 id="cul-title" style="margin:0;">Custom Ledger</h3>
-      <div class="export-dropdown" data-export-dropdown>
-        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
-        <div class="export-dropdown-menu">
-          <button onclick="openExportFilterModal('customledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
-          <button onclick="openExportFilterModal('customledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
-          <button onclick="openExportFilterModal('customledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openCustomLedgerModalLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
+        <h3 id="cul-title" style="margin:0;">Custom Ledger</h3>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <div class="export-dropdown" data-export-dropdown>
+          <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <div class="export-dropdown-menu">
+            <button onclick="openExportFilterModal('customledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+            <button onclick="openExportFilterModal('customledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
+            <button onclick="openExportFilterModal('customledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
+          </div>
         </div>
+        <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openCustomLedgerModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
     <div id="cul-balance-line" style="font-family:var(--mono); font-size:13px; margin:6px 0 14px;"></div>
@@ -3214,14 +3365,20 @@
 <div class="modal-overlay" id="customerledger-modal">
   <div class="modal-box" style="max-width:560px;">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-      <h3 id="cl-title" style="margin:0;">Customer</h3>
-      <div class="export-dropdown" data-export-dropdown>
-        <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <span class="caret">▾</span></button>
-        <div class="export-dropdown-menu">
-          <button onclick="openExportFilterModal('factoryledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
-          <button onclick="openExportFilterModal('factoryledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
-          <button onclick="openExportFilterModal('factoryledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
+      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openCustomerLedgerModalLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
+        <h3 id="cl-title" style="margin:0;">Customer</h3>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <div class="export-dropdown" data-export-dropdown>
+          <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <div class="export-dropdown-menu">
+            <button onclick="openExportFilterModal('factoryledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+            <button onclick="openExportFilterModal('factoryledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
+            <button onclick="openExportFilterModal('factoryledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
+          </div>
         </div>
+        <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openCustomerLedgerModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
     <div id="cl-balance-line" style="font-family:var(--mono); font-size:13px; margin:6px 0 14px;"></div>
@@ -3328,6 +3485,58 @@
       <button class="btn-cancel" id="ef-cancel" data-i18n="cancel">Cancel</button>
       <button class="btn-confirm" id="ef-apply" data-i18n="export">Export</button>
     </div>
+  </div>
+</div>
+
+<!-- ================= LEDGER EXPORT SETTINGS MODAL (per-ledger column
+     visibility) ================= -->
+<!-- ADD (2026-08-23): moved out of the global Settings tab's "Export
+     Settings" card (which needed a Ledger dropdown to cover all 7
+     exportable ledgers from one place) onto each ledger's own page/modal
+     instead — a small columns icon next to that ledger's own Export
+     button opens this same shared modal, already scoped to whichever
+     ledger you were looking at (see openLedgerExportSettings_ in the
+     script below). z-index bumped to 110 like the other modals that can
+     open on top of an already-open parent modal (the Painter/Custom/
+     Customer ledger modals) — see the receipt-datecheck-modal comment
+     further up for why a same-z-index child modal earlier in the HTML
+     than its parent gets painted over and silently eats clicks. -->
+<div class="modal-overlay" id="ledger-export-settings-modal">
+  <div class="modal-box">
+    <h3 id="les-title" data-i18n="export_settings_title">Export Settings</h3>
+    <p style="font-size:12px; color:var(--text-dim); margin:-8px 0 14px;" data-i18n="export_settings_desc_short">Choose which columns are included when you export this ledger.</p>
+    <div id="les-columns-list" style="display:flex; flex-direction:column; gap:8px; max-height:50vh; overflow-y:auto;"></div>
+    <button class="btn-cancel" id="les-close" style="width:100%; margin-top:16px;" data-i18n="close">Close</button>
+  </div>
+</div>
+
+<!-- ================= LEDGER SETTINGS MODAL (per-ledger default export
+     range + entry sort order) ================= -->
+<!-- ADD (2026-08-23): moved out of the global Settings tab's "Ledger
+     Settings" card (one shared range + one shared sort order applying to
+     every ledger uniformly) onto each ledger's own page/modal instead — a
+     small gear icon top-left of that ledger's own header opens this same
+     shared modal, scoped to whichever ledger you were looking at (see
+     openLedgerSettings_ in the script below). Per the user's explicit
+     choice, the range/sort saved here are genuinely INDEPENDENT per
+     ledger now, not one shared value just relocated — see
+     ledgerExportRangeFor_/ledgerSortNewestFirstFor_ in the script. -->
+<div class="modal-overlay" id="ledger-settings-modal">
+  <div class="modal-box">
+    <h3 id="lsm-title" data-i18n="ledger_settings_title">Ledger Settings</h3>
+    <label class="field-label" data-i18n="ledger_settings_range_label">Default Export Date Range</label>
+    <select class="field-input" id="lsm-range">
+      <option value="all" data-i18n="range_all_time">All Time</option>
+      <option value="month" data-i18n="range_this_month">This Month</option>
+      <option value="30days" data-i18n="range_last_30_days">Last 30 Days</option>
+      <option value="year" data-i18n="range_this_year">This Year</option>
+    </select>
+    <label class="field-label" style="margin-top:14px;" data-i18n="ledger_settings_sort_label">Default Entry Sort Order</label>
+    <select class="field-input" id="lsm-sort">
+      <option value="oldest" data-i18n="sort_oldest_first">Oldest First</option>
+      <option value="newest" data-i18n="sort_newest_first">Newest First</option>
+    </select>
+    <button class="btn-cancel" id="lsm-close" style="width:100%; margin-top:16px;" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -3473,6 +3682,47 @@
   </div>
 </div>
 
+<!-- ================= RECEIPT DATE SAFETY CHECK (shared across every ledger) ================= -->
+<!-- User-requested safety net (2026-08-21): before a freshly-picked receipt
+     photo actually attaches to an entry, ask what date is written on it and
+     compare against the entry's own date — catches the wrong photo getting
+     attached by mistake before it's saved. A mismatch WARNS (with a
+     full-size view of the photo, via the existing receipt-view-modal above)
+     rather than blocking outright — a receipt can genuinely predate the
+     entry it's logged against (e.g. an expense entered a day after the
+     actual purchase), so this stays an informed override, not a hard wall.
+     Every ledger's receipt file-input handler routes through
+     receiptDateCheck_() below instead of calling fileToLocalReceipt_
+     directly — see that function for the full flow. -->
+<div class="modal-overlay" id="receipt-datecheck-modal">
+  <div class="modal-box" style="max-width:360px;">
+    <div id="receipt-datecheck-step1">
+      <h3 data-i18n="receipt_datecheck_title">Check This Receipt</h3>
+      <p style="font-size:12.5px; color:var(--text-dim); margin:0 0 14px;" data-i18n="receipt_datecheck_desc">What date is written on this receipt? This helps catch the wrong photo getting attached by mistake.</p>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+        <img id="receipt-datecheck-thumb" src="" alt="" style="width:52px; height:52px; object-fit:cover; border-radius:8px; border:1px solid var(--steel-line); display:none; flex:none;">
+        <div id="receipt-datecheck-pdf-icon" style="display:none; width:52px; height:52px; border-radius:8px; border:1px solid var(--steel-line); align-items:center; justify-content:center; font-family:var(--mono); font-size:10px; color:var(--text-dim); flex:none;">PDF</div>
+        <button type="button" id="receipt-datecheck-viewbig" class="btn-export" style="flex:none;" data-i18n="view_full_size">View Full Size</button>
+      </div>
+      <label class="field-label" data-i18n="receipt_date_label">Date On Receipt</label>
+      <input class="field-input" id="receipt-datecheck-input" type="date">
+      <div class="modal-actions" style="margin-top:16px;">
+        <button type="button" class="btn-modal-secondary" id="receipt-datecheck-skip" data-i18n="cant_tell_skip">Can't Tell / Skip</button>
+        <button type="button" class="btn-confirm" id="receipt-datecheck-confirm" data-i18n="confirm">Confirm</button>
+      </div>
+    </div>
+    <div id="receipt-datecheck-step2" style="display:none;">
+      <h3 style="color:var(--red);" data-i18n="receipt_datecheck_mismatch_title">Dates Don't Match</h3>
+      <p id="receipt-datecheck-mismatch-text" style="font-size:12.5px; color:var(--text-dim); margin:0 0 14px;"></p>
+      <button type="button" id="receipt-datecheck-viewbig2" class="btn-export" style="margin-bottom:16px;" data-i18n="view_full_size">View Full Size</button>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-secondary" id="receipt-datecheck-cancel" data-i18n="cancel">Cancel</button>
+        <button type="button" class="btn-modal-danger" id="receipt-datecheck-attach-anyway" data-i18n="attach_anyway">Attach Anyway</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ================= ADD EXPENSE MODAL ================= -->
 <div class="modal-overlay" id="expense-modal">
   <div class="modal-box">
@@ -3556,6 +3806,7 @@
       <p style="margin:0 0 10px;"><strong style="color:var(--text);">Amir Traders — Fan Accessories — Point of Sale</strong></p>
       <p style="margin:0 0 10px;">Built for tracking daily counter sales of fan guards, mounting accessories and workshop services.</p>
       <p style="margin:0;">Sales totals reset when the page is closed or refreshed — this runs entirely in your browser with no external server.</p>
+      <p id="about-version" style="margin:14px 0 0; padding-top:10px; border-top:1px solid var(--steel-line); font-size:12px;"></p>
     </div>
     <div class="modal-actions" style="margin-top:16px;">
       <button class="btn-confirm" id="about-close" style="flex:1;" data-i18n="close">Close</button>
@@ -3922,7 +4173,42 @@
       } else {
         syncWidget.title = lastSyncedNote + ' Tap to test the Google Sheet connection.';
       }
+      renderSyncSettingsCard_();
     }
+    // ADD (2026-08-23, restoring the 2026-08-20 UI polish batch): the
+    // topbar sync widget's state (lastSyncedDisplayAt_/dataDirty/
+    // lastSyncErrorDetail_) used to be visible only via the widget's
+    // hover title — which never fires on a touchscreen, so none of it was
+    // actually reachable on a phone. This writes the same information as
+    // a persistent status line on the Settings > Sync card instead. Kept
+    // live automatically by the call at the end of setSyncStatus() above
+    // (the one place every sync state change already funnels through), so
+    // it never goes stale even if the Settings tab is already open when a
+    // sync starts/finishes/fails in the background.
+    function renderSyncSettingsCard_(){
+      const el = document.getElementById('settings-sync-status');
+      if(!el) return;
+      if(!sheetConfigured()){
+        el.textContent = tr('sync_status_local_only');
+        return;
+      }
+      const isSyncing = syncWidget.classList.contains('is-syncing');
+      const isError = syncWidget.classList.contains('is-error');
+      const timeStr = lastSyncedDisplayAt_ ? formatSyncedAt_(lastSyncedDisplayAt_) : '';
+      if(isSyncing){
+        el.textContent = tr('sync_status_syncing');
+      } else if(isError){
+        el.textContent = tr('sync_status_error').replace('{detail}', lastSyncErrorDetail_ || syncLabel.textContent);
+      } else if(dataDirty){
+        el.textContent = timeStr ? tr('sync_status_pending_synced').replace('{time}', timeStr) : tr('sync_status_pending_never');
+      } else if(timeStr){
+        el.textContent = tr('sync_status_synced').replace('{time}', timeStr);
+      } else {
+        el.textContent = tr('sync_status_never');
+      }
+    }
+    const settingsSyncNowBtn_ = document.getElementById('settings-sync-now-btn');
+    if(settingsSyncNowBtn_) settingsSyncNowBtn_.addEventListener('click', testSheetConnection_);
     function sheetConfigured(){
       return SHEET_API_URL && SHEET_API_URL.indexOf('http') === 0;
     }
@@ -4079,6 +4365,84 @@
         reader.readAsDataURL(file);
       });
     }
+
+    // ---------------- RECEIPT DATE SAFETY CHECK (shared across every ledger) ----------------
+    // User-requested safety net (2026-08-21): before a freshly-picked receipt
+    // photo actually attaches to an entry, ask what date is written on it and
+    // compare against the entry's own date — catches the wrong photo getting
+    // attached by mistake before it's ever saved. A mismatch WARNS (with a
+    // full-size view of the photo, reusing the receipt viewer above) rather
+    // than blocking outright, since a receipt can genuinely predate the
+    // entry it's logged against (e.g. an expense entered a day after the
+    // actual purchase) — this stays an informed override, not a hard wall.
+    // Every ledger's receipt file-input handler calls receiptDateCheck_()
+    // below instead of fileToLocalReceipt_ directly; the modal itself is a
+    // singleton (see #receipt-datecheck-modal), so this is written around
+    // one pending-promise resolver rather than per-call-site listeners.
+    const receiptDatecheckModal = document.getElementById('receipt-datecheck-modal');
+    const receiptDatecheckStep1 = document.getElementById('receipt-datecheck-step1');
+    const receiptDatecheckStep2 = document.getElementById('receipt-datecheck-step2');
+    const receiptDatecheckThumb = document.getElementById('receipt-datecheck-thumb');
+    const receiptDatecheckPdfIcon = document.getElementById('receipt-datecheck-pdf-icon');
+    const receiptDatecheckInput = document.getElementById('receipt-datecheck-input');
+    const receiptDatecheckMismatchText = document.getElementById('receipt-datecheck-mismatch-text');
+    let receiptDatecheckRf_ = null;        // the freshly-picked receipt, held while the modal is open
+    let receiptDatecheckEntryDate_ = null; // the entry's own date (YYYY-MM-DD), to compare against
+    let receiptDatecheckResolve_ = null;   // resolver for the in-flight receiptDateCheck_() promise
+    function closeReceiptDatecheckModal_(result){
+      receiptDatecheckModal.classList.remove('active');
+      const resolve = receiptDatecheckResolve_;
+      receiptDatecheckRf_ = null;
+      receiptDatecheckEntryDate_ = null;
+      receiptDatecheckResolve_ = null;
+      if(resolve) resolve(result);
+    }
+    // Reads the file, then asks the user to confirm the date on it against
+    // entryDateStr (that ledger's own date field, 'YYYY-MM-DD'; pass '' for
+    // Record Payment, which has no editable date field — falls back to
+    // today, since a payment is always stamped "now"). Resolves with the
+    // receipt object {name, kind, dataUrl, localPath?} to attach it, or null
+    // if the user cancels out of a mismatch warning. Rejects only if the
+    // file itself can't be read (mirrors fileToLocalReceipt_'s own errors).
+    function receiptDateCheck_(file, entryDateStr){
+      return new Promise((resolve, reject)=>{
+        fileToLocalReceipt_(file).then(rf=>{
+          receiptDatecheckRf_ = rf;
+          receiptDatecheckEntryDate_ = entryDateStr || todayISO_();
+          receiptDatecheckResolve_ = resolve;
+          receiptDatecheckStep1.style.display = '';
+          receiptDatecheckStep2.style.display = 'none';
+          receiptDatecheckInput.value = '';
+          if(rf.kind === 'pdf'){
+            receiptDatecheckThumb.style.display = 'none';
+            receiptDatecheckPdfIcon.style.display = 'flex';
+          } else {
+            receiptDatecheckThumb.src = rf.dataUrl;
+            receiptDatecheckThumb.style.display = '';
+            receiptDatecheckPdfIcon.style.display = 'none';
+          }
+          receiptDatecheckModal.classList.add('active');
+        }).catch(reject);
+      });
+    }
+    document.getElementById('receipt-datecheck-viewbig').addEventListener('click', ()=>{ if(receiptDatecheckRf_) viewReceiptFile_(receiptDatecheckRf_); });
+    document.getElementById('receipt-datecheck-viewbig2').addEventListener('click', ()=>{ if(receiptDatecheckRf_) viewReceiptFile_(receiptDatecheckRf_); });
+    document.getElementById('receipt-datecheck-skip').addEventListener('click', ()=> closeReceiptDatecheckModal_(receiptDatecheckRf_));
+    document.getElementById('receipt-datecheck-cancel').addEventListener('click', ()=> closeReceiptDatecheckModal_(null));
+    document.getElementById('receipt-datecheck-attach-anyway').addEventListener('click', ()=> closeReceiptDatecheckModal_(receiptDatecheckRf_));
+    document.getElementById('receipt-datecheck-confirm').addEventListener('click', ()=>{
+      const typed = receiptDatecheckInput.value;
+      if(!typed){ alert(tr('pick_date_or_skip')); return; }
+      if(typed === receiptDatecheckEntryDate_){
+        closeReceiptDatecheckModal_(receiptDatecheckRf_);
+        return;
+      }
+      receiptDatecheckMismatchText.textContent = tr('receipt_datecheck_mismatch_text')
+        .replace('{receiptDate}', isoToDMY_(typed))
+        .replace('{entryDate}', isoToDMY_(receiptDatecheckEntryDate_));
+      receiptDatecheckStep1.style.display = 'none';
+      receiptDatecheckStep2.style.display = '';
+    });
 
     // FIX (2026-08-19): on the packaged native Android app, fileToLocalReceipt_
     // above deliberately swaps rf.dataUrl for a fast local-file view URL
@@ -4674,6 +5038,28 @@
       });
       return local;
     }
+    // Id-keyed twin of mergeRosterWithEntries_ above, for Custom Ledgers
+    // (customLedgers is keyed by id, not name). FIX (2026-08-21): a plain
+    // mergeById_ call on the whole ledger only ever added a MISSING ledger
+    // wholesale — an entry added to a ledger this device already knew about
+    // (on another device, since the last sync) was never reconciled, so it
+    // could be silently dropped, then silently overwritten away on the
+    // sheet by this device's next save. safeWriteRows_ on that tab only
+    // guards against going fully empty, not this kind of partial loss.
+    function mergeCustomLedgersWithEntries_(localList, remoteList){
+      if(!Array.isArray(remoteList) || !remoteList.length) return Array.isArray(localList) ? localList : [];
+      const local = Array.isArray(localList) ? localList.map(x=>Object.assign({}, x)) : [];
+      const byId = {};
+      local.forEach(item=>{ if(item && item.id) byId[item.id] = item; });
+      remoteList.forEach(rItem=>{
+        if(!rItem || !rItem.id) return;
+        if(isDeleted_('customLedgers', rItem.id)) return;
+        const lItem = byId[rItem.id];
+        if(!lItem){ local.push(rItem); byId[rItem.id] = rItem; return; }
+        lItem.entries = mergeById_(lItem.entries, rItem.entries, 'customLedgerEntries');
+      });
+      return local;
+    }
     // Populated by mergeLatestRemoteBeforeSave_ with whatever roster each
     // bucket held on the SHEET at the moment of the freshest pre-save fetch
     // — used right after by computeConfirmedEmptyLedgers_ to tell a genuine
@@ -4741,7 +5127,25 @@
         customerPayments = mergeById_(customerPayments, d.customerPayments, 'customerPayments');
         expenses = mergeById_(expenses, d.expenses, 'expenses');
         factories = mergeByName_(factories, d.factories, 'factories');
-        if(Array.isArray(d.customLedgers)) customLedgers = mergeById_(customLedgers, d.customLedgers, 'customLedgers');
+        // FIX (2026-08-21): PRODUCTS was fetched into lastRemoteProducts_
+        // above (for the confirmedEmpty tombstone check) but never actually
+        // merged into the live PRODUCTS array like every other bucket here
+        // — a fresh device with PRODUCTS still empty kept sending an empty
+        // products list on every save, which safeWriteRows_ correctly (and
+        // permanently) refused since the sheet already had real rows,
+        // sticking the whole saveAll_ call in an unrecoverable retry loop.
+        PRODUCTS = mergeById_(PRODUCTS, d.products, 'products');
+        // FIX (2026-08-21): txnNumber (the counter that mints every new
+        // order's id) was never merged pre-save at all — a device that's
+        // behind could mint a new order using the same id another device
+        // already used for a real, different order, and mergeById_'s
+        // id-collision handling keeps whichever copy is already local,
+        // silently dropping the other device's real order with no error.
+        // Taking the max here closes the window between saves (a matching
+        // backend guard in Code.gs's saveAll_ protects the Meta-tab write
+        // itself, for any device/build, not just ones with this fix).
+        if(typeof d.txnNumber === 'number' && d.txnNumber > txnNumber) txnNumber = d.txnNumber;
+        if(Array.isArray(d.customLedgers)) customLedgers = mergeCustomLedgersWithEntries_(customLedgers, d.customLedgers);
         if(d.inventory){
           lastRemoteRosters_ = {
             paint: Array.isArray(d.inventory.paint) ? d.inventory.paint : [],
@@ -5306,7 +5710,17 @@
       } catch(err){
         console.error('[sheet-sync] save failed:', err);
         lastSyncErrorDetail_ = err && err.message ? err.message : String(err);
-        setSyncStatus('error', 'Sync failed', lastSyncErrorDetail_);
+        // ADD (2026-08-23, restoring the 2026-08-20 UI polish batch): this
+        // path retries automatically every ~10s (see syncRetryTimer just
+        // below) — leaving the widget saying "Sync failed" indefinitely
+        // read as permanently broken with no indication it was quietly
+        // retrying. "Retrying…" is deliberately short (not "Sync failed —
+        // retrying") so the pill doesn't grow wide enough to wrap the
+        // topbar on a narrow phone — the red dot/border already carry the
+        // "failed" part. This is ONLY the automatic-retry path; the manual
+        // "Sync Now"/widget-tap path (testSheetConnection_) doesn't loop on
+        // its own and still shows a real dialog with the error detail.
+        setSyncStatus('error', 'Retrying…', lastSyncErrorDetail_);
         // A guard refusal ("Refused to overwrite X: it currently has N
         // row(s) but this save would leave it empty") means the LOCAL data
         // itself is the problem, not the connection — retrying the exact
@@ -6222,6 +6636,7 @@
         m_utility_total: "Utility Bills Total", m_utility_entries: "Utility Bill Entries",
         m_total_owed: "Total Owed", m_total_advance: "Total Advance",
         current_invoice: "Current Invoice", factory_workshop: "Factory / Workshop", unpaid_order_btn: "Unpaid Order",
+        checkout_cart_empty: "Cart is Empty", checkout_select_factory: "Select a Factory",
         invoice_empty: "Invoice is empty", tap_product_add: "Tap a product to add it",
         restore_cart_prompt: "You have an unfinished order with {n} item(s) from last time — restore it?",
         discard_changes_confirm: "Discard what you've entered here?",
@@ -6247,6 +6662,17 @@
         received_by_optional: "Received By (optional)", received_by_placeholder: "e.g. Umar",
         received_in_optional: "Received In (optional)", received_in_placeholder: "e.g. Shop Cash Box",
         nav_settings: "Settings", settings_title: "Settings", settings_subtitle: "Manage your PIN, recovery question, and (soon) account login.",
+        settings_section_security: "Security", settings_section_device: "Device", settings_section_data_sync: "Data & Sync", settings_section_notifications: "Notifications",
+        sync_settings_title: "Sync", sync_now_btn: "Sync Now",
+        sync_status_local_only: "This app saves to your device only — no Google Sheet connected.",
+        sync_status_error: "Sync problem: {detail}",
+        sync_status_syncing: "Syncing…",
+        sync_status_pending_synced: "Unsaved changes — last synced {time}. Syncing automatically.",
+        sync_status_pending_never: "Unsaved changes — not synced yet.",
+        sync_status_synced: "Up to date. Last synced {time}.",
+        sync_status_never: "Not synced yet this install.",
+        overview_dashboard_title: "Overview Dashboard", overview_dashboard_desc: "Choose which modules show up on the Overview page. Changes save automatically.",
+        export_settings_desc_short: "Choose which columns are included when you export this ledger.",
         change_pin_title: "Change PIN", change_pin_desc: "Enter your current 4-digit PIN, then choose a new one.",
         current_pin: "Current PIN", new_pin: "New PIN", confirm_new_pin: "Confirm New PIN",
         current_pin_incorrect: "Current PIN is incorrect.", pins_dont_match: "PINs don't match or aren't 4 digits.", pin_updated_msg: "PIN updated.",
@@ -6289,6 +6715,11 @@
         expenses_title: "Daily Expenses", expenses_sub: "Money spent running the workshop — materials, bills, transport, and more.",
         add_expense: "Add Expense", edit_expense: "Edit Expense", todays_expenses: "Today's Expenses", total_expenses: "Total Expenses",
         receipt_optional: "Receipt (optional)", remove: "Remove", receipt_attached: "Receipt attached",
+        receipt_datecheck_title: "Check This Receipt", receipt_datecheck_desc: "What date is written on this receipt? This helps catch the wrong photo getting attached by mistake.",
+        receipt_date_label: "Date On Receipt", cant_tell_skip: "Can't Tell / Skip", view_full_size: "View Full Size",
+        receipt_datecheck_mismatch_title: "Dates Don't Match", attach_anyway: "Attach Anyway",
+        receipt_datecheck_mismatch_text: "This receipt is dated {receiptDate}, but the entry is dated {entryDate}. Check the photo below before deciding.",
+        pick_date_or_skip: "Type the date on the receipt, or tap \"Can't Tell / Skip\".",
         add_receipt: "Add Receipt", add_order_receipt_sub: "Attach the factory's gate pass / receiving receipt against an order number.",
         add_or_replace_receipt: "Add / Replace Receipt",
         order_number: "Order Number", order_receipt_search_placeholder: "Search by order # or factory…",
@@ -6414,6 +6845,7 @@
         cat_raw_material: "Raw Material", cat_labour: "Labour", cat_paint: "Paint", cat_utilities: "Utilities",
         cat_rent: "Rent", cat_transport: "Transport", amount_rs: "Amount (Rs)",
         quick_help: "Quick Help", got_it: "Got it", about_this_till: "About This Till",
+        app_version_label: "Version",
         custom_ellipsis: "Custom…", enter_custom_colour: "Enter custom colour", ok: "OK",
         color_black: "Black", color_shine_black: "Shine Black", color_matt_black: "Matt Black",
         color_white: "White", color_moon_white: "Moon White", color_half_white: "Half White",
@@ -6502,6 +6934,7 @@
         m_utility_total: "یوٹیلیٹی بلز کل", m_utility_entries: "یوٹیلیٹی بل اندراجات",
         m_total_owed: "کل واجب الادا", m_total_advance: "کل ایڈوانس",
         current_invoice: "موجودہ انوائس", factory_workshop: "فیکٹری / ورکشاپ", unpaid_order_btn: "غیر ادا شدہ آرڈر",
+        checkout_cart_empty: "کارٹ خالی ہے", checkout_select_factory: "فیکٹری منتخب کریں",
         invoice_empty: "انوائس خالی ہے", tap_product_add: "شامل کرنے کے لیے پروڈکٹ پر ٹیپ کریں",
         restore_cart_prompt: "پچھلی بار کا ایک ادھورا آرڈر موجود ہے جس میں {n} آئٹم ہیں — کیا اسے بحال کریں؟",
         discard_changes_confirm: "کیا آپ نے یہاں جو کچھ درج کیا ہے اسے حذف کرنا چاہتے ہیں؟",
@@ -6527,6 +6960,17 @@
         received_by_optional: "وصول کنندہ (اختیاری)", received_by_placeholder: "مثلاً عمر",
         received_in_optional: "کہاں وصول ہوئی (اختیاری)", received_in_placeholder: "مثلاً دکان کا کیش باکس",
         nav_settings: "سیٹنگز", settings_title: "سیٹنگز", settings_subtitle: "اپنا پن، سیکیورٹی سوال، اور (جلد) اکاؤنٹ لاگ ان یہاں سے مینج کریں۔",
+        settings_section_security: "سیکیورٹی", settings_section_device: "ڈیوائس", settings_section_data_sync: "ڈیٹا اور سنک", settings_section_notifications: "اطلاعات",
+        sync_settings_title: "سنک", sync_now_btn: "ابھی سنک کریں",
+        sync_status_local_only: "یہ ایپ صرف آپ کی ڈیوائس پر محفوظ کرتی ہے — کوئی گوگل شیٹ منسلک نہیں۔",
+        sync_status_error: "سنک میں مسئلہ: {detail}",
+        sync_status_syncing: "سنک ہو رہا ہے…",
+        sync_status_pending_synced: "غیر محفوظ تبدیلیاں — آخری سنک {time}۔ خودکار طور پر سنک ہو رہا ہے۔",
+        sync_status_pending_never: "غیر محفوظ تبدیلیاں — ابھی تک سنک نہیں ہوئیں۔",
+        sync_status_synced: "اپ ٹو ڈیٹ۔ آخری سنک {time}۔",
+        sync_status_never: "اس انسٹال میں ابھی تک سنک نہیں ہوا۔",
+        overview_dashboard_title: "اوور ویو ڈیش بورڈ", overview_dashboard_desc: "منتخب کریں کہ اوور ویو صفحے پر کون سے ماڈیول دکھائے جائیں۔ تبدیلیاں خود بخود محفوظ ہو جاتی ہیں۔",
+        export_settings_desc_short: "منتخب کریں کہ اس لیجر کے ایکسپورٹ میں کون سے کالم شامل ہوں۔",
         change_pin_title: "پن تبدیل کریں", change_pin_desc: "اپنا موجودہ 4 ہندسوں کا پن درج کریں، پھر نیا پن منتخب کریں۔",
         current_pin: "موجودہ پن", new_pin: "نیا پن", confirm_new_pin: "نئے پن کی تصدیق کریں",
         current_pin_incorrect: "موجودہ پن غلط ہے۔", pins_dont_match: "پن مماثل نہیں یا 4 ہندسوں کے نہیں۔", pin_updated_msg: "پن اپ ڈیٹ ہو گیا۔",
@@ -6569,6 +7013,11 @@
         expenses_title: "روزانہ کے اخراجات", expenses_sub: "ورکشاپ چلانے پر خرچ ہونے والی رقم — مواد، بل، نقل و حمل، وغیرہ۔",
         add_expense: "خرچہ شامل کریں", edit_expense: "خرچہ میں ترمیم", todays_expenses: "آج کے اخراجات", total_expenses: "کل اخراجات",
         receipt_optional: "رسید (اختیاری)", remove: "ہٹائیں", receipt_attached: "رسید منسلک ہے",
+        receipt_datecheck_title: "یہ رسید چیک کریں", receipt_datecheck_desc: "اس رسید پر کون سی تاریخ لکھی ہے؟ اس سے غلط تصویر غلطی سے منسلک ہونے سے بچا جا سکتا ہے۔",
+        receipt_date_label: "رسید پر تاریخ", cant_tell_skip: "پتا نہیں / نظر انداز کریں", view_full_size: "پوری تصویر دیکھیں",
+        receipt_datecheck_mismatch_title: "تاریخیں مماثل نہیں ہیں", attach_anyway: "پھر بھی منسلک کریں",
+        receipt_datecheck_mismatch_text: "یہ رسید {receiptDate} کی تاریخ کی ہے، لیکن اندراج {entryDate} کا ہے۔ فیصلہ کرنے سے پہلے نیچے دی گئی تصویر چیک کریں۔",
+        pick_date_or_skip: "رسید پر لکھی تاریخ درج کریں، یا \"پتا نہیں / نظر انداز کریں\" پر ٹیپ کریں۔",
         add_receipt: "رسید شامل کریں", add_order_receipt_sub: "فیکٹری کا گیٹ پاس / وصولی رسید آرڈر نمبر کے خلاف منسلک کریں۔",
         add_or_replace_receipt: "رسید شامل / تبدیل کریں",
         order_number: "آرڈر نمبر", order_receipt_search_placeholder: "آرڈر نمبر یا فیکٹری تلاش کریں…",
@@ -6677,6 +7126,7 @@
         cat_raw_material: "خام مال", cat_labour: "مزدوری", cat_paint: "پینٹ", cat_utilities: "یوٹیلیٹیز",
         cat_rent: "کرایہ", cat_transport: "نقل و حمل", amount_rs: "رقم (روپے)",
         quick_help: "فوری مدد", got_it: "سمجھ گیا", about_this_till: "اس ٹل کے بارے میں",
+        app_version_label: "ورژن",
         custom_ellipsis: "مخصوص…", enter_custom_colour: "مخصوص رنگ درج کریں", ok: "ٹھیک ہے",
         color_black: "کالا", color_shine_black: "شائن بلیک", color_matt_black: "میٹ بلیک",
         color_white: "سفید", color_moon_white: "مون وائٹ", color_half_white: "ہاف وائٹ",
@@ -7720,7 +8170,11 @@
       const deviceNameInput = document.getElementById('settings-device-name');
       if(deviceNameInput) deviceNameInput.value = DEVICE_NAME;
       resetSettingsFormFeedback_();
-      renderExportSettingsCard_();
+      // Export Settings and Ledger Settings (range/sort) no longer render
+      // here as of 2026-08-23 — both moved onto each ledger's own page/
+      // modal (see openLedgerExportSettings_/openLedgerSettings_ further
+      // below). Only "Show on Overview Dashboard" is still a global,
+      // Settings-page-owned preference.
       renderOverviewModulesSettingsList_();
       renderNotifSettingsList_();
       renderNotifPushStatus_();
@@ -7728,13 +8182,10 @@
       if(notifFreqSelEl) notifFreqSelEl.value = String(notifPushFrequencyMinutes_);
       const notifReminderSelEl = document.getElementById('settings-notif-reminder');
       if(notifReminderSelEl) notifReminderSelEl.value = String(notifPushReminderHours_);
-      const rangeSel = document.getElementById('settings-default-export-range');
-      if(rangeSel) rangeSel.value = ledgerDefaultExportRange_;
       const autoLockSel = document.getElementById('settings-autolock');
       if(autoLockSel) autoLockSel.value = String(autoLockMinutes_);
-      const sortSel = document.getElementById('settings-ledger-sort-order');
-      if(sortSel) sortSel.value = ledgerSortNewestFirst_ ? 'newest' : 'oldest';
       renderGoogleAccountSettingsCard_();
+      renderSyncSettingsCard_();
     }
     document.getElementById('settings-pin-save').addEventListener('click', ()=>{
       const errorEl = document.getElementById('settings-pin-error');
@@ -8029,6 +8480,23 @@
     };
     const REPORT_VIEWS = ["Factories","Sales","Transactions","Expenses"];
     const reportsNav = document.getElementById('side-reports-nav');
+    // ADD (2026-08-23, restoring the 2026-08-20 UI polish batch): tints a
+    // few specific sidebar icons so the busiest/most distinct sections are
+    // recognizable at a glance instead of every icon reading the same
+    // plain text color. Deliberately a short, curated list, not every nav
+    // item — active/hover states (see the CSS above) still win the
+    // cascade regardless of what's set here.
+    const NAV_ACCENT = {
+      "Sales": 'var(--green)',
+      "Expenses": 'var(--red)',
+      "Raw Material": 'var(--orange)',
+      "Paint": 'var(--logo-b)',
+      "Labour Ledger": 'var(--logo-a)'
+    };
+    function applyNavAccent_(btn, label){
+      const accent = NAV_ACCENT[label];
+      if(accent) btn.style.setProperty('--nav-accent', accent);
+    }
 
     const INVENTORY_ICONS = {
       "Raw Material": '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.3 7 12 12 20.7 7"/><line x1="12" y1="22" x2="12" y2="12"/>',
@@ -8104,6 +8572,7 @@
       b.className = 'side-nav-item side-report-item';
       b.dataset.view = key;
       b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${REPORT_ICONS[label]}</svg>${i18nSpan_(label)}`;
+      applyNavAccent_(b, label);
       b.addEventListener('click', ()=> setView(key));
       reportsNav.appendChild(b);
     });
@@ -8113,6 +8582,7 @@
       b.className = 'side-nav-item side-report-item';
       b.dataset.view = key;
       b.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${INVENTORY_ICONS[label]}</svg>${i18nSpan_(label)}`;
+      applyNavAccent_(b, label);
       b.addEventListener('click', ()=> setView(key));
       inventoryNav.appendChild(b);
     });
@@ -8265,6 +8735,23 @@
 
     // ---------------- PRODUCT GRID ----------------
     const productGrid = document.getElementById('product-grid');
+    // ADD (2026-08-23, restoring the 2026-08-20 UI polish batch): every
+    // product card used the same hardcoded pinwheel icon regardless of
+    // what kind of fan it actually was. Matches "pedestal"/"exhaust"
+    // (case-insensitive) in the product's own category string; anything
+    // else — including a category added later that doesn't match either —
+    // falls back to the original pinwheel (now the "Universal" icon), so
+    // a new category can never end up with a missing/broken icon.
+    function productIconSvg_(cat){
+      const c = (cat || '').toLowerCase();
+      if(c.includes('pedestal')){
+        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="6"/><line x1="12" y1="14" x2="12" y2="20"/><line x1="7" y1="20" x2="17" y2="20"/></svg>`;
+      }
+      if(c.includes('exhaust')){
+        return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="14" x2="20" y2="14"/><line x1="4" y1="19" x2="20" y2="19"/></svg>`;
+      }
+      return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="6.3" y1="6.3" x2="17.7" y2="17.7"/><line x1="17.7" y1="6.3" x2="6.3" y2="17.7"/><path d="M12 12 C12 9 10.3 8 9.2 8.7 C8.1 9.4 9 12 12 12 Z"/><path d="M12 12 C15 12 16 10.3 15.3 9.2 C14.6 8.1 12 9 12 12 Z"/><path d="M12 12 C12 15 13.7 16 14.8 15.3 C15.9 14.6 15 12 12 12 Z"/></svg>`;
+    }
     function renderProducts(){
       productGrid.innerHTML = '';
       const list = PRODUCTS.filter(p=>{
@@ -8285,16 +8772,7 @@
             </button>
           </div>
           <div class="product-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="12" cy="12" r="8"/>
-              <line x1="12" y1="4" x2="12" y2="20"/>
-              <line x1="4" y1="12" x2="20" y2="12"/>
-              <line x1="6.3" y1="6.3" x2="17.7" y2="17.7"/>
-              <line x1="17.7" y1="6.3" x2="6.3" y2="17.7"/>
-              <path d="M12 12 C12 9 10.3 8 9.2 8.7 C8.1 9.4 9 12 12 12 Z"/>
-              <path d="M12 12 C15 12 16 10.3 15.3 9.2 C14.6 8.1 12 9 12 12 Z"/>
-              <path d="M12 12 C12 15 13.7 16 14.8 15.3 C15.9 14.6 15 12 12 12 Z"/>
-            </svg>
+            ${productIconSvg_(p.cat)}
           </div>
           <div class="product-name">${p.name}</div>
           <div class="product-cat">${p.cat}${p.color ? ' · ' + p.color : ''}${p.size ? ' · ' + p.size : ''}${p.weight ? ' · ' + p.weight : ''}</div>
@@ -8392,10 +8870,7 @@
               <input type="number" min="1" class="qty-input" data-act="qty-input" value="${line.qty}">
             </div>
             <div class="line-total">${fmt(line.price*line.qty)}</div>
-            ${isCustom
-              ? `<button class="remove-x" data-act="rm" style="font-size:11px; font-family:var(--body); font-weight:600; text-transform:uppercase; letter-spacing:0.3px; padding:5px 10px; border:1px solid var(--steel-line); border-radius:6px;">Remove</button>`
-              : `<button class="remove-x" data-act="rm">✕</button>`
-            }
+            <button class="remove-x" data-act="rm">✕</button>
           `;
           const qtyInput = row.querySelector('[data-act="qty-input"]');
           qtyInput.addEventListener('change', ()=> setQty(line.id, qtyInput.value));
@@ -8410,7 +8885,27 @@
     }
     function updateCheckoutBtnState(){
       const factorySelected = !!document.getElementById('invoice-factory').value;
-      document.getElementById('checkout-btn').disabled = cart.length === 0 || !factorySelected;
+      const btn = document.getElementById('checkout-btn');
+      const cartEmpty = cart.length === 0;
+      btn.disabled = cartEmpty || !factorySelected;
+      // FIX (2026-08-23, restoring the 2026-08-20 UI polish batch): used to
+      // always show "Unpaid Order" even while disabled, giving no clue
+      // WHY — an empty cart and a missing factory selection look identical.
+      // A tooltip wouldn't work here either (doesn't fire on touch), so the
+      // specific reason becomes the button's own label instead, reverting
+      // to the real "Unpaid Order" label (and its data-i18n binding, so
+      // language switches keep updating it normally) the moment both
+      // conditions are satisfied.
+      if(cartEmpty){
+        btn.removeAttribute('data-i18n');
+        btn.textContent = tr('checkout_cart_empty');
+      } else if(!factorySelected){
+        btn.removeAttribute('data-i18n');
+        btn.textContent = tr('checkout_select_factory');
+      } else {
+        btn.setAttribute('data-i18n', 'unpaid_order_btn');
+        btn.textContent = tr('unpaid_order_btn');
+      }
     }
     document.getElementById('invoice-factory').addEventListener('change', updateCheckoutBtnState);
 
@@ -8434,7 +8929,20 @@
     const aboutModal = document.getElementById('about-modal');
     document.getElementById('side-help').addEventListener('click', ()=> helpModal.classList.add('active'));
     document.getElementById('help-close').addEventListener('click', ()=> helpModal.classList.remove('active'));
-    document.getElementById('side-about').addEventListener('click', ()=> aboutModal.classList.add('active'));
+    // ---------------- APP VERSION (shown in the About modal) ----------------
+    // IMPORTANT: bump APP_VERSION (and update APP_VERSION_NOTE with a short
+    // one-line summary of what changed) every time index.html is changed in
+    // a way that ships in a real APK build. This is manual and intentional —
+    // nothing computes it automatically — so the user can always tell which
+    // build they're on by opening About, and a future session can tell what
+    // last shipped without digging through project docs.
+    const APP_VERSION = "2026.08.23.1";
+    const APP_VERSION_NOTE = "Merged in the new base build (Firebase push notifications, PIN recovery by email, cross-device deletion sync, switchable Google/PIN lock, invoice backdating) and ported over the receipt date safety check plus sync-merge fixes";
+    function renderAboutVersion_(){
+      const el = document.getElementById('about-version');
+      if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
+    }
+    document.getElementById('side-about').addEventListener('click', ()=>{ renderAboutVersion_(); aboutModal.classList.add('active'); });
     document.getElementById('about-close').addEventListener('click', ()=> aboutModal.classList.remove('active'));
 
     // ---------------- EDIT / ADD / DELETE PRODUCT ----------------
@@ -9596,8 +10104,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingCustomerReceipt = await fileToLocalReceipt_(file);
-        clReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('cl-date').value);
+        if(!rf){ clReceiptFileInput.value = ''; return; }
+        pendingCustomerReceipt = rf;
+        clReceiptCurrentName.textContent = rf.name;
         clReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -9952,7 +10462,7 @@
           ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
           </div>`);
       });
-      entriesWrap.innerHTML = joinLedgerBlocks_(blocks);
+      entriesWrap.innerHTML = joinLedgerBlocks_(blocks, 'customerledger');
       entriesWrap.querySelectorAll('.cl-entry-receipt').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const eIdx = parseInt(btn.dataset.idx,10);
@@ -10719,21 +11229,22 @@
     // order of the already-built HTML blocks is flipped here, so eIdx-based
     // Edit/Delete/Receipt button wiring (which indexes straight into the
     // real entries array) never has to change.
-    function joinLedgerBlocks_(blocks){
-      return (ledgerSortNewestFirst_ ? blocks.slice().reverse() : blocks).join('');
+    function joinLedgerBlocks_(blocks, ledgerKey){
+      return (ledgerSortNewestFirstFor_(ledgerKey) ? blocks.slice().reverse() : blocks).join('');
     }
-    function computeDefaultExportRange_(){
-      if(ledgerDefaultExportRange_ === 'all') return { from:'', to:'' };
+    function computeDefaultExportRange_(ledgerKey){
+      const range = ledgerExportRangeFor_(ledgerKey);
+      if(range === 'all') return { from:'', to:'' };
       const pad = n => String(n).padStart(2,'0');
       const now = new Date();
       const to = todayISO_();
       let from;
-      if(ledgerDefaultExportRange_ === 'month'){
+      if(range === 'month'){
         from = `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`;
-      } else if(ledgerDefaultExportRange_ === '30days'){
+      } else if(range === '30days'){
         const d = new Date(now); d.setDate(d.getDate() - 29);
         from = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-      } else if(ledgerDefaultExportRange_ === 'year'){
+      } else if(range === 'year'){
         from = `${now.getFullYear()}-01-01`;
       } else {
         return { from:'', to:'' };
@@ -10922,7 +11433,7 @@
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
-        entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks) : '<div class="empty-state" style="padding:20px 10px;">' + tr('no_matching_orders') + '</div>';
+        entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'paint') : '<div class="empty-state" style="padding:20px 10px;">' + tr('no_matching_orders') + '</div>';
         entriesWrap.querySelectorAll('.pl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -11095,8 +11606,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingPaintReceipt = await fileToLocalReceipt_(file);
-        plReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('pl-date').value);
+        if(!rf){ plReceiptFileInput.value = ''; return; }
+        pendingPaintReceipt = rf;
+        plReceiptCurrentName.textContent = rf.name;
         plReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -11441,8 +11954,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingRawReceipt = await fileToLocalReceipt_(file);
-        rlReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('rl-date').value);
+        if(!rf){ rlReceiptFileInput.value = ''; return; }
+        pendingRawReceipt = rf;
+        rlReceiptCurrentName.textContent = rf.name;
         rlReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -11565,7 +12080,7 @@
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
-        entriesWrap.innerHTML = joinLedgerBlocks_(blocks);
+        entriesWrap.innerHTML = joinLedgerBlocks_(blocks, 'raw');
         entriesWrap.querySelectorAll('.rl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -11895,8 +12410,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingCustomLedgerReceipt = await fileToLocalReceipt_(file);
-        culReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('cul-date').value);
+        if(!rf){ culReceiptFileInput.value = ''; return; }
+        pendingCustomLedgerReceipt = rf;
+        culReceiptCurrentName.textContent = rf.name;
         culReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -12593,7 +13110,7 @@
           ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
           </div>`);
       });
-      entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks) : '<div class="empty-state" style="padding:20px 10px;">' + tr('no_matching_orders') + '</div>';
+      entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'custom') : '<div class="empty-state" style="padding:20px 10px;">' + tr('no_matching_orders') + '</div>';
       entriesWrap.querySelectorAll('.cul-entry-receipt').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const eIdx = parseInt(btn.dataset.idx,10);
@@ -13809,8 +14326,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingLabourReceipt = await fileToLocalReceipt_(file);
-        wlReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, document.getElementById('wl-date').value);
+        if(!rf){ wlReceiptFileInput.value = ''; return; }
+        pendingLabourReceipt = rf;
+        wlReceiptCurrentName.textContent = rf.name;
         wlReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -13972,7 +14491,7 @@
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
-        entriesWrap.innerHTML = joinLedgerBlocks_(blocks);
+        entriesWrap.innerHTML = joinLedgerBlocks_(blocks, 'labour');
         entriesWrap.querySelectorAll('.wl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -14016,7 +14535,7 @@
       // Ledger Settings > Default Entry Sort Order can flip the drawn order
       // so it's at the TOP instead — scroll target has to follow whichever
       // end the newest entry actually ended up on.
-      if(scrollToLatest) entriesWrap.scrollTop = ledgerSortNewestFirst_ ? 0 : entriesWrap.scrollHeight;
+      if(scrollToLatest) entriesWrap.scrollTop = ledgerSortNewestFirstFor_('labour') ? 0 : entriesWrap.scrollHeight;
     }
 
     function wlPopulateProfileFields_(w){
@@ -14745,9 +15264,11 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingExpenseReceipt = await fileToLocalReceipt_(file);
+        const rf = await receiptDateCheck_(file, document.getElementById('exp-date').value);
+        if(!rf){ expReceiptFileInput.value = ''; return; }
+        pendingExpenseReceipt = rf;
         removeExpenseReceiptFlag = false;
-        expReceiptCurrentName.textContent = file.name;
+        expReceiptCurrentName.textContent = rf.name;
         expReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -16291,8 +16812,10 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingPaymentReceipt = await fileToLocalReceipt_(file);
-        rpReceiptCurrentName.textContent = file.name;
+        const rf = await receiptDateCheck_(file, '');
+        if(!rf){ rpReceiptFileInput.value = ''; return; }
+        pendingPaymentReceipt = rf;
+        rpReceiptCurrentName.textContent = rf.name;
         rpReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
     });
@@ -16500,8 +17023,7 @@
     // (see the .settings-collapse-* CSS above) — bound once here, not
     // inside renderSettingsView_ (which re-runs every time the Settings
     // tab is opened), so this listener never stacks up duplicate copies.
-    [['settings-export-columns-toggle','settings-export-columns-body'],
-     ['settings-overview-modules-toggle','settings-overview-modules-body']].forEach(([btnId, bodyId])=>{
+    [['settings-overview-modules-toggle','settings-overview-modules-body']].forEach(([btnId, bodyId])=>{
       const btn = document.getElementById(btnId);
       const body = document.getElementById(bodyId);
       if(btn && body){
@@ -16554,7 +17076,14 @@
       // (and wrong semantics — it would end up blocking a delete the
       // person actually wanted) for any of them, so skip this guard
       // entirely for anything with "delete" in its id.
-      if(!btn || /delete/i.test(btn.id || '')) return;
+      // ADD (2026-08-23): also skip les-close/lsm-close — the per-ledger
+      // Export Settings / Ledger Settings modals have no "unsaved changes"
+      // concept at all, every checkbox/select change inside them already
+      // saves immediately (same as the old Settings-tab cards they
+      // replaced), so the input/change listener above marking them dirty
+      // is a false positive here — "Discard what you've entered?" would
+      // be asked for a change that's already been saved.
+      if(!btn || /delete/i.test(btn.id || '') || btn.id === 'les-close' || btn.id === 'lsm-close') return;
       const overlay = btn.closest('.modal-overlay');
       if(!overlay || overlay.dataset.formDirty !== '1') return;
       if(!confirm(tr('discard_changes_confirm'))){
@@ -16569,9 +17098,13 @@
       const file = e.target.files[0];
       if(!file) return;
       try{
-        pendingOrderReceipt = await fileToLocalReceipt_(file);
+        const selT = selectedOrderReceiptId ? transactionsLog.find(x => String(x.id) === String(selectedOrderReceiptId)) : null;
+        const entryDateStr = selT && selT.date ? dmyToISO_(selT.date) : '';
+        const rf = await receiptDateCheck_(file, entryDateStr);
+        if(!rf){ aorReceiptFileInput.value = ''; aorUpdateSaveState_(); return; }
+        pendingOrderReceipt = rf;
         pendingOrderReceiptFile = file;
-        aorReceiptCurrentName.textContent = file.name;
+        aorReceiptCurrentName.textContent = rf.name;
         aorReceiptCurrent.style.display = 'flex';
       } catch(err){ alert('Could not read the selected file.'); }
       aorUpdateSaveState_();
@@ -17076,12 +17609,15 @@
       document.getElementById('ef-order-label').style.display = (isTxn || isFactoryLedger) ? '' : 'none';
       document.getElementById('ef-order-number').style.display = (isTxn || isFactoryLedger) ? '' : 'none';
       document.getElementById('ef-order-number').value = '';
-      // Default range comes from Ledger Settings > Default Export Date
-      // Range — "All Time" (the original hardcoded default) leaves this
-      // exactly as before; any other choice pre-fills From/To and unchecks
-      // "All Dates", but the user can still freely change or clear it here
-      // same as always, this only changes what the modal opens showing.
-      const defaultRange = computeDefaultExportRange_();
+      // Default range comes from this ledger's own Ledger Settings >
+      // Default Export Date Range (independent per ledger as of 2026-08-23
+      // — see ledgerExportRangeFor_) — "All Time" (the original hardcoded
+      // default) leaves this exactly as before; any other choice pre-fills
+      // From/To and unchecks "All Dates", but the user can still freely
+      // change or clear it here same as always, this only changes what the
+      // modal opens showing.
+      const exportRangeLedgerKey = isRawLedger ? 'raw' : (isLabourLedger ? 'labour' : (isFactoryLedger ? 'customerledger' : (isPainterLedger ? 'paint' : (isCustomLedger ? 'custom' : section))));
+      const defaultRange = computeDefaultExportRange_(exportRangeLedgerKey);
       document.getElementById('ef-date-from').value = defaultRange.from;
       document.getElementById('ef-date-to').value = defaultRange.to;
       document.getElementById('ef-all-dates').checked = !defaultRange.from;
@@ -17968,43 +18504,158 @@
       { key:'rawledger', labelKey:'rawledger_title' },
       { key:'customledger', labelKey:'custom_ledgers_title' }
     ];
-    let settingsExportLedgerSel_ = 'paint';
-    function renderExportSettingsCard_(){
-      const ledgerSel = document.getElementById('settings-export-ledger');
-      if(!ledgerSel) return;
-      if(!ledgerSel.options.length){
-        ledgerSel.innerHTML = Object.keys(EXPORT_LEDGER_HEADERS_).map(k =>
-          `<option value="${k}">${EXPORT_LEDGER_TITLES_[k]}</option>`
-        ).join('');
-      }
-      ledgerSel.value = settingsExportLedgerSel_;
-      const headers = EXPORT_LEDGER_HEADERS_[settingsExportLedgerSel_] || [];
-      const keys = EXPORT_COLUMN_KEYS_[settingsExportLedgerSel_] || [];
-      const prefs = exportColumnPrefs_[settingsExportLedgerSel_] || {};
-      const list = document.getElementById('settings-export-columns-list');
+    // ---------------- EXPORT SETTINGS + LEDGER SETTINGS: relocated onto
+    // each ledger (2026-08-23) ----------------
+    // Both of these used to be global cards on the Settings tab — Export
+    // Settings needed its own "which ledger?" dropdown (settingsExportLedgerSel_
+    // above) since one card had to cover all 7 exportable ledgers, and
+    // Ledger Settings' range/sort applied identically to every ledger at
+    // once. Per the user's explicit request, both now live on each
+    // ledger's own page/modal instead: a small columns icon beside that
+    // ledger's Export button opens ledgerExportSettingsModal already
+    // scoped to that one ledger (no dropdown needed — see
+    // openLedgerExportSettings_ below), and a small gear icon top-left of
+    // that ledger's header opens ledgerSettingsModal the same way (see
+    // openLedgerSettings_). Ledger Settings' range/sort are also now
+    // genuinely INDEPENDENT per ledger rather than one shared value —
+    // see ledgerExportRangeFor_/ledgerSortNewestFirstFor_ below.
+    let ledgerExportSettingsCtx_ = null;
+    const ledgerExportSettingsModal = document.getElementById('ledger-export-settings-modal');
+    function renderLedgerExportSettingsModal_(){
+      const ledgerKey = ledgerExportSettingsCtx_;
+      if(!ledgerKey) return;
+      const headers = EXPORT_LEDGER_HEADERS_[ledgerKey] || [];
+      const keys = EXPORT_COLUMN_KEYS_[ledgerKey] || [];
+      const prefs = exportColumnPrefs_[ledgerKey] || {};
+      const list = document.getElementById('les-columns-list');
       if(!list) return;
       list.innerHTML = headers.map((h, i) => {
         const key = keys[i];
         const checked = prefs[key] !== false;
         return `<label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
-          <input type="checkbox" class="settings-export-col-check" data-key="${key}" ${checked ? 'checked' : ''} style="width:16px; height:16px;">
+          <input type="checkbox" class="les-col-check" data-key="${key}" ${checked ? 'checked' : ''} style="width:16px; height:16px;">
           ${h}
         </label>`;
       }).join('');
-      list.querySelectorAll('.settings-export-col-check').forEach(cb=>{
+      list.querySelectorAll('.les-col-check').forEach(cb=>{
         cb.addEventListener('change', ()=>{
           const key = cb.dataset.key;
-          if(!exportColumnPrefs_[settingsExportLedgerSel_]) exportColumnPrefs_[settingsExportLedgerSel_] = {};
-          if(cb.checked) delete exportColumnPrefs_[settingsExportLedgerSel_][key];
-          else exportColumnPrefs_[settingsExportLedgerSel_][key] = false;
+          if(!exportColumnPrefs_[ledgerKey]) exportColumnPrefs_[ledgerKey] = {};
+          if(cb.checked) delete exportColumnPrefs_[ledgerKey][key];
+          else exportColumnPrefs_[ledgerKey][key] = false;
           saveExportColumnPrefs_();
         });
       });
     }
-    document.getElementById('settings-export-ledger').addEventListener('change', (e)=>{
-      settingsExportLedgerSel_ = e.target.value;
-      renderExportSettingsCard_();
+    // Called from a small icon button next to a ledger's own Export
+    // button — ledgerKey matches EXPORT_COLUMN_KEYS_/EXPORT_LEDGER_HEADERS_
+    // above (e.g. 'paint', 'raw', 'custom', 'labour', 'transactions',
+    // 'customerledger', 'expenses'); titleText is that ledger's own display
+    // name so the modal reads naturally ("Export Settings — Paint Ledger").
+    function openLedgerExportSettings_(ledgerKey, titleText){
+      ledgerExportSettingsCtx_ = ledgerKey;
+      const titleEl = document.getElementById('les-title');
+      if(titleEl) titleEl.textContent = tr('export_settings_title') + (titleText ? (' — ' + titleText) : '');
+      renderLedgerExportSettingsModal_();
+      if(ledgerExportSettingsModal) ledgerExportSettingsModal.classList.add('active');
+    }
+    window.openLedgerExportSettings_ = openLedgerExportSettings_;
+    const lesCloseBtn = document.getElementById('les-close');
+    if(lesCloseBtn) lesCloseBtn.addEventListener('click', ()=> ledgerExportSettingsModal.classList.remove('active'));
+
+    // Ledger Settings' range/sort — migrated from the two single global
+    // values above (ledgerDefaultExportRange_/ledgerSortNewestFirst_,
+    // still read here ONLY as the fallback/migration default for a ledger
+    // that hasn't had its own value set yet — nothing writes to those two
+    // globals any more) into per-ledger-keyed objects, so changing one
+    // ledger's default range or sort order never affects any other ledger.
+    let ledgerExportRangeByKey_ = {};
+    try{ const savedRangeByKey = localStorage.getItem('pos-ledger-export-range-by-key'); if(savedRangeByKey) ledgerExportRangeByKey_ = JSON.parse(savedRangeByKey) || {}; }catch(e){}
+    function ledgerExportRangeFor_(ledgerKey){
+      return ledgerExportRangeByKey_[ledgerKey] !== undefined ? ledgerExportRangeByKey_[ledgerKey] : ledgerDefaultExportRange_;
+    }
+    function setLedgerExportRangeFor_(ledgerKey, val){
+      ledgerExportRangeByKey_[ledgerKey] = val;
+      try{ localStorage.setItem('pos-ledger-export-range-by-key', JSON.stringify(ledgerExportRangeByKey_)); }catch(e){}
+    }
+    let ledgerSortNewestFirstByKey_ = {};
+    try{ const savedSortByKey = localStorage.getItem('pos-ledger-sort-newest-first-by-key'); if(savedSortByKey) ledgerSortNewestFirstByKey_ = JSON.parse(savedSortByKey) || {}; }catch(e){}
+    function ledgerSortNewestFirstFor_(ledgerKey){
+      return ledgerSortNewestFirstByKey_[ledgerKey] !== undefined ? ledgerSortNewestFirstByKey_[ledgerKey] : ledgerSortNewestFirst_;
+    }
+    function setLedgerSortNewestFirstFor_(ledgerKey, val){
+      ledgerSortNewestFirstByKey_[ledgerKey] = val;
+      try{ localStorage.setItem('pos-ledger-sort-newest-first-by-key', JSON.stringify(ledgerSortNewestFirstByKey_)); }catch(e){}
+      // Refresh whichever ledger detail modal (if any) is currently open
+      // for this same ledger, so the new order is visible immediately
+      // rather than only after next reopening it.
+      if(ledgerKey === 'paint' && painterLedgerModal && painterLedgerModal.classList.contains('active')) renderPainterLedgerModalContent_();
+      if(ledgerKey === 'raw' && rawLedgerModal && rawLedgerModal.classList.contains('active')) renderRawLedgerModalContent_();
+      if(ledgerKey === 'custom' && customLedgerModal && customLedgerModal.classList.contains('active')) renderCustomLedgerModalContent_();
+      if(ledgerKey === 'labour' && workerLedgerModal && workerLedgerModal.classList.contains('active')) renderWorkerLedgerModalContent_();
+      if(ledgerKey === 'customerledger' && customerLedgerModal && customerLedgerModal.classList.contains('active')) renderCustomerLedgerModalContent_();
+    }
+    let ledgerSettingsCtx_ = null;
+    const ledgerSettingsModal = document.getElementById('ledger-settings-modal');
+    function openLedgerSettings_(ledgerKey, titleText){
+      ledgerSettingsCtx_ = ledgerKey;
+      const titleEl = document.getElementById('lsm-title');
+      if(titleEl) titleEl.textContent = tr('ledger_settings_title') + (titleText ? (' — ' + titleText) : '');
+      const rangeSel = document.getElementById('lsm-range');
+      if(rangeSel) rangeSel.value = ledgerExportRangeFor_(ledgerKey);
+      const sortSel = document.getElementById('lsm-sort');
+      if(sortSel) sortSel.value = ledgerSortNewestFirstFor_(ledgerKey) ? 'newest' : 'oldest';
+      if(ledgerSettingsModal) ledgerSettingsModal.classList.add('active');
+    }
+    window.openLedgerSettings_ = openLedgerSettings_;
+    const lsmCloseBtn = document.getElementById('lsm-close');
+    if(lsmCloseBtn) lsmCloseBtn.addEventListener('click', ()=> ledgerSettingsModal.classList.remove('active'));
+    document.getElementById('lsm-range').addEventListener('change', (e)=>{
+      if(!ledgerSettingsCtx_) return;
+      setLedgerExportRangeFor_(ledgerSettingsCtx_, e.target.value);
     });
+    document.getElementById('lsm-sort').addEventListener('change', (e)=>{
+      if(!ledgerSettingsCtx_) return;
+      setLedgerSortNewestFirstFor_(ledgerSettingsCtx_, e.target.value === 'newest');
+    });
+    // Small per-page/per-modal wrapper functions for the Export Settings
+    // (top-right) and Ledger Settings (top-left) icon buttons on each
+    // ledger — kept as named window-exposed functions (rather than calling
+    // tr()/openLedgerExportSettings_ directly from an inline onclick=""
+    // attribute) because onclick="" attributes run in the GLOBAL scope,
+    // not inside this IIFE, so they can only reach functions/variables
+    // that are explicitly hung on window — same reasoning as every other
+    // onclick="somethingHere(...)" already in this file. The three
+    // entity-scoped ones (painter/custom/customer ledger modals) also read
+    // the currently-open entity's own name from closure scope here so the
+    // modal title reads naturally, e.g. "Export Settings — Ali Painters".
+    window.openTxnExportSettings_ = () => openLedgerExportSettings_('transactions', tr('transactions_title'));
+    window.openTxnLedgerSettings_ = () => openLedgerSettings_('transactions', tr('transactions_title'));
+    window.openExpensesExportSettings_ = () => openLedgerExportSettings_('expenses', tr('expenses_title'));
+    window.openRawExportSettings_ = () => openLedgerExportSettings_('raw', tr('rawledger_title'));
+    window.openRawLedgerSettings_ = () => openLedgerSettings_('raw', tr('rawledger_title'));
+    window.openPaintExportSettings_ = () => openLedgerExportSettings_('paint', tr('paint_title'));
+    window.openPaintLedgerSettings_ = () => openLedgerSettings_('paint', tr('paint_title'));
+    window.openLabourLedgerExportSettings_ = () => openLedgerExportSettings_('labour', tr('labourledger_title'));
+    window.openLabourLedgerSettings_ = () => openLedgerSettings_('labour', tr('labourledger_title'));
+    window.openPainterModalExportSettings_ = () => {
+      const p = inventory.paint[currentPainterIdx];
+      openLedgerExportSettings_('paint', p ? p.name : tr('paint_title'));
+    };
+    window.openPainterModalLedgerSettings_ = () => {
+      const p = inventory.paint[currentPainterIdx];
+      openLedgerSettings_('paint', p ? p.name : tr('paint_title'));
+    };
+    window.openCustomLedgerModalExportSettings_ = () => {
+      const cl = customLedgers[currentCustomLedgerIdx];
+      openLedgerExportSettings_('custom', cl ? cl.name : tr('custom_ledgers_title'));
+    };
+    window.openCustomLedgerModalLedgerSettings_ = () => {
+      const cl = customLedgers[currentCustomLedgerIdx];
+      openLedgerSettings_('custom', cl ? cl.name : tr('custom_ledgers_title'));
+    };
+    window.openCustomerLedgerModalExportSettings_ = () => openLedgerExportSettings_('customerledger', currentCustomerName || '');
+    window.openCustomerLedgerModalLedgerSettings_ = () => openLedgerSettings_('customerledger', currentCustomerName || '');
     function renderOverviewModulesSettingsList_(){
       const list = document.getElementById('settings-overview-modules-list');
       if(!list) return;
@@ -18025,26 +18676,10 @@
         });
       });
     }
-    document.getElementById('settings-default-export-range').addEventListener('change', (e)=>{
-      ledgerDefaultExportRange_ = e.target.value;
-      try{ localStorage.setItem('pos-ledger-default-export-range', ledgerDefaultExportRange_); }catch(err){}
-    });
     document.getElementById('settings-autolock').addEventListener('change', (e)=>{
       autoLockMinutes_ = parseInt(e.target.value, 10) || 0;
       try{ localStorage.setItem('pos-autolock-minutes', String(autoLockMinutes_)); }catch(err){}
       armAutoLockWatch_();
-    });
-    document.getElementById('settings-ledger-sort-order').addEventListener('change', (e)=>{
-      ledgerSortNewestFirst_ = e.target.value === 'newest';
-      try{ localStorage.setItem('pos-ledger-sort-newest-first', ledgerSortNewestFirst_ ? '1' : '0'); }catch(err){}
-      // Refresh whichever ledger detail modal (if any) is currently open,
-      // so the new order is visible immediately rather than only after
-      // next reopening it.
-      if(painterLedgerModal && painterLedgerModal.classList.contains('active')) renderPainterLedgerModalContent_();
-      if(rawLedgerModal && rawLedgerModal.classList.contains('active')) renderRawLedgerModalContent_();
-      if(customLedgerModal && customLedgerModal.classList.contains('active')) renderCustomLedgerModalContent_();
-      if(workerLedgerModal && workerLedgerModal.classList.contains('active')) renderWorkerLedgerModalContent_();
-      if(customerLedgerModal && customerLedgerModal.classList.contains('active')) renderCustomerLedgerModalContent_();
     });
     // Returns { headers, rows, hidden } — headers/rows with every hidden
     // column stripped out (same columns removed from every row, in the
