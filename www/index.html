@@ -1654,17 +1654,24 @@
          native Google Sign-In plugin keeps working on its PIN instead of
          locking the owner out of their own data mid-transition. Once the
          plugin is installed and this is rebuilt, the PIN block never
-         shows again. -->
+         shows again.
+         CHANGE (2026-08-22): "i want login via option like, Pin/Gmail/
+         Biometric" — both blocks are now genuine, switchable choices
+         instead of Google permanently hiding PIN. renderLockScreenMode_
+         picks which one shows FIRST (last one actually used, or Google
+         if it's already linked, else PIN), and each block carries a
+         link to switch to the other. Fingerprint is pulled out to its
+         own standalone button below (#fingerprint-unlock-btn-standalone)
+         since it's an independent quick-path that should work no matter
+         which of the two blocks is currently showing, not just from
+         inside the Google block. -->
     <div id="google-unlock-block" style="display:none; width:230px; margin:0 auto;">
       <div id="google-unlock-status" style="font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-bottom:16px; min-height:16px;"></div>
       <button type="button" id="google-signin-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#1f1f1f; border:1px solid var(--steel-line); padding:12px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13.5px; cursor:pointer;">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.6 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34 5.1 29.3 3 24 3 16.3 3 9.6 7.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 36.6 26.8 37.5 24 37.5c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.4 40.5 16.1 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.2 5.2C40.9 36 44 30.5 44 24c0-1.4-.1-2.4-.4-3.5z"/></svg>
         <span id="google-signin-btn-label">Sign in with Google</span>
       </button>
-      <button type="button" id="fingerprint-unlock-btn" style="display:none; width:100%; align-items:center; justify-content:center; gap:8px; background:none; color:var(--text-dim); border:1px solid var(--steel-line); padding:10px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12.5px; cursor:pointer; margin-top:10px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11c0-3.87-2.69-7-6-7s-6 3.13-6 7v2c0 4.42 2.69 8 6 8"/><path d="M12 4c3.31 0 6 3.13 6 7v2"/><path d="M9 11a3 3 0 0 1 6 0v2c0 3.87-1.79 7-4 7"/><path d="M6 11c0-5.52 3.13-10 7-10"/></svg>
-        <span>Use Fingerprint</span>
-      </button>
+      <button type="button" id="switch-to-pin-link" class="lock-hint" style="background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-top:14px;">Use PIN instead</button>
     </div>
 
     <div id="pin-unlock-block">
@@ -1697,7 +1704,13 @@
         <button class="key wide" data-k="back">⌫</button>
       </div>
       <button class="lock-hint" id="forgot-pin-link" style="background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;">Forgot PIN?</button>
+      <button type="button" id="switch-to-google-link" class="lock-hint" style="display:none;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-top:8px;">Sign in with Google instead</button>
     </div>
+
+    <button type="button" id="fingerprint-unlock-btn-standalone" style="display:none; width:230px; margin:14px auto 0; align-items:center; justify-content:center; gap:8px; background:none; color:var(--text-dim); border:1px solid var(--steel-line); padding:10px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12.5px; cursor:pointer;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11c0-3.87-2.69-7-6-7s-6 3.13-6 7v2c0 4.42 2.69 8 6 8"/><path d="M12 4c3.31 0 6 3.13 6 7v2"/><path d="M9 11a3 3 0 0 1 6 0v2c0 3.87-1.79 7-4 7"/><path d="M6 11c0-5.52 3.13-10 7-10"/></svg>
+      <span>Use Fingerprint</span>
+    </button>
   </div>
 </div>
 
@@ -1713,6 +1726,30 @@
         <button class="btn-cancel" id="forgot-cancel-1">Cancel</button>
         <button class="btn-confirm" id="forgot-verify">Verify</button>
       </div>
+      <button class="lock-hint" id="forgot-use-email-link" style="background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-top:10px;display:block;">Email me a code instead</button>
+    </div>
+    <!-- ADD (2026-08-22): "forget pin to send recovery password to gmail"
+         — alternative to the security question above. Sends a one-time
+         code to the account this app's backend is set up under (see
+         sendPinRecoveryCode_ in Code.gs), not whichever account is
+         signed into the phone, so it always reaches the shop owner.
+         Needs a live connection to the Sheet (sheetConfigured()) since
+         it's a real server round trip, unlike the offline security
+         question — the "Use security question instead" link stays
+         available as an offline fallback. -->
+    <div id="forgot-step-email-code" style="display:none;">
+      <p id="forgot-email-code-status" style="font-size:12.5px; color:var(--text-dim); margin:0 0 14px;">We'll email a 6-digit code to the account this app is set up with.</p>
+      <button type="button" id="forgot-send-code-btn" class="btn-confirm" style="width:100%; margin-bottom:14px;">Send Code</button>
+      <div id="forgot-code-entry-block" style="display:none;">
+        <label class="field-label">6-Digit Code</label>
+        <input type="text" id="forgot-code-input" class="field-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="000000" autocomplete="off">
+        <p id="forgot-code-error" style="color:var(--red); font-size:11.5px; font-family:var(--mono); margin:-8px 0 12px; display:none;">Incorrect or expired code.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="forgot-cancel-3">Cancel</button>
+        <button type="button" class="btn-confirm" id="forgot-verify-code" style="display:none;">Verify Code</button>
+      </div>
+      <button class="lock-hint" id="forgot-use-question-link" style="background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-top:10px;display:block;">Use security question instead</button>
     </div>
     <div id="forgot-step-newpin" style="display:none;">
       <label class="field-label">New 4-Digit PIN</label>
@@ -2318,6 +2355,16 @@
           <option value="15" data-i18n="notif_freq_15">15 minutes</option>
           <option value="30" data-i18n="notif_freq_30">30 minutes</option>
           <option value="60" data-i18n="notif_freq_60">1 hour</option>
+        </select>
+
+        <label class="field-label" style="margin-top:12px;" data-i18n="notif_settings_reminder_label">Remind Me Again After</label>
+        <select id="settings-notif-reminder" class="field-input">
+          <option value="0" data-i18n="notif_reminder_never">Never (only once)</option>
+          <option value="1" data-i18n="notif_reminder_1h">1 hour</option>
+          <option value="6" data-i18n="notif_reminder_6h">6 hours</option>
+          <option value="12" data-i18n="notif_reminder_12h">12 hours</option>
+          <option value="24" data-i18n="notif_reminder_24h">24 hours</option>
+          <option value="72" data-i18n="notif_reminder_72h">3 days</option>
         </select>
 
         <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--steel-line);">
@@ -5755,6 +5802,20 @@
       // setupPushCheckTrigger_/action==='setPushFrequency' in Code.gs.
       postToBackend_('setPushFrequency', { minutes: notifPushFrequencyMinutes_ });
     });
+    // ADD (2026-08-22): "Remind Me Again After" — how long a STILL-
+    // pending item waits before re-pushing about it, instead of pushing
+    // once ever and going silent. One shared value on the backend, same
+    // as the check-frequency above (see getPushReminderIntervalMs_ /
+    // action==='setPushReminderInterval' in Code.gs). 0 = never repeat.
+    let notifPushReminderHours_ = 24;
+    try{ const savedReminder = localStorage.getItem('pos-notif-push-reminder-hours'); if(savedReminder !== null) notifPushReminderHours_ = parseInt(savedReminder, 10); if(isNaN(notifPushReminderHours_)) notifPushReminderHours_ = 24; }catch(e){}
+    const notifReminderSel_ = document.getElementById('settings-notif-reminder');
+    if(notifReminderSel_) notifReminderSel_.addEventListener('change', (e)=>{
+      notifPushReminderHours_ = parseInt(e.target.value, 10);
+      if(isNaN(notifPushReminderHours_)) notifPushReminderHours_ = 24;
+      try{ localStorage.setItem('pos-notif-push-reminder-hours', String(notifPushReminderHours_)); }catch(err){}
+      postToBackend_('setPushReminderInterval', { hours: notifPushReminderHours_ });
+    });
 
     // ---------------- PUSH NOTIFICATIONS (2026-08-22) ----------------
     // Requests permission, registers this phone for FCM, and saves the
@@ -5902,6 +5963,7 @@
         notif_settings_title: "Notification Alerts", notif_settings_desc: "Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.",
         notif_settings_pending_note: "Outside-app delivery isn't switched on yet — these preferences will start applying automatically as soon as it is.",
         notif_settings_frequency_label: "Check For New Alerts Every", notif_freq_5: "5 minutes", notif_freq_15: "15 minutes", notif_freq_30: "30 minutes", notif_freq_60: "1 hour",
+        notif_settings_reminder_label: "Remind Me Again After", notif_reminder_never: "Never (only once)", notif_reminder_1h: "1 hour", notif_reminder_6h: "6 hours", notif_reminder_12h: "12 hours", notif_reminder_24h: "24 hours", notif_reminder_72h: "3 days",
         notif_settings_types_label: "Alert Me About",
         notif_enable_btn: "Enable Push Notifications",
         notif_push_unavailable: "This build doesn't have push notifications yet — rebuild the app to enable this.",
@@ -5989,7 +6051,7 @@
         sort_oldest_first: "Oldest First", sort_newest_first: "Newest First",
         ledger_settings_overview_label: "Show on Overview Dashboard",
         google_account_title: "Google Sign-In & Lock Screen",
-        google_account_desc: "The lock screen now unlocks with your Google account instead of a PIN. Turn on fingerprint below for a faster day-to-day unlock — you'll still confirm with Google the first time on a device, or whenever fingerprint isn't available.",
+        google_account_desc: "The lock screen supports PIN, Google sign-in, and fingerprint together — a \"switch\" link on the lock screen lets you jump between PIN and Google any time, and fingerprint (once turned on below) works as a fast-path alongside either one, after you've confirmed once with Google.",
         google_account_switch_btn: "Sign In / Switch Account",
         biometric_toggle_label: "Use fingerprint for quick unlock",
         backup_title: "Gmail Backup",
@@ -6181,6 +6243,7 @@
         notif_settings_title: "نوٹیفیکیشن الرٹس", notif_settings_desc: "منتخب کریں کہ اطلاعات ٹیب کے کون سے الرٹس ایپ سے باہر بھی دکھائے جائیں (نوٹیفیکیشن ٹرے / لاک اسکرین)، اور ایپ کتنی دیر بعد نئے الرٹس چیک کرے۔",
         notif_settings_pending_note: "ایپ سے باہر بھیجنا ابھی فعال نہیں ہوا — یہ ترجیحات فعال ہوتے ہی خود بخود لاگو ہو جائیں گی۔",
         notif_settings_frequency_label: "نئے الرٹس چیک کریں ہر", notif_freq_5: "5 منٹ", notif_freq_15: "15 منٹ", notif_freq_30: "30 منٹ", notif_freq_60: "1 گھنٹہ",
+        notif_settings_reminder_label: "دوبارہ یاد دہانی کب کریں", notif_reminder_never: "کبھی نہیں (صرف ایک بار)", notif_reminder_1h: "1 گھنٹہ", notif_reminder_6h: "6 گھنٹے", notif_reminder_12h: "12 گھنٹے", notif_reminder_24h: "24 گھنٹے", notif_reminder_72h: "3 دن",
         notif_settings_types_label: "مجھے ان کے بارے میں مطلع کریں",
         notif_enable_btn: "پش نوٹیفیکیشنز فعال کریں",
         notif_push_unavailable: "اس بلڈ میں پش نوٹیفیکیشنز ابھی شامل نہیں — فعال کرنے کے لیے ایپ دوبارہ بنائیں۔",
@@ -6268,7 +6331,7 @@
         sort_oldest_first: "پرانی پہلے", sort_newest_first: "نئی پہلے",
         ledger_settings_overview_label: "اوور ویو ڈیش بورڈ پر دکھائیں",
         google_account_title: "گوگل سائن اِن اور لاک اسکرین",
-        google_account_desc: "لاک اسکرین اب پن کی بجائے آپ کے گوگل اکاؤنٹ سے کھلتی ہے۔ روزمرہ تیز انلاک کے لیے نیچے فنگر پرنٹ آن کریں — پہلی بار (یا جب فنگر پرنٹ دستیاب نہ ہو) آپ کو گوگل سے تصدیق کرنی ہوگی۔",
+        google_account_desc: "لاک اسکرین اب پن، گوگل سائن ان، اور فنگر پرنٹ تینوں ایک ساتھ سپورٹ کرتی ہے — لاک اسکرین پر ایک \"سوئچ\" لنک سے آپ کبھی بھی پن اور گوگل کے درمیان بدل سکتے ہیں، اور فنگر پرنٹ (نیچے آن کرنے کے بعد) گوگل سے ایک بار تصدیق کے بعد دونوں کے ساتھ تیز راستے کے طور پر کام کرتا ہے۔",
         google_account_switch_btn: "سائن اِن / اکاؤنٹ تبدیل کریں",
         biometric_toggle_label: "تیز انلاک کے لیے فنگر پرنٹ استعمال کریں",
         backup_title: "جی میل بیک اپ",
@@ -6911,7 +6974,7 @@
     const googleSignInBtn = document.getElementById('google-signin-btn');
     const googleSignInBtnLabel = document.getElementById('google-signin-btn-label');
     const googleUnlockStatus = document.getElementById('google-unlock-status');
-    const fingerprintUnlockBtn = document.getElementById('fingerprint-unlock-btn');
+    const fingerprintUnlockBtn = document.getElementById('fingerprint-unlock-btn-standalone');
 
     // The one Google account allowed to open this app. Blank until the
     // owner signs in for the first time (see signInWithGoogle_ below),
@@ -6984,26 +7047,57 @@
     // Decides, every time the lock screen is shown, which unlock method
     // to display: Google (+fingerprint shortcut) once the native plugin
     // is present, otherwise the original PIN keypad as a safe fallback.
+    // CHANGE (2026-08-22): PIN, Google, and fingerprint are now three
+    // genuinely switchable unlock methods rather than Google silently
+    // replacing PIN. lockScreenMethod_ tracks which of PIN/Google is
+    // currently showing; fingerprint sits alongside either one (its own
+    // standalone button+auto-prompt) since it's an independent shortcut,
+    // not a third exclusive screen. Remembers whichever method was used
+    // last as the default next time (see the switch-link handlers below).
+    let lockScreenMethod_ = GOOGLE_LINKED_EMAIL ? 'google' : 'pin';
+    try{ const savedMethod = localStorage.getItem('pos-lock-preferred-method'); if(savedMethod === 'google' || savedMethod === 'pin') lockScreenMethod_ = savedMethod; }catch(e){}
     async function renderLockScreenMode_(){
       const hasGoogle = !!googleSignInPlugin_();
-      if(hasGoogle){
+      const switchToPinLink = document.getElementById('switch-to-pin-link');
+      const switchToGoogleLink = document.getElementById('switch-to-google-link');
+      if(!hasGoogle){
+        // Old build without the Google Sign-In plugin yet — PIN is the
+        // only option, same as before this change.
+        googleUnlockBlock.style.display = 'none';
+        pinUnlockBlock.style.display = 'block';
+        if(switchToGoogleLink) switchToGoogleLink.style.display = 'none';
+        if(pinInput) pinInput.focus();
+      } else if(lockScreenMethod_ === 'google'){
         pinUnlockBlock.style.display = 'none';
         googleUnlockBlock.style.display = 'block';
         googleSignInBtnLabel.textContent = GOOGLE_LINKED_EMAIL ? ('Continue as ' + GOOGLE_LINKED_EMAIL) : 'Sign in with Google';
         googleUnlockStatus.textContent = GOOGLE_OAUTH_WEB_CLIENT_ID ? '' : 'Google sign-in isn\'t fully set up yet (missing OAuth client ID) — ask Claude to finish the native setup.';
-        const bioPlugin = biometricPlugin_();
-        let bioAvailable = false;
-        if(bioPlugin && BIOMETRIC_ENABLED && GOOGLE_LINKED_EMAIL){
-          try{ const r = await bioPlugin.isAvailable(); bioAvailable = !!(r && r.isAvailable); }catch(e){}
-        }
-        fingerprintUnlockBtn.style.display = bioAvailable ? 'flex' : 'none';
-        if(bioAvailable) tryBiometricUnlock_();
       } else {
         googleUnlockBlock.style.display = 'none';
         pinUnlockBlock.style.display = 'block';
+        if(switchToGoogleLink) switchToGoogleLink.style.display = 'inline-block';
         if(pinInput) pinInput.focus();
       }
+      // Fingerprint is independent of which block above is showing — it
+      // works from either PIN or Google as a fast-path, so it renders
+      // and auto-prompts the same regardless of lockScreenMethod_.
+      const bioPlugin = biometricPlugin_();
+      let bioAvailable = false;
+      if(bioPlugin && BIOMETRIC_ENABLED && GOOGLE_LINKED_EMAIL){
+        try{ const r = await bioPlugin.isAvailable(); bioAvailable = !!(r && r.isAvailable); }catch(e){}
+      }
+      if(fingerprintUnlockBtn) fingerprintUnlockBtn.style.display = bioAvailable ? 'flex' : 'none';
+      if(bioAvailable) tryBiometricUnlock_();
     }
+    function switchLockScreenMethod_(method){
+      lockScreenMethod_ = method;
+      try{ localStorage.setItem('pos-lock-preferred-method', method); }catch(e){}
+      renderLockScreenMode_();
+    }
+    const switchToPinLinkEl_ = document.getElementById('switch-to-pin-link');
+    if(switchToPinLinkEl_) switchToPinLinkEl_.addEventListener('click', ()=> switchLockScreenMethod_('pin'));
+    const switchToGoogleLinkEl_ = document.getElementById('switch-to-google-link');
+    if(switchToGoogleLinkEl_) switchToGoogleLinkEl_.addEventListener('click', ()=> switchLockScreenMethod_('google'));
 
     async function signInWithGoogle_(forceSwitch){
       const plugin = googleSignInPlugin_();
@@ -7032,6 +7126,8 @@
           GOOGLE_LINKED_EMAIL = email;
           try{ localStorage.setItem('pos-google-linked-email', GOOGLE_LINKED_EMAIL); }catch(e){}
           googleUnlockStatus.textContent = '';
+          lockScreenMethod_ = 'google';
+          try{ localStorage.setItem('pos-lock-preferred-method', 'google'); }catch(e){}
           unlock();
           return;
         }
@@ -7042,6 +7138,8 @@
           return;
         }
         googleUnlockStatus.textContent = '';
+        lockScreenMethod_ = 'google';
+        try{ localStorage.setItem('pos-lock-preferred-method', 'google'); }catch(e){}
         unlock();
       }catch(e){
         googleUnlockStatus.textContent = '';
@@ -7123,7 +7221,11 @@
       renderPinDots();
       if(enteredPin.length === 4){
         setTimeout(()=>{
-          if(enteredPin === PIN) unlock();
+          if(enteredPin === PIN){
+            lockScreenMethod_ = 'pin';
+            try{ localStorage.setItem('pos-lock-preferred-method', 'pin'); }catch(e){}
+            unlock();
+          }
           else wrongPin();
         }, 120);
       }
@@ -7211,38 +7313,114 @@
     // ---------------- FORGOT PIN ----------------
     const forgotModal = document.getElementById('forgot-pin-modal');
     const forgotStepQuestion = document.getElementById('forgot-step-question');
+    const forgotStepEmailCode = document.getElementById('forgot-step-email-code');
     const forgotStepNewPin = document.getElementById('forgot-step-newpin');
     const forgotAnswerInput = document.getElementById('forgot-answer');
     const forgotError = document.getElementById('forgot-error');
     const forgotNewPinInput = document.getElementById('forgot-new-pin');
     const forgotConfirmPinInput = document.getElementById('forgot-confirm-pin');
     const forgotResetError = document.getElementById('forgot-reset-error');
+    const forgotEmailCodeStatus = document.getElementById('forgot-email-code-status');
+    const forgotSendCodeBtn = document.getElementById('forgot-send-code-btn');
+    const forgotCodeEntryBlock = document.getElementById('forgot-code-entry-block');
+    const forgotCodeInput = document.getElementById('forgot-code-input');
+    const forgotCodeError = document.getElementById('forgot-code-error');
+    const forgotVerifyCodeBtn = document.getElementById('forgot-verify-code');
 
     function openForgotModal(){
       forgotAnswerInput.value = '';
       forgotError.style.display = 'none';
       forgotStepQuestion.style.display = 'block';
+      forgotStepEmailCode.style.display = 'none';
       forgotStepNewPin.style.display = 'none';
       forgotModal.classList.add('active');
       setTimeout(()=> forgotAnswerInput.focus(), 50);
     }
     function closeForgotModal(){ forgotModal.classList.remove('active'); }
+    function goToNewPinStep_(){
+      forgotStepQuestion.style.display = 'none';
+      forgotStepEmailCode.style.display = 'none';
+      forgotStepNewPin.style.display = 'block';
+      forgotNewPinInput.value = '';
+      forgotConfirmPinInput.value = '';
+      forgotResetError.style.display = 'none';
+      setTimeout(()=> forgotNewPinInput.focus(), 50);
+    }
 
     document.getElementById('forgot-pin-link').addEventListener('click', openForgotModal);
     document.getElementById('forgot-cancel-1').addEventListener('click', closeForgotModal);
     document.getElementById('forgot-cancel-2').addEventListener('click', closeForgotModal);
+    document.getElementById('forgot-cancel-3').addEventListener('click', closeForgotModal);
 
     document.getElementById('forgot-verify').addEventListener('click', ()=>{
       const answer = forgotAnswerInput.value.trim().toLowerCase();
       if(answer === RECOVERY_ANSWER.toLowerCase()){
-        forgotStepQuestion.style.display = 'none';
-        forgotStepNewPin.style.display = 'block';
-        forgotNewPinInput.value = '';
-        forgotConfirmPinInput.value = '';
-        forgotResetError.style.display = 'none';
-        setTimeout(()=> forgotNewPinInput.focus(), 50);
+        goToNewPinStep_();
       } else {
         forgotError.style.display = 'block';
+      }
+    });
+
+    // ADD (2026-08-22): "Email me a code instead" — the security question
+    // stays as the offline-friendly default; this needs a live backend
+    // call (sendPinRecoveryCode_/verifyPinRecoveryCode_ in Code.gs), so
+    // it's opt-in via this link rather than replacing the question.
+    document.getElementById('forgot-use-email-link').addEventListener('click', ()=>{
+      forgotStepQuestion.style.display = 'none';
+      forgotStepEmailCode.style.display = 'block';
+      forgotEmailCodeStatus.textContent = "We'll email a 6-digit code to the account this app is set up with.";
+      forgotSendCodeBtn.style.display = 'block';
+      forgotSendCodeBtn.disabled = false;
+      forgotSendCodeBtn.textContent = 'Send Code';
+      forgotCodeEntryBlock.style.display = 'none';
+      forgotVerifyCodeBtn.style.display = 'none';
+      forgotCodeInput.value = '';
+      forgotCodeError.style.display = 'none';
+    });
+    document.getElementById('forgot-use-question-link').addEventListener('click', ()=>{
+      forgotStepEmailCode.style.display = 'none';
+      forgotStepQuestion.style.display = 'block';
+      forgotAnswerInput.value = '';
+      forgotError.style.display = 'none';
+      setTimeout(()=> forgotAnswerInput.focus(), 50);
+    });
+    forgotSendCodeBtn.addEventListener('click', async ()=>{
+      if(!sheetConfigured()){
+        forgotEmailCodeStatus.textContent = "Needs an internet connection to send the code — try the security question instead if you're offline.";
+        return;
+      }
+      forgotSendCodeBtn.disabled = true;
+      forgotSendCodeBtn.textContent = 'Sending…';
+      const result = await postToBackend_('sendPinRecoveryCode', {});
+      forgotSendCodeBtn.disabled = false;
+      if(result && result.ok){
+        forgotEmailCodeStatus.textContent = 'Code sent to ' + (result.email || 'your email') + ' — check your inbox (valid 10 minutes).';
+        forgotSendCodeBtn.textContent = 'Resend Code';
+        forgotCodeEntryBlock.style.display = 'block';
+        forgotVerifyCodeBtn.style.display = 'inline-block';
+        forgotCodeInput.value = '';
+        forgotCodeError.style.display = 'none';
+        setTimeout(()=> forgotCodeInput.focus(), 50);
+      } else {
+        forgotEmailCodeStatus.textContent = "Couldn't send the code right now — check your connection and try again.";
+        forgotSendCodeBtn.textContent = 'Send Code';
+      }
+    });
+    forgotVerifyCodeBtn.addEventListener('click', async ()=>{
+      const code = forgotCodeInput.value.trim();
+      if(!/^[0-9]{6}$/.test(code)){
+        forgotCodeError.textContent = 'Enter the 6-digit code from your email.';
+        forgotCodeError.style.display = 'block';
+        return;
+      }
+      forgotVerifyCodeBtn.disabled = true;
+      const result = await postToBackend_('verifyPinRecoveryCode', { code: code });
+      forgotVerifyCodeBtn.disabled = false;
+      if(result && result.ok){
+        goToNewPinStep_();
+      } else {
+        forgotCodeError.textContent = (result && result.error === 'expired') ? 'That code expired — send a new one.' : 'Incorrect code — check your email and try again.';
+        forgotCodeError.style.display = 'block';
       }
     });
 
@@ -7294,6 +7472,8 @@
       renderNotifPushStatus_();
       const notifFreqSelEl = document.getElementById('settings-notif-frequency');
       if(notifFreqSelEl) notifFreqSelEl.value = String(notifPushFrequencyMinutes_);
+      const notifReminderSelEl = document.getElementById('settings-notif-reminder');
+      if(notifReminderSelEl) notifReminderSelEl.value = String(notifPushReminderHours_);
       const rangeSel = document.getElementById('settings-default-export-range');
       if(rangeSel) rangeSel.value = ledgerDefaultExportRange_;
       const autoLockSel = document.getElementById('settings-autolock');
