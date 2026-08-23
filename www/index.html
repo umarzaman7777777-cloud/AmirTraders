@@ -3570,42 +3570,31 @@
     <h3 id="product-edit-title">Edit Product</h3>
     <label class="field-label" data-i18n="product_name">Product Name</label>
     <input class="field-input" id="pe-name" placeholder="e.g. 18&quot; Pedestal Fan Guard">
-    <select class="field-input" id="pe-name-select" style="display:none;">
-      <option value="American-Plain-Tikka-Tala">American-Plain-Tikka-Tala</option>
-      <option value="American-Plain-Mono-Tala">American-Plain-Mono-Tala</option>
-      <option value="American-Kingri-Tikka-Tala">American-Kingri-Tikka-Tala</option>
-      <option value="American-Kingri-Tikka-Mono">American-Kingri-Tikka-Mono</option>
-      <option value="American-Plain-Tikka-F.Karri">American-Plain-Tikka-F.Karri</option>
-      <option value="American-Plain-Mono-F.Karri">American-Plain-Mono-F.Karri</option>
-      <option value="American-Kingri-Tikka-F.Karri">American-Kingri-Tikka-F.Karri</option>
-      <option value="American-Kingri-Mono-F.Karri">American-Kingri-Mono-F.Karri</option>
-      <option value="American-Plain-Tikka-Un Tala">American-Plain-Tikka-Un Tala</option>
-      <option value="American-Kingri-Tikka-Un Tala">American-Kingri-Tikka-Un Tala</option>
-      <option value="Custom" data-i18n="custom_ellipsis">Custom…</option>
-    </select>
+    <!-- UPDATED (2026-08-23): this used to be a fixed, hardcoded <option>
+         list with no way to add/remove entries. Options are now rendered
+         from the productNames list (renderPeNameSelect_ below) so new
+         names can be added here permanently, same "type it, Add it, ✕ to
+         remove" pattern already used for Weight further down. "Custom…"
+         stays as the last option, unaffected by add/remove, since that's
+         what reveals the one-off free-text pe-name-custom input below. -->
+    <select class="field-input" id="pe-name-select" style="display:none;"></select>
+    <div id="pe-name-add-wrap" class="weight-add-row" style="display:none;">
+      <input class="field-input" id="pe-name-new" placeholder="Add a new saved name…">
+      <button type="button" class="weight-add-btn" id="pe-name-add" title="Remember this name">Add</button>
+      <button type="button" class="weight-remove-btn" id="pe-name-remove" title="Remove selected name from saved list" disabled>✕</button>
+    </div>
     <input class="field-input" id="pe-name-custom" data-i18n-placeholder="enter_custom_name" placeholder="Enter custom product name" style="display:none;">
     <label class="field-label" id="pe-size-label" data-i18n="size" style="display:none;">Size</label>
-    <select class="field-input" id="pe-size-select" style="display:none;">
-      <option value="P/4&quot;">P/4"</option>
-      <option value="P/6&quot;">P/6"</option>
-      <option value="P/8&quot;">P/8"</option>
-      <option value="P/10&quot;">P/10"</option>
-      <option value="P/12&quot;">P/12"</option>
-      <option value="P/14&quot;">P/14"</option>
-      <option value="P/16&quot;">P/16"</option>
-      <option value="P/18&quot;">P/18"</option>
-      <option value="P/20&quot;">P/20"</option>
-      <option value="P/22&quot;">P/22"</option>
-      <option value="P/24&quot;">P/24"</option>
-      <option value="P/26&quot;">P/26"</option>
-      <option value="P/28&quot;">P/28"</option>
-      <option value="P/30&quot;">P/30"</option>
-      <option value="P/32&quot;">P/32"</option>
-      <option value="P/34&quot;">P/34"</option>
-      <option value="P/36&quot;">P/36"</option>
-      <option value="Custom" data-i18n="custom_ellipsis">Custom…</option>
-    </select>
+    <!-- UPDATED (2026-08-23): same change as pe-name-select above, backed
+         by productSizes instead. -->
+    <select class="field-input" id="pe-size-select" style="display:none;"></select>
+    <div id="pe-size-add-wrap" class="weight-add-row" style="display:none;">
+      <input class="field-input" id="pe-size-new" placeholder="Add a new saved size…">
+      <button type="button" class="weight-add-btn" id="pe-size-add" title="Remember this size">Add</button>
+      <button type="button" class="weight-remove-btn" id="pe-size-remove" title="Remove selected size from saved list" disabled>✕</button>
+    </div>
     <input class="field-input" id="pe-size-custom" data-i18n-placeholder="enter_custom_size" placeholder="Enter custom size" style="display:none;">
+
     <label class="field-label" id="pe-weight-label" data-i18n="weight" style="display:none;">Weight</label>
     <div id="pe-weight-wrap" style="display:none;">
       <div class="weight-add-row">
@@ -3978,7 +3967,7 @@
         const snap = {
           dirty: dataDirty, savedAt: Date.now(),
           transactionsLog, customerPayments, inventory, factories,
-          expenses, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights,
+          expenses, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
           rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
@@ -4018,6 +4007,8 @@
       if(Array.isArray(snap.guardWeights) && snap.guardWeights.length) guardWeights = snap.guardWeights;
       if(Array.isArray(snap.stickCounts) && snap.stickCounts.length) stickCounts = snap.stickCounts;
       if(Array.isArray(snap.productWeights) && snap.productWeights.length) productWeights = snap.productWeights;
+      if(Array.isArray(snap.productNames) && snap.productNames.length) productNames = snap.productNames;
+      if(Array.isArray(snap.productSizes) && snap.productSizes.length) productSizes = snap.productSizes;
       if(Array.isArray(snap.rawItemNames) && snap.rawItemNames.length) rawItemNames = snap.rawItemNames;
       if(Array.isArray(snap.rawWeights) && snap.rawWeights.length) rawWeights = snap.rawWeights;
       if(Array.isArray(snap.rawBundleCounts) && snap.rawBundleCounts.length) rawBundleCounts = snap.rawBundleCounts;
@@ -5186,7 +5177,7 @@
         data: {
           transactionsLog: transactionsForSync, customerPayments: customerPaymentsForSync, inventory: inventoryForSync, factories,
           confirmedEmpty,
-          expenses: expensesForSync, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights,
+          expenses: expensesForSync, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
           rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
@@ -5655,6 +5646,8 @@
           if(Array.isArray(d.guardWeights) && d.guardWeights.length > 0) guardWeights = d.guardWeights;
           if(Array.isArray(d.stickCounts) && d.stickCounts.length > 0) stickCounts = d.stickCounts;
           if(Array.isArray(d.productWeights) && d.productWeights.length > 0) productWeights = d.productWeights;
+          if(Array.isArray(d.productNames) && d.productNames.length > 0) productNames = d.productNames;
+          if(Array.isArray(d.productSizes) && d.productSizes.length > 0) productSizes = d.productSizes;
           if(Array.isArray(d.rawItemNames) && d.rawItemNames.length > 0) rawItemNames = d.rawItemNames;
           if(Array.isArray(d.rawWeights) && d.rawWeights.length > 0) rawWeights = d.rawWeights;
           if(Array.isArray(d.rawBundleCounts) && d.rawBundleCounts.length > 0) rawBundleCounts = d.rawBundleCounts;
@@ -7082,6 +7075,16 @@
     // which is a Labour piece-rate suggestion list for a different part of
     // the app. Synced/persisted the same way as the other suggestion lists.
     let productWeights = [];
+    // ADDED (2026-08-23): the Product Editor's Name and Size fields used to
+    // be a fixed, hardcoded <option> list baked directly into the HTML
+    // (see the old <select id="pe-name-select"> / <select id="pe-size-select">
+    // markup) — no way to add or remove entries without editing code. Now
+    // backed by these two lists exactly like productWeights above, seeded
+    // with that same original hardcoded set so nothing already in use
+    // disappears, and from here on manageable with the same "type to add,
+    // pick from saved, ✕ to delete" pattern.
+    let productNames = ["American-Plain-Tikka-Tala","American-Plain-Mono-Tala","American-Kingri-Tikka-Tala","American-Kingri-Tikka-Mono","American-Plain-Tikka-F.Karri","American-Plain-Mono-F.Karri","American-Kingri-Tikka-F.Karri","American-Kingri-Mono-F.Karri","American-Plain-Tikka-Un Tala","American-Kingri-Tikka-Un Tala"];
+    let productSizes = ["P/4\"","P/6\"","P/8\"","P/10\"","P/12\"","P/14\"","P/16\"","P/18\"","P/20\"","P/22\"","P/24\"","P/26\"","P/28\"","P/30\"","P/32\"","P/34\"","P/36\""];
     // Saved suggestion lists for the Raw Material Ledger entry form — Item
     // (replaces the old free-text Description with a reusable list, seeded
     // with the six materials this workshop actually buys), plus Weight/
@@ -8482,6 +8485,91 @@
       queueSync();
       renderPeWeightSelect_();
     });
+    // ADDED (2026-08-23): same "type it, Add it, ✕ to remove" pattern as
+    // Weight above, now for Name and Size — these used to be a fixed
+    // <option> list with no way to add/remove entries (see productNames/
+    // productSizes declaration for the full story). Structured slightly
+    // differently from Weight because the select here IS the primary
+    // field (choosing an option sets the product's name/size directly,
+    // rather than just being a shortcut into a separate text input) —
+    // Add/Remove work off a small dedicated input instead of reusing the
+    // main field, so typing a new option to save doesn't fight with
+    // picking an existing one.
+    const peNameNew = document.getElementById('pe-name-new');
+    const peNameAddBtn = document.getElementById('pe-name-add');
+    const peNameRemoveBtn = document.getElementById('pe-name-remove');
+    function renderPeNameSelect_(){
+      const current = peNameSelect.value;
+      peNameSelect.innerHTML = productNames.map(v => `<option value="${v}">${v}</option>`).join('')
+        + '<option value="Custom">Custom…</option>';
+      peNameSelect.value = (current && (productNames.includes(current) || current === 'Custom')) ? current : (productNames[0] || 'Custom');
+      peNameRemoveBtn.disabled = !productNames.includes(peNameSelect.value);
+      peNameCustom.style.display = (peNameSelect.value === 'Custom') ? '' : 'none';
+    }
+    peNameAddBtn.addEventListener('click', ()=>{
+      const val = peNameNew.value.trim();
+      if(!val) return;
+      if(!productNames.some(v => v.toLowerCase() === val.toLowerCase())){
+        productNames.push(val);
+        queueSync();
+      }
+      peNameNew.value = '';
+      renderPeNameSelect_();
+      peNameSelect.value = val;
+      peNameCustom.style.display = 'none';
+      peNameRemoveBtn.disabled = false;
+    });
+    peNameSelect.addEventListener('change', ()=>{
+      peNameCustom.style.display = (peNameSelect.value === 'Custom') ? '' : 'none';
+      peNameRemoveBtn.disabled = !productNames.includes(peNameSelect.value);
+    });
+    peNameRemoveBtn.addEventListener('click', ()=>{
+      const val = peNameSelect.value;
+      if(!val || val === 'Custom') return;
+      // Deliberately allowed even if a saved product currently uses this
+      // name — removing it from the SAVED LIST only affects future
+      // Add/Edit dropdowns, it never touches any product that already
+      // has this name (that's just a plain string on the product record,
+      // not a reference to this list).
+      productNames = productNames.filter(v => v !== val);
+      queueSync();
+      renderPeNameSelect_();
+    });
+    const peSizeNew = document.getElementById('pe-size-new');
+    const peSizeAddBtn = document.getElementById('pe-size-add');
+    const peSizeRemoveBtn = document.getElementById('pe-size-remove');
+    function renderPeSizeSelect_(){
+      const current = peSizeSelect.value;
+      peSizeSelect.innerHTML = productSizes.map(v => `<option value="${v}">${v}</option>`).join('')
+        + '<option value="Custom">Custom…</option>';
+      peSizeSelect.value = (current && (productSizes.includes(current) || current === 'Custom')) ? current : (productSizes[0] || 'Custom');
+      peSizeRemoveBtn.disabled = !productSizes.includes(peSizeSelect.value);
+      peSizeCustom.style.display = (peSizeSelect.value === 'Custom') ? '' : 'none';
+    }
+    peSizeAddBtn.addEventListener('click', ()=>{
+      const val = peSizeNew.value.trim();
+      if(!val) return;
+      if(!productSizes.some(v => v.toLowerCase() === val.toLowerCase())){
+        productSizes.push(val);
+        queueSync();
+      }
+      peSizeNew.value = '';
+      renderPeSizeSelect_();
+      peSizeSelect.value = val;
+      peSizeCustom.style.display = 'none';
+      peSizeRemoveBtn.disabled = false;
+    });
+    peSizeSelect.addEventListener('change', ()=>{
+      peSizeCustom.style.display = (peSizeSelect.value === 'Custom') ? '' : 'none';
+      peSizeRemoveBtn.disabled = !productSizes.includes(peSizeSelect.value);
+    });
+    peSizeRemoveBtn.addEventListener('click', ()=>{
+      const val = peSizeSelect.value;
+      if(!val || val === 'Custom') return;
+      productSizes = productSizes.filter(v => v !== val);
+      queueSync();
+      renderPeSizeSelect_();
+    });
     const pePrice = document.getElementById('pe-price');
     const peCost = document.getElementById('pe-cost');
     const peStock = document.getElementById('pe-stock');
@@ -8491,20 +8579,37 @@
     const peDeleteBtn = document.getElementById('pe-delete');
     let editingProductId = null;
 
-    peNameSelect.addEventListener('change', ()=>{
-      peNameCustom.style.display = (peNameSelect.value === 'Custom') ? '' : 'none';
-    });
-    peSizeSelect.addEventListener('change', ()=>{
-      peSizeCustom.style.display = (peSizeSelect.value === 'Custom') ? '' : 'none';
-    });
-
     const STANDARD_COLORS = ["Black","Shine Black","Matt Black","White","Moon White","Half White","Grey","Silver","Red","Blue"];
     peColor.addEventListener('change', ()=>{
       peColorOther.style.display = (peColor.value === 'Other') ? '' : 'none';
     });
 
+    // FIX (2026-08-23): root cause of "a product vanishes from both devices
+    // after restarting" — this used to be
+    // `PRODUCTS.reduce((max,p)=>Math.max(max,p.id),0)+1`, i.e. just "one
+    // more than the highest id THIS device currently has locally". Two
+    // phones adding a NEW product independently, without having synced
+    // with each other very recently, can easily land on the exact SAME
+    // next id (e.g. both compute id 7, right after starting from the same
+    // set of 6 existing products) — for two completely different
+    // products. mergeById_ (used when merging a load with local data)
+    // treats matching ids as "the same record" and keeps only one side,
+    // silently dropping the other — which surfaces as exactly a restart-
+    // triggered vanish, since a restart is when that merge runs.
+    // Switched to a millisecond timestamp — two different devices landing
+    // on the exact same millisecond is practically impossible for a
+    // manual "tap Add Product" action — with a tight collision-check loop
+    // for the (still remotely possible) case of two rapid local calls in
+    // the same millisecond. Deliberately kept as a plain NUMBER rather
+    // than a string+suffix: readProducts_() in Code.gs does
+    // `id: Number(r.id)` on every load, so a non-numeric id would
+    // silently become NaN the moment it round-trips through the sheet —
+    // this needed to stay numeric to avoid trading one data-loss bug for
+    // a worse one.
     function nextProductId(){
-      return PRODUCTS.reduce((max,p)=> Math.max(max, p.id), 0) + 1;
+      let id = Date.now();
+      while(PRODUCTS.some(p => p.id === id)) id++;
+      return id;
     }
 
     // ADD (2026-08-20): finished-goods stock tracking — decrements stock
@@ -8548,18 +8653,24 @@
       const isAmericanPedestal = activeCat === AMERICAN_PEDESTAL_CAT;
       peName.style.display = isAmericanPedestal ? 'none' : '';
       peNameSelect.style.display = isAmericanPedestal ? '' : 'none';
+      document.getElementById('pe-name-add-wrap').style.display = isAmericanPedestal ? '' : 'none';
       peSizeLabel.style.display = isAmericanPedestal ? '' : 'none';
       peSizeSelect.style.display = isAmericanPedestal ? '' : 'none';
+      document.getElementById('pe-size-add-wrap').style.display = isAmericanPedestal ? '' : 'none';
       peWeightLabel.style.display = isAmericanPedestal ? '' : 'none';
       peWeightWrap.style.display = isAmericanPedestal ? '' : 'none';
-      if(isAmericanPedestal) renderPeWeightSelect_();
+      if(isAmericanPedestal){
+        renderPeWeightSelect_();
+        renderPeNameSelect_();
+        renderPeSizeSelect_();
+      }
       if(id === null){
         document.getElementById('product-edit-title').textContent = 'Add Product';
         peName.value = '';
-        peNameSelect.value = AMERICAN_PEDESTAL_NAMES[0];
+        peNameSelect.value = productNames[0] || 'Custom';
         peNameCustom.style.display = 'none';
         peNameCustom.value = '';
-        peSizeSelect.value = AMERICAN_PEDESTAL_SIZES[0];
+        peSizeSelect.value = productSizes[0] || 'Custom';
         peSizeCustom.style.display = 'none';
         peSizeCustom.value = '';
         peWeight.value = '';
@@ -8578,7 +8689,7 @@
         if(!p) return;
         document.getElementById('product-edit-title').textContent = 'Edit Product';
         if(isAmericanPedestal){
-          if(AMERICAN_PEDESTAL_NAMES.includes(p.name)){
+          if(productNames.includes(p.name)){
             peNameSelect.value = p.name;
             peNameCustom.style.display = 'none';
             peNameCustom.value = '';
@@ -8587,7 +8698,7 @@
             peNameCustom.style.display = '';
             peNameCustom.value = p.name;
           }
-          if(p.size && AMERICAN_PEDESTAL_SIZES.includes(p.size)){
+          if(p.size && productSizes.includes(p.size)){
             peSizeSelect.value = p.size;
             peSizeCustom.style.display = 'none';
             peSizeCustom.value = '';
@@ -8596,7 +8707,7 @@
             peSizeCustom.style.display = '';
             peSizeCustom.value = p.size;
           } else {
-            peSizeSelect.value = AMERICAN_PEDESTAL_SIZES[0];
+            peSizeSelect.value = productSizes[0] || 'Custom';
             peSizeCustom.style.display = 'none';
             peSizeCustom.value = '';
           }
