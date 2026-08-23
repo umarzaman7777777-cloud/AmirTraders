@@ -4714,6 +4714,16 @@
     // below can flatten it the same way computeConfirmedEmptyCustomerLedgerEntries_
     // flattens lastRemoteRosters_.customerledger.
     let lastRemoteCustomLedgers_ = [];
+    // BUG (2026-08-23): Factories was the one roster tab that never got this
+    // treatment when Products/Transactions/CustomerPayments were fixed —
+    // deleting the shop's only/last factory (or supplier) emptied
+    // `factories` locally with nothing tracking what the sheet last held,
+    // so safeWriteRows_'s guard on the backend refused the empty overwrite
+    // forever: SYNC FAILED on every device, permanently, with the deleted
+    // factory (and its CustomerLedger rows, since one refused tab aborts
+    // the WHOLE saveAll_ call) stuck on the sheet no matter how many times
+    // the app retried. See computeConfirmedEmptyFactories_ below.
+    let lastRemoteFactories_ = [];
     async function mergeLatestRemoteBeforeSave_(){
       if(!sheetConfigured()) return;
       try{
@@ -4726,6 +4736,7 @@
         lastRemoteProducts_ = Array.isArray(d.products) ? d.products : [];
         lastRemoteCustomerPayments_ = Array.isArray(d.customerPayments) ? d.customerPayments : [];
         lastRemoteCustomLedgers_ = Array.isArray(d.customLedgers) ? d.customLedgers : [];
+        lastRemoteFactories_ = Array.isArray(d.factories) ? d.factories : [];
         // FIX: fold in every tombstone recorded by ANY device (not just
         // this one), then actively drop anything this device is still
         // holding locally that one of those tombstones covers — see
@@ -4827,6 +4838,17 @@
       const remoteList = lastRemoteProducts_ || [];
       return PRODUCTS.length === 0 && remoteList.length > 0 &&
         remoteList.every(p => p && p.id && isDeleted_('products', p.id));
+    }
+    // FIX (2026-08-23): same proof as computeConfirmedEmptyProducts_ above,
+    // for Factories — see the lastRemoteFactories_ comment for the bug this
+    // closes. Matched by name (factories don't have an id, and every
+    // delete already records markDeleted_('factories', name) — see the
+    // factory-delete handler), same tombstone bucket pruneLocalTombstoned_
+    // and the Factories deletion code already use.
+    function computeConfirmedEmptyFactories_(){
+      const remoteList = lastRemoteFactories_ || [];
+      return factories.length === 0 && remoteList.length > 0 &&
+        remoteList.every(f => f && f.name && isDeleted_('factories', f.name));
     }
     // Same reasoning again, for Customer Payments — see lastRemoteCustomerPayments_
     // above for why this was missing and how it caused a permanent "SYNC
@@ -5148,6 +5170,7 @@
       // proofs of the same underlying claim.
       if(computeConfirmedEmptyCustomerLedgerEntries_()) confirmedEmpty.customerledger = true;
       if(computeConfirmedEmptyProducts_()) confirmedEmpty.products = true;
+      if(computeConfirmedEmptyFactories_()) confirmedEmpty.factories = true;
       if(computeConfirmedEmptyCustomerPayments_()) confirmedEmpty.customerPayments = true;
       if(computeConfirmedEmptyCustomLedgerEntries_()) confirmedEmpty.customLedgerEntries = true;
       // FIX (2026-08-20): same OR-with-the-roster-check pattern as customerledger
