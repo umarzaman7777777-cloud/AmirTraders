@@ -2498,12 +2498,12 @@
 
         <div class="view-header" style="margin-top:22px;">
           <div class="view-header-text">
-            <h2 style="font-size:15px;" data-i18n="stock_onhand_title">Product Stock (On Hand)</h2>
-            <p data-i18n="stock_onhand_sub">Set or adjust each product's on-hand stock quantity here.</p>
+            <h2 style="font-size:15px;" data-i18n="stock_onhand_title">Raw Material Stock</h2>
+            <p data-i18n="stock_onhand_sub">Computed automatically — raw material received (from the Raw Material Ledger) minus what's been used by every order booked, by material name. Set a Low Stock threshold per material to get flagged when it's running low.</p>
           </div>
         </div>
         <div class="stat-grid" id="stock-stats" style="margin-bottom:18px;"></div>
-        <input class="field-input" id="stock-search" data-i18n-placeholder="stock_search_placeholder" placeholder="Search by product name or category…" style="max-width:320px;">
+        <input class="field-input" id="stock-search" data-i18n-placeholder="stock_search_placeholder" placeholder="Search by raw material name…" style="max-width:320px;">
         <div id="stock-table"></div>
       </div>
 
@@ -3025,6 +3025,14 @@
 <datalist id="dl-guardsize"></datalist>
 <datalist id="dl-guardweight"></datalist>
 <datalist id="dl-sticks"></datalist>
+<!-- ADD (2026-08-24, user request: "Raw Material Stock" tracking) — shared
+     suggestion list for the raw material "name" field, backed by the same
+     rawItemNames array the Raw Material Ledger's own Description combo
+     already uses (see refreshRawMaterialDatalist_). Used on both the Add
+     Product recipe rows (which material a unit consumes) and the Raw
+     Material Ledger entry form (which material this entry adds stock for)
+     so the same name is typed consistently in both places. -->
+<datalist id="dl-rawmaterial"></datalist>
 
 <!-- ================= MANAGE LABOUR LISTS MODAL ================= -->
 <!-- Generic manager for every saved autocomplete list used by the worker
@@ -3271,6 +3279,26 @@
           <input class="pl-colour-search" id="rl-desc" placeholder="e.g. Steel Taar / Advance payment" autocomplete="off">
         </div>
         <div class="pl-colour-dropdown" id="rl-desc-dropdown" style="display:none;"></div>
+      </div>
+      <!-- ADD (2026-08-24, user request): structured stock-tracking fields —
+           separate from the free-text Description/Weight/Bundle/Gauge/Size
+           fields above and below, which stay exactly as they were. Only
+           filling in a Raw Material Name here (matched against the Raw
+           Material Stock page by exact name) makes this entry count toward
+           that material's running stock — everything here is optional, so
+           an entry that's purely a payment (no material actually received)
+           can leave all three blank exactly as before this change. -->
+      <label class="field-label" data-i18n="rl_stock_name">Raw Material Name (for stock tracking, optional)</label>
+      <input class="field-input" id="rl-stockname" list="dl-rawmaterial" data-i18n-placeholder="rl_stock_name_placeholder" placeholder="e.g. Steel Taar" autocomplete="off">
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="rl_weight_in">Weight Received (kg)</label>
+          <input class="field-input" id="rl-weightin" type="number" min="0" step="any" placeholder="0">
+        </div>
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="rl_items_in">Items Received (pcs)</label>
+          <input class="field-input" id="rl-itemsin" type="number" min="0" step="1" placeholder="0">
+        </div>
       </div>
       <div style="display:flex; gap:10px;">
         <div style="flex:1;">
@@ -4118,6 +4146,19 @@
          this screen. A product that already had a custom level saved from
          before this change keeps it untouched (pe-save no longer reads or
          writes reorderLevel at all). -->
+    <!-- ADD (2026-08-24, user request): "Raw Material Used" — how much of
+         which raw material(s) one unit of this product consumes, set once
+         here so Raw Material Stock (the renamed/rebuilt Stock page — see
+         computeRawMaterialStock_) can automatically deduct it from every
+         order booked, with no separate manual stock-adjustment step. Every
+         row is optional; a product with no rows here simply isn't linked to
+         any raw material and never affects that page. Multiple rows are
+         allowed per product (e.g. a product that uses two different raw
+         materials), each independent. -->
+    <label class="field-label" data-i18n="recipe_title">Raw Material Used (per unit)</label>
+    <p style="font-size:11px; color:var(--text-dim); margin:-6px 0 8px;" data-i18n="recipe_sub">Optional — set once and every order of this product automatically deducts from Raw Material Stock.</p>
+    <div id="pe-recipe-rows"></div>
+    <button type="button" class="weight-add-btn" id="pe-recipe-add-row" data-i18n="recipe_add_row" style="margin-bottom:14px;">+ Add Material</button>
     <label class="field-label" data-i18n="colour">Colour</label>
     <select class="field-input" id="pe-color">
       <option value="Black" data-i18n="color_black">Black</option>
@@ -4514,7 +4555,7 @@
           dirty: dataDirty, savedAt: Date.now(),
           transactionsLog, customerPayments, inventory, factories,
           expenses, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
-          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts,
+          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
@@ -4560,6 +4601,7 @@
       if(Array.isArray(snap.rawBundleCounts) && snap.rawBundleCounts.length) rawBundleCounts = snap.rawBundleCounts;
       if(Array.isArray(snap.rawGaugeCounts) && snap.rawGaugeCounts.length) rawGaugeCounts = snap.rawGaugeCounts;
       if(Array.isArray(snap.rawSizeCounts) && snap.rawSizeCounts.length) rawSizeCounts = snap.rawSizeCounts;
+      if(snap.rawMaterialReorderLevels && typeof snap.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = snap.rawMaterialReorderLevels;
       if(Array.isArray(snap.paintItemSizes) && snap.paintItemSizes.length) paintItemSizes = snap.paintItemSizes;
       if(Array.isArray(snap.paintItemTypes) && snap.paintItemTypes.length) paintItemTypes = snap.paintItemTypes;
       if(Array.isArray(snap.paintFactoryNames) && snap.paintFactoryNames.length) paintFactoryNames = snap.paintFactoryNames;
@@ -5416,6 +5458,16 @@
         // backend guard in Code.gs's saveAll_ protects the Meta-tab write
         // itself, for any device/build, not just ones with this fix).
         if(typeof d.txnNumber === 'number' && d.txnNumber > txnNumber) txnNumber = d.txnNumber;
+        // ADD (2026-08-24): rawMaterialReorderLevels is a small flat settings
+        // map (materialName -> threshold), not an id/name-keyed array, so it
+        // doesn't fit mergeById_/mergeByName_ — a plain per-key union instead:
+        // any threshold set on ANOTHER device that this device doesn't have
+        // yet gets pulled in, but a threshold this device already has (in
+        // case it's mid-edit right now) is never overwritten by a possibly-
+        // stale remote value.
+        if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object'){
+          rawMaterialReorderLevels = Object.assign({}, d.rawMaterialReorderLevels, rawMaterialReorderLevels);
+        }
         if(Array.isArray(d.customLedgers)) customLedgers = mergeCustomLedgersWithEntries_(customLedgers, d.customLedgers);
         if(d.inventory){
           lastRemoteRosters_ = {
@@ -5853,7 +5905,7 @@
           transactionsLog: transactionsForSync, customerPayments: customerPaymentsForSync, inventory: inventoryForSync, factories,
           confirmedEmpty,
           expenses: expensesForSync, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
-          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts,
+          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers: customLedgersForSync, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
@@ -6358,6 +6410,7 @@
           if(Array.isArray(d.rawBundleCounts) && d.rawBundleCounts.length > 0) rawBundleCounts = d.rawBundleCounts;
           if(Array.isArray(d.rawGaugeCounts) && d.rawGaugeCounts.length > 0) rawGaugeCounts = d.rawGaugeCounts;
           if(Array.isArray(d.rawSizeCounts) && d.rawSizeCounts.length > 0) rawSizeCounts = d.rawSizeCounts;
+          if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = d.rawMaterialReorderLevels;
           if(Array.isArray(d.paintItemSizes) && d.paintItemSizes.length > 0) paintItemSizes = d.paintItemSizes;
           if(Array.isArray(d.paintItemTypes) && d.paintItemTypes.length > 0) paintItemTypes = d.paintItemTypes;
           if(Array.isArray(d.paintFactoryNames) && d.paintFactoryNames.length > 0) paintFactoryNames = d.paintFactoryNames;
@@ -6887,12 +6940,21 @@
         stock_qty: "Stock Quantity", stock_qty_optional_hint: "— optional, leave blank to not track stock for this item",
         reorder_level: "Low Stock Alert Level", reorder_level_hint: "— get notified at/below this quantity (default 5)",
         stock_title: "Stock", stock_sub: "Every product's stock quantity in one place — set or adjust it here; leave blank to stop tracking stock for that item.",
-        stock_search_placeholder: "Search by product name or category…", stock_total_products: "Total Products", stock_tracked: "Stock Tracked", not_tracked: "Not tracked",
+        stock_search_placeholder: "Search by raw material name…", stock_total_products: "Total Products", stock_tracked: "Stock Tracked", not_tracked: "Not tracked",
         category: "Category", no_products_to_show: "No products yet — add one from a category first.",
         stock_ready_title: "Stock Ready (in Factory)", stock_ready_sub: "Confirmed factory orders that haven't been received yet — once you attach the gate receipt, the order drops off this list.",
         stockready_orders: "Orders Ready", stockready_value: "Stock Ready Value", no_stock_ready: "Nothing ready at a factory right now.",
         attach_gate_receipt: "Attach Gate Receipt", stockready_factory: "Factory", stockready_date: "Date", stockready_items: "Items", stockready_total: "Total",
-        stock_onhand_title: "Product Stock (On Hand)", stock_onhand_sub: "Set or adjust each product's on-hand stock quantity here.",
+        stock_onhand_title: "Raw Material Stock", stock_onhand_sub: "Computed automatically — raw material received minus what's been used by every order booked, by material name.",
+        // ADD (2026-08-24, user request): Raw Material Stock table + forms
+        rawmat_total_materials: "Materials Tracked", rawmat_low_count: "Low Stock",
+        rawmat_name: "Raw Material", rawmat_weight_in: "Weight In (kg)", rawmat_weight_used: "Weight Used (kg)", rawmat_weight_remaining: "Weight Remaining (kg)",
+        rawmat_items_in: "Items In (pcs)", rawmat_items_used: "Items Used (pcs)", rawmat_items_remaining: "Items Remaining (pcs)",
+        rawmat_threshold: "Low Stock At", rawmat_threshold_placeholder: "Not set", no_raw_material_stock: "No raw material stock yet — add a Raw Material Ledger entry with a Raw Material Name and weight/items received, or link a product's recipe, to see it here.",
+        rl_stock_name: "Raw Material Name (for stock tracking, optional)", rl_stock_name_placeholder: "e.g. Steel Taar",
+        rl_weight_in: "Weight Received (kg)", rl_items_in: "Items Received (pcs)",
+        recipe_title: "Raw Material Used (per unit)", recipe_sub: "Optional — set once and every order of this product automatically deducts from Raw Material Stock.", recipe_add_row: "+ Add Material",
+        recipe_material_placeholder: "Material name", recipe_weight_placeholder: "Weight/unit (kg)", recipe_items_placeholder: "Items/unit",
         notif_settings_title: "Notification Alerts", notif_settings_desc: "Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.",
         notif_settings_pending_note: "Outside-app delivery isn't switched on yet — these preferences will start applying automatically as soon as it is.",
         notif_settings_frequency_label: "Check For New Alerts Every", notif_freq_5: "5 minutes", notif_freq_15: "15 minutes", notif_freq_30: "30 minutes", notif_freq_60: "1 hour",
@@ -7196,12 +7258,20 @@
         stock_qty: "اسٹاک مقدار", stock_qty_optional_hint: "— اختیاری، اس آئٹم کا اسٹاک ٹریک نہ کرنے کے لیے خالی چھوڑ دیں",
         reorder_level: "کم اسٹاک الرٹ لیول", reorder_level_hint: "— اس مقدار پر یا اس سے کم ہونے پر مطلع کریں (ڈیفالٹ 5)",
         stock_title: "اسٹاک", stock_sub: "ہر پروڈکٹ کی اسٹاک مقدار ایک ہی جگہ — یہاں سے سیٹ یا ایڈجسٹ کریں؛ اس آئٹم کا اسٹاک ٹریک نہ کرنے کے لیے خالی چھوڑ دیں۔",
-        stock_search_placeholder: "پروڈکٹ کے نام یا کیٹیگری سے تلاش کریں…", stock_total_products: "کل پروڈکٹس", stock_tracked: "اسٹاک ٹریک شدہ", not_tracked: "ٹریک نہیں ہو رہا",
+        stock_search_placeholder: "خام مال کے نام سے تلاش کریں…", stock_total_products: "کل پروڈکٹس", stock_tracked: "اسٹاک ٹریک شدہ", not_tracked: "ٹریک نہیں ہو رہا",
         category: "کیٹیگری", no_products_to_show: "ابھی تک کوئی پروڈکٹ نہیں — پہلے کسی کیٹیگری سے ایک شامل کریں۔",
         stock_ready_title: "اسٹاک تیار (فیکٹری میں)", stock_ready_sub: "کنفرم شدہ فیکٹری آرڈرز جو ابھی وصول نہیں ہوئے — گیٹ رسید لگانے پر یہ آرڈر اس فہرست سے ہٹ جائے گا۔",
         stockready_orders: "تیار آرڈرز", stockready_value: "اسٹاک تیار ویلیو", no_stock_ready: "فی الحال فیکٹری میں کچھ تیار نہیں۔",
         attach_gate_receipt: "گیٹ رسید لگائیں", stockready_factory: "فیکٹری", stockready_date: "تاریخ", stockready_items: "آئٹمز", stockready_total: "کل",
-        stock_onhand_title: "پروڈکٹ اسٹاک (دستیاب)", stock_onhand_sub: "ہر پروڈکٹ کی دستیاب اسٹاک مقدار یہاں سے سیٹ یا ایڈجسٹ کریں۔",
+        stock_onhand_title: "خام مال اسٹاک", stock_onhand_sub: "خودکار حساب — موصول ہونے والا خام مال منفی ہر بک شدہ آرڈر میں استعمال ہونے والی مقدار، خام مال کے نام کے مطابق۔",
+        rawmat_total_materials: "ٹریک شدہ خام مال", rawmat_low_count: "کم اسٹاک",
+        rawmat_name: "خام مال", rawmat_weight_in: "وزن آیا (کلوگرام)", rawmat_weight_used: "وزن استعمال ہوا (کلوگرام)", rawmat_weight_remaining: "باقی وزن (کلوگرام)",
+        rawmat_items_in: "آئٹمز آئے (عدد)", rawmat_items_used: "آئٹمز استعمال ہوئے (عدد)", rawmat_items_remaining: "باقی آئٹمز (عدد)",
+        rawmat_threshold: "کم اسٹاک حد", rawmat_threshold_placeholder: "سیٹ نہیں", no_raw_material_stock: "ابھی تک کوئی خام مال اسٹاک نہیں — خام مال لیجر میں خام مال کا نام اور وزن/آئٹمز درج کریں، یا کسی پروڈکٹ کی ریسیپی سے لنک کریں۔",
+        rl_stock_name: "خام مال کا نام (اسٹاک ٹریکنگ کے لیے، اختیاری)", rl_stock_name_placeholder: "مثلاً اسٹیل تار",
+        rl_weight_in: "وزن موصول ہوا (کلوگرام)", rl_items_in: "آئٹمز موصول ہوئے (عدد)",
+        recipe_title: "استعمال شدہ خام مال (فی یونٹ)", recipe_sub: "اختیاری — ایک بار سیٹ کریں اور اس پروڈکٹ کا ہر آرڈر خودکار طور پر خام مال اسٹاک سے منہا ہو جائے گا۔", recipe_add_row: "+ خام مال شامل کریں",
+        recipe_material_placeholder: "خام مال کا نام", recipe_weight_placeholder: "وزن/یونٹ (کلوگرام)", recipe_items_placeholder: "آئٹمز/یونٹ",
         notif_settings_title: "نوٹیفیکیشن الرٹس", notif_settings_desc: "منتخب کریں کہ اطلاعات ٹیب کے کون سے الرٹس ایپ سے باہر بھی دکھائے جائیں (نوٹیفیکیشن ٹرے / لاک اسکرین)، اور ایپ کتنی دیر بعد نئے الرٹس چیک کرے۔",
         notif_settings_pending_note: "ایپ سے باہر بھیجنا ابھی فعال نہیں ہوا — یہ ترجیحات فعال ہوتے ہی خود بخود لاگو ہو جائیں گی۔",
         notif_settings_frequency_label: "نئے الرٹس چیک کریں ہر", notif_freq_5: "5 منٹ", notif_freq_15: "15 منٹ", notif_freq_30: "30 منٹ", notif_freq_60: "1 گھنٹہ",
@@ -7856,6 +7926,14 @@
     let rawBundleCounts = [];
     let rawGaugeCounts = [];
     let rawSizeCounts = [];
+    // ADD (2026-08-24, user request): "Raw Material Stock" — per-material-name
+    // low-stock threshold, keyed by the same name used in a Raw Material
+    // Ledger entry's stockName / a product's recipe[].material (see
+    // computeRawMaterialStock_ below). Blank/unset for a material = never
+    // flagged low, same "blank means not tracked" convention as
+    // p.reorderLevel. Synced via Code.gs's Meta tab (readMeta_/writeMeta_),
+    // since it's a small flat settings map, not a per-row sheet column.
+    let rawMaterialReorderLevels = {};
     // The standard product-name/size chart for the "American Pedestal Fan"
     // category (used to populate the Product edit modal's dropdowns below)
     // — moved up here so the Paint Ledger's Item Type suggestions (right
@@ -9203,55 +9281,120 @@
       });
     }
 
-    // ADD (2026-08-24, user request): a dedicated page listing every
-    // product's stock quantity across ALL categories (unlike renderProducts
-    // above, which is scoped to activeCat), with an inline editable number
-    // per row — this is where Stock Quantity is set/adjusted now that it's
-    // out of the Add Product form. Same "blank = not tracked" convention as
-    // before: clearing the input removes p.stock entirely rather than
-    // storing 0, and DEFAULT_REORDER_LEVEL_/p.reorderLevel (both untouched
-    // by this page) still decide what counts as "low" exactly as they do
-    // for the product grid and Notifications' low-stock alerts.
+    // REBUILT (2026-08-24, user request): this used to be a manual
+    // per-product "Product Stock (On Hand)" quantity, set by hand for each
+    // item. The user asked for it to become "Raw Material Stock" instead —
+    // computed automatically from two other things that already exist, with
+    // no separate manual stock-adjustment step:
+    //  1. Raw material RECEIVED — every Raw Material Ledger entry (any
+    //     supplier) that has a Raw Material Name + a Weight/Items Received
+    //     value (see the rl-stockname/rl-weightin/rl-itemsin fields on the
+    //     Raw Material Ledger entry form), summed by name.
+    //  2. Raw material USED — every product that has a "Raw Material Used"
+    //     recipe (p.recipe — set on the Add/Edit Product modal), multiplied
+    //     by how many of that product appear across EVERY order ever booked
+    //     in Order Booked (not just confirmed/paid/delivered ones — the
+    //     user confirmed material is used the moment an order is placed,
+    //     since that's the closest event this app tracks to "a unit was
+    //     actually made"), summed by material name.
+    // Remaining = received − used, per material name. A material only shows
+    // up here once it's referenced by at least one ledger entry or one
+    // product recipe — nothing is invented for materials nobody has entered
+    // yet. KNOWN LIMITATION: matching an order's line to a product is done
+    // by product NAME (same convention already used elsewhere, e.g.
+    // itemsSummary/itemCounts pairing) — if a product is renamed or deleted
+    // after being ordered, older orders under the old name won't be found
+    // and won't count toward usage for that material.
+    function computeRawMaterialStock_(){
+      const byName = {};
+      function getRec_(name){
+        if(!byName[name]) byName[name] = { name, weightIn:0, weightUsed:0, itemsIn:0, itemsUsed:0 };
+        return byName[name];
+      }
+      (inventory.rawledger || []).forEach(s=>{
+        (s.entries || []).forEach(e=>{
+          if(!e || !e.stockName) return;
+          const rec = getRec_(e.stockName);
+          if(typeof e.weightIn === 'number') rec.weightIn += e.weightIn;
+          if(typeof e.itemsIn === 'number') rec.itemsIn += e.itemsIn;
+        });
+      });
+      transactionsLog.forEach(t=>{
+        const names = String(t.itemsSummary || '').split('\n').filter(Boolean);
+        const counts = String(t.itemCounts || '').split('\n').filter(Boolean);
+        if(!names.length || names.length !== counts.length) return;
+        names.forEach((name,i)=>{
+          const qty = parseFloat(counts[i]) || 0;
+          if(qty <= 0) return;
+          const p = PRODUCTS.find(x=> x.name === name);
+          if(!p || !Array.isArray(p.recipe)) return;
+          p.recipe.forEach(r=>{
+            if(!r || !r.material) return;
+            const rec = getRec_(r.material);
+            if(typeof r.weightPerUnit === 'number') rec.weightUsed += qty * r.weightPerUnit;
+            if(typeof r.itemsPerUnit === 'number') rec.itemsUsed += qty * r.itemsPerUnit;
+          });
+        });
+      });
+      // Also surface a material that only has a recipe link so far (0
+      // received yet, a useful "you'll need to buy this" signal) even if no
+      // ledger entry has named it yet.
+      PRODUCTS.forEach(p=>{ (p.recipe || []).forEach(r=>{ if(r && r.material) getRec_(r.material); }); });
+      return Object.values(byName).map(rec=>{
+        rec.weightRemaining = rec.weightIn - rec.weightUsed;
+        rec.itemsRemaining = rec.itemsIn - rec.itemsUsed;
+        const threshold = rawMaterialReorderLevels[rec.name];
+        rec.threshold = (typeof threshold === 'number') ? threshold : undefined;
+        rec.isLow = (rec.threshold !== undefined) && (
+          (rec.weightIn > 0 && rec.weightRemaining <= rec.threshold) ||
+          (rec.itemsIn > 0 && rec.itemsRemaining <= rec.threshold)
+        );
+        return rec;
+      }).sort((a,b)=> a.name.localeCompare(b.name));
+    }
+    // Plain (non-currency) number formatter for the Raw Material Stock
+    // table — up to 2 decimals, trimming trailing zeros, since weights are
+    // often fractional (e.g. 12.5kg) but item counts never need decimals.
+    function rawmatNum_(n){
+      if(!(n || n === 0)) return '';
+      return (Math.round(n * 100) / 100).toLocaleString('en-PK');
+    }
     let stockSearchTerm_ = '';
     function renderStock(){
       const wrap = document.getElementById('stock-table');
       const statsWrap = document.getElementById('stock-stats');
       if(!wrap || !statsWrap) return;
       const term = stockSearchTerm_;
-      const list = PRODUCTS.filter(p=>{
-        return !term || p.name.toLowerCase().includes(term) || (p.cat||'').toLowerCase().includes(term);
-      }).slice().sort((a,b)=> (a.cat||'').localeCompare(b.cat||'') || a.name.localeCompare(b.name));
+      const list = computeRawMaterialStock_().filter(rec => !term || rec.name.toLowerCase().includes(term));
 
-      const trackedCount = list.filter(p=> p.stock !== undefined).length;
-      const lowCount = list.filter(p=>{
-        if(p.stock === undefined) return false;
-        const level = (p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : DEFAULT_REORDER_LEVEL_;
-        return p.stock <= level;
-      }).length;
+      const lowCount = list.filter(rec => rec.isLow).length;
       statsWrap.innerHTML = `
-        <div class="stat-card"><div class="stat-label">${tr('stock_total_products')}</div><div class="stat-val">${list.length}</div></div>
-        <div class="stat-card"><div class="stat-label">${tr('stock_tracked')}</div><div class="stat-val">${trackedCount}</div></div>
-        <div class="stat-card"><div class="stat-label">${tr('low_stock_alerts')}</div><div class="stat-val" style="${lowCount>0?'color:var(--red);':''}">${lowCount}</div></div>
+        <div class="stat-card"><div class="stat-label">${tr('rawmat_total_materials')}</div><div class="stat-val">${list.length}</div></div>
+        <div class="stat-card"><div class="stat-label">${tr('rawmat_low_count')}</div><div class="stat-val" style="${lowCount>0?'color:var(--red);':''}">${lowCount}</div></div>
       `;
 
       if(list.length === 0){
-        wrap.innerHTML = '<div class="empty-state">' + tr('no_products_to_show') + '</div>';
+        wrap.innerHTML = '<div class="empty-state">' + tr('no_raw_material_stock') + '</div>';
         return;
       }
 
-      const rows = list.map(p=>{
-        const level = (p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : DEFAULT_REORDER_LEVEL_;
-        const isLow = p.stock !== undefined && p.stock <= level;
+      const rows = list.map(rec=>{
+        const lowStyle = rec.isLow ? 'color:var(--red); font-weight:600;' : '';
         return `
           <tr>
-            <td class="inv-name">${p.name}</td>
-            <td>${p.cat || ''}</td>
+            <td class="inv-name">${rec.name}</td>
+            <td class="num">${rawmatNum_(rec.weightIn)}</td>
+            <td class="num">${rawmatNum_(rec.weightUsed)}</td>
+            <td class="num" style="${lowStyle}">${(rec.weightIn || rec.weightUsed) ? rawmatNum_(rec.weightRemaining) : ''}</td>
+            <td class="num">${rawmatNum_(rec.itemsIn)}</td>
+            <td class="num">${rawmatNum_(rec.itemsUsed)}</td>
+            <td class="num" style="${lowStyle}">${(rec.itemsIn || rec.itemsUsed) ? rawmatNum_(rec.itemsRemaining) : ''}</td>
             <td class="num">
-              <input type="number" class="field-input stock-qty-input" data-id="${p.id}" min="0" step="1"
-                value="${p.stock !== undefined ? p.stock : ''}" placeholder="${tr('not_tracked')}"
-                style="width:130px; text-align:right; margin-bottom:0;${isLow ? ' border-color:var(--red);' : ''}">
+              <input type="number" class="field-input rawmat-threshold-input" data-name="${escHtml_(rec.name)}" min="0" step="any"
+                value="${rec.threshold !== undefined ? rec.threshold : ''}" placeholder="${tr('rawmat_threshold_placeholder')}"
+                style="width:110px; text-align:right; margin-bottom:0;">
             </td>
-            <td>${isLow ? `<span style="color:var(--red); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('low_stock')}</span>` : ''}</td>
+            <td>${rec.isLow ? `<span style="color:var(--red); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('low_stock')}</span>` : ''}</td>
           </tr>`;
       }).join('');
 
@@ -9259,9 +9402,14 @@
         <div class="table-scroll"><table class="inv-table">
           <thead>
             <tr>
-              <th>${tr('product_name')}</th>
-              <th>${tr('category')}</th>
-              <th class="num">${tr('stock_qty')}</th>
+              <th>${tr('rawmat_name')}</th>
+              <th class="num">${tr('rawmat_weight_in')}</th>
+              <th class="num">${tr('rawmat_weight_used')}</th>
+              <th class="num">${tr('rawmat_weight_remaining')}</th>
+              <th class="num">${tr('rawmat_items_in')}</th>
+              <th class="num">${tr('rawmat_items_used')}</th>
+              <th class="num">${tr('rawmat_items_remaining')}</th>
+              <th class="num">${tr('rawmat_threshold')}</th>
               <th></th>
             </tr>
           </thead>
@@ -9269,25 +9417,19 @@
         </table></div>
       `;
 
-      wrap.querySelectorAll('.stock-qty-input').forEach(inp=>{
+      wrap.querySelectorAll('.rawmat-threshold-input').forEach(inp=>{
         inp.addEventListener('change', ()=>{
-          const id = parseInt(inp.dataset.id, 10);
-          const p = PRODUCTS.find(x=>x.id===id);
-          if(!p) return;
+          const name = inp.dataset.name;
           const raw = inp.value.trim();
           if(raw === ''){
-            delete p.stock;
+            delete rawMaterialReorderLevels[name];
           } else {
-            const n = parseInt(raw, 10);
-            if(!(n >= 0)){ inp.value = (p.stock !== undefined ? p.stock : ''); return; }
-            p.stock = n;
+            const n = parseFloat(raw);
+            if(!(n >= 0)){ inp.value = (rawMaterialReorderLevels[name] !== undefined ? rawMaterialReorderLevels[name] : ''); return; }
+            rawMaterialReorderLevels[name] = n;
           }
           queueSync();
           renderStock();
-          // Keep the product grid's own stock badge (see renderProducts
-          // above) in sync too, in case it's the view the user lands on
-          // next — cheap no-op if that category isn't currently showing.
-          renderProducts();
         });
       });
     }
@@ -9438,8 +9580,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.8";
-    const APP_VERSION_NOTE = "CRITICAL FIX: found and closed the bug behind the real-device report of all data (factories, orders, everything except products) vanishing after a background sync — looksLikeDataLoss_() was missing a check for Factories entirely, and its safety threshold ignored any device with fewer than 3 local records, so a fresh/lightly-used device (e.g. just 1 factory + 1 order) had zero protection against a bad or incomplete background sync silently wiping real local data (Products alone was protected by a separate guard, which is why only Products survived). Both gaps are now closed: Factories is checked, and even a single real, un-tombstoned record is protected.";
+    const APP_VERSION = "2026.08.24.9";
+    const APP_VERSION_NOTE = "Renamed the Stock page's \"Product Stock (On Hand)\" section to \"Raw Material Stock\" and rebuilt it to compute automatically: raw material received (from new Raw Material Name / Weight Received / Items Received fields on each Raw Material Ledger entry) minus what's been used by every order booked (from a new \"Raw Material Used\" recipe you set once per product, on the Add/Edit Product screen), remaining per material name, with a settable Low Stock threshold per material. Requires an Apps Script redeploy (Products and Raw Material Ledger sheet columns changed, plus a new Meta setting) as well as the app rebuild.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -9656,8 +9798,63 @@
       }).map(p => ({ kind:'product', id:p.id, name:p.name, stock:p.stock, reorderLevel:(p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : DEFAULT_REORDER_LEVEL_ }));
     }
 
+    // ADD (2026-08-24, user request): renders the repeatable "Raw Material
+    // Used" rows inside the Add/Edit Product modal from a recipe array
+    // (`[{material, weightPerUnit, itemsPerUnit}, ...]`) — called once when
+    // the modal opens (see openProductEditModal below) and again every time
+    // a row is added/removed, so it's always rebuilt from the current DOM
+    // state rather than tracked in a separate JS array. Reading it back at
+    // save time (see pe-save below) just re-walks these same rows.
+    function renderPeRecipeRows_(rows){
+      const wrap = document.getElementById('pe-recipe-rows');
+      if(!wrap) return;
+      const list = Array.isArray(rows) && rows.length ? rows : [{ material:'', weightPerUnit:'', itemsPerUnit:'' }];
+      wrap.innerHTML = list.map((r,i)=> `
+        <div class="pe-recipe-row" style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
+          <input class="field-input pe-recipe-material" list="dl-rawmaterial" data-i18n-placeholder="recipe_material_placeholder" placeholder="Material name" style="flex:2; margin-bottom:0;" value="${escHtml_(r.material || '')}">
+          <input class="field-input pe-recipe-weight" type="number" min="0" step="any" data-i18n-placeholder="recipe_weight_placeholder" placeholder="Weight/unit (kg)" style="flex:1; margin-bottom:0;" value="${(r.weightPerUnit || r.weightPerUnit === 0) ? r.weightPerUnit : ''}">
+          <input class="field-input pe-recipe-items" type="number" min="0" step="1" data-i18n-placeholder="recipe_items_placeholder" placeholder="Items/unit" style="flex:1; margin-bottom:0;" value="${(r.itemsPerUnit || r.itemsPerUnit === 0) ? r.itemsPerUnit : ''}">
+          <button type="button" class="weight-remove-btn pe-recipe-remove" data-idx="${i}" title="Remove">✕</button>
+        </div>`).join('');
+      wrap.querySelectorAll('.pe-recipe-remove').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const rowsNow = readPeRecipeRowsRaw_();
+          rowsNow.splice(parseInt(btn.dataset.idx,10), 1);
+          renderPeRecipeRows_(rowsNow);
+        });
+      });
+    }
+    // Reads the current DOM rows back into a plain array with NO filtering —
+    // used only to re-render after adding/removing a row, so a blank row the
+    // user hasn't finished typing into yet isn't silently dropped just
+    // because a different row's ✕ was clicked.
+    function readPeRecipeRowsRaw_(){
+      return Array.from(document.querySelectorAll('#pe-recipe-rows .pe-recipe-row')).map(row=>{
+        const material = row.querySelector('.pe-recipe-material').value.trim();
+        const wRaw = row.querySelector('.pe-recipe-weight').value.trim();
+        const iRaw = row.querySelector('.pe-recipe-items').value.trim();
+        return {
+          material,
+          weightPerUnit: (wRaw !== '' && parseFloat(wRaw) >= 0) ? parseFloat(wRaw) : undefined,
+          itemsPerUnit: (iRaw !== '' && parseFloat(iRaw) >= 0) ? parseFloat(iRaw) : undefined
+        };
+      });
+    }
+    // Save-time read — same as above but drops any row with no material
+    // name, since an "Add Material" click followed by leaving it blank
+    // shouldn't save an empty recipe entry.
+    function readPeRecipeRows_(){
+      return readPeRecipeRowsRaw_().filter(r => r.material);
+    }
+    document.getElementById('pe-recipe-add-row').addEventListener('click', ()=>{
+      const rows = readPeRecipeRowsRaw_();
+      rows.push({ material:'', weightPerUnit:'', itemsPerUnit:'' });
+      renderPeRecipeRows_(rows);
+    });
+
     function openProductEditModal(id){
       editingProductId = id;
+      refreshRawMaterialDatalist_();
       const isAmericanPedestal = activeCat === AMERICAN_PEDESTAL_CAT;
       peName.style.display = isAmericanPedestal ? 'none' : '';
       peNameSelect.style.display = isAmericanPedestal ? '' : 'none';
@@ -9690,6 +9887,7 @@
         peColorOther.style.display = 'none';
         peColorOther.value = '';
         peDeleteBtn.style.display = 'none';
+        renderPeRecipeRows_([]);
       } else {
         const p = PRODUCTS.find(x=>x.id===id);
         if(!p) return;
@@ -9738,6 +9936,7 @@
           peColorOther.value = color;
         }
         peDeleteBtn.style.display = '';
+        renderPeRecipeRows_(p.recipe || []);
       }
       productEditModal.classList.add('active');
     }
@@ -9763,6 +9962,10 @@
       const costRaw = parseFloat(peCost.value);
       const cost = (peCost.value.trim() !== '' && costRaw >= 0) ? costRaw : undefined;
       const color = (peColor.value === 'Other') ? peColorOther.value.trim() || 'Other' : peColor.value;
+      // ADD (2026-08-24, user request): "Raw Material Used" rows — read once
+      // here (before any PIN-reverify delay on the edit path) since the
+      // modal's DOM won't change in the meantime either way.
+      const recipe = readPeRecipeRows_();
       if(!name || !(price >= 0)) return;
       function commitProductSave_(){
         if(editingProductId === null){
@@ -9773,6 +9976,7 @@
           const product = { id: nextProductId(), name, price, cat: activeCat, color, device: DEVICE_NAME };
           if(cost !== undefined) product.cost = cost;
           if(isAmericanPedestal){ product.weight = weight; product.size = size; }
+          if(recipe.length) product.recipe = recipe;
           PRODUCTS.push(product);
         } else {
           const p = PRODUCTS.find(x=>x.id===editingProductId);
@@ -9784,6 +9988,7 @@
             p.name = name; p.price = price; p.color = color;
             if(cost !== undefined) p.cost = cost; else delete p.cost;
             if(isAmericanPedestal){ p.weight = weight; p.size = size; } else { delete p.weight; delete p.size; }
+            if(recipe.length) p.recipe = recipe; else delete p.recipe;
           }
         }
         productEditModal.classList.remove('active');
@@ -12587,8 +12792,12 @@
     function openRawLedgerModal(idx){
       currentRawSupplierIdx = idx;
       editingRlEntryIdx = null;
+      refreshRawMaterialDatalist_();
       document.getElementById('rl-add-entry').textContent = tr('add_entry');
       document.getElementById('rl-desc').value = '';
+      document.getElementById('rl-stockname').value = '';
+      document.getElementById('rl-weightin').value = '';
+      document.getElementById('rl-itemsin').value = '';
       document.getElementById('rl-weight').value = '';
       document.getElementById('rl-bundle').value = '';
       document.getElementById('rl-gauge').value = '';
@@ -12688,6 +12897,9 @@
             if(!e) return;
             editingRlEntryIdx = eIdx;
             document.getElementById('rl-desc').value = e.desc || '';
+            document.getElementById('rl-stockname').value = e.stockName || '';
+            document.getElementById('rl-weightin').value = (e.weightIn || e.weightIn === 0) ? e.weightIn : '';
+            document.getElementById('rl-itemsin').value = (e.itemsIn || e.itemsIn === 0) ? e.itemsIn : '';
             document.getElementById('rl-weight').value = e.weight || '';
             document.getElementById('rl-bundle').value = e.bundleCount || '';
             document.getElementById('rl-gauge').value = e.gaugeCount || '';
@@ -12774,6 +12986,16 @@
     document.getElementById('rl-add-entry').addEventListener('click', ()=>{
       if(currentRawSupplierIdx === null) return;
       const desc = document.getElementById('rl-desc').value.trim();
+      // ADD (2026-08-24, user request): structured stock fields — stockName
+      // only "counts" when it's actually filled in; weightIn/itemsIn parse
+      // to undefined (not 0) when left blank so an entry with no material
+      // received never shows up as "0kg received" anywhere, same
+      // blank-means-not-set convention used everywhere else in this app.
+      const stockName = document.getElementById('rl-stockname').value.trim();
+      const weightInRaw = document.getElementById('rl-weightin').value.trim();
+      const itemsInRaw = document.getElementById('rl-itemsin').value.trim();
+      const weightIn = (weightInRaw !== '' && parseFloat(weightInRaw) >= 0) ? parseFloat(weightInRaw) : undefined;
+      const itemsIn = (itemsInRaw !== '' && parseFloat(itemsInRaw) >= 0) ? parseFloat(itemsInRaw) : undefined;
       const weight = document.getElementById('rl-weight').value.trim();
       const bundleCount = document.getElementById('rl-bundle').value.trim();
       const gaugeCount = document.getElementById('rl-gauge').value.trim();
@@ -12798,6 +13020,9 @@
           const existing = s.entries[editingRlEntryIdx];
           if(existing){
             existing.desc = desc;
+            if(stockName) existing.stockName = stockName; else delete existing.stockName;
+            if(weightIn !== undefined) existing.weightIn = weightIn; else delete existing.weightIn;
+            if(itemsIn !== undefined) existing.itemsIn = itemsIn; else delete existing.itemsIn;
             existing.weight = weight;
             existing.bundleCount = bundleCount;
             existing.gaugeCount = gaugeCount;
@@ -12826,19 +13051,26 @@
         } else {
           const now = new Date();
           const entryId = 'rl' + Date.now();
-          s.entries.push({
+          const newEntry = {
             id: entryId,
             date: chosenDate,
             time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
             desc, weight, bundleCount, gaugeCount, sizeCount, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (debit > 0 && method === 'Cheque') ? 'pending' : '',
             device: DEVICE_NAME
-          });
+          };
+          if(stockName) newEntry.stockName = stockName;
+          if(weightIn !== undefined) newEntry.weightIn = weightIn;
+          if(itemsIn !== undefined) newEntry.itemsIn = itemsIn;
+          s.entries.push(newEntry);
           if(pendingRawReceipt){
             rawReceiptFiles[entryId] = pendingRawReceipt;
             persistRawReceiptLocally_(entryId, pendingRawReceipt);
           }
         }
         document.getElementById('rl-desc').value = '';
+        document.getElementById('rl-stockname').value = '';
+        document.getElementById('rl-weightin').value = '';
+        document.getElementById('rl-itemsin').value = '';
         document.getElementById('rl-weight').value = '';
         document.getElementById('rl-bundle').value = '';
         document.getElementById('rl-gauge').value = '';
@@ -14504,6 +14736,17 @@
       document.getElementById('dl-guardsize').innerHTML = guardSizes.map(v => `<option value="${v}">`).join('');
       document.getElementById('dl-guardweight').innerHTML = guardWeights.map(v => `<option value="${v}">`).join('');
       document.getElementById('dl-sticks').innerHTML = stickCounts.map(v => `<option value="${v}">`).join('');
+    }
+    // ADD (2026-08-24, user request): backs the "Raw Material Name" field on
+    // both the Add Product recipe rows and the Raw Material Ledger entry
+    // form — same rawItemNames list the ledger's own Description combo
+    // already suggests from (see createSuggestCombo_ call for rl-desc).
+    // Called fresh every time either modal opens rather than hooked into
+    // every place rawItemNames can change, since a stale option list here is
+    // low-stakes (native <datalist> is just a suggestion, never validated).
+    function refreshRawMaterialDatalist_(){
+      const el = document.getElementById('dl-rawmaterial');
+      if(el) el.innerHTML = rawItemNames.map(v => `<option value="${escHtml_(v)}">`).join('');
     }
 
     // Generic single-select "type to add, click to reuse, ✕ to delete from
