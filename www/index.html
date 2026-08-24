@@ -1047,6 +1047,14 @@
       background:var(--panel); border:1px solid var(--steel-line); border-radius:9px; margin-bottom:8px;
     }
     .txn-row .txn-id{ font-family:var(--mono); font-size:12.5px; font-weight:600; width:80px; flex-shrink:0; }
+    /* ADD (2026-08-24, user request): "order number should be double line
+       and should add one more line that is order is delivered" — a second
+       line under the order number, shown once its gate receipt/pass is
+       attached (see the .txn-id markup in renderTransactions()). */
+    .txn-id-delivered{
+      font-family:var(--display); font-size:9px; font-weight:600; text-transform:uppercase;
+      letter-spacing:0.4px; color:var(--green); margin-top:3px;
+    }
     .txn-row .txn-when{ font-family:var(--mono); font-size:11.5px; color:var(--text-dim); width:150px; flex-shrink:0; }
     .txn-row .txn-items{ flex:1; font-size:12.5px; color:var(--text-dim); min-width:0; }
     .txn-row .txn-items > div:first-child{ white-space:pre-line; line-height:1.6; }
@@ -2129,10 +2137,12 @@
         <div class="side-spacer"></div>
 
         <div class="side-footer">
-          <button class="side-footer-link" id="side-fullscreen-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
-            <span id="side-fullscreen-label">Fullscreen</span>
-          </button>
+          <!-- REMOVED (2026-08-24, user request: "remove full screen from
+               side menu because its not working or not needed") — the
+               #fullscreen-toggle top-bar widget is untouched, this was just
+               the sidebar's own duplicate entry point. See the JS side:
+               side-fullscreen-btn/-label references removed from
+               updateFullscreenIcon()/the click-listener wiring below. -->
           <button class="side-footer-link" id="side-help">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.7-2 2-2 3.5"/><line x1="12" y1="16.5" x2="12" y2="16.6"/></svg>
             Help
@@ -2183,6 +2193,25 @@
         </div>
         <div class="overdue-cheque-banner-slot"></div>
         <div class="product-grid" id="factory-grid"></div>
+        <!-- MOVED (2026-08-24, user request): "Custom Ledgers" section
+             relocated here from the Raw Material Ledger page — user's
+             reasoning: these specific/custom ledgers are also a
+             client/customer-style relationship, same as Factories, so they
+             belong here rather than under Raw Material. Renamed at the same
+             time per a same-day follow-up request. Purely a display/location
+             change — still the same customLedgerRoster/customLedgerEntries
+             data, same customledger-stats/customledger-list ids,
+             renderCustomLedgersList_() unchanged (just now called from
+             renderFactories() instead of renderRawLedger() — see there). -->
+        <div class="view-header" style="margin-top:22px;">
+          <div class="view-header-text">
+            <h2 style="font-size:15px;" data-i18n="custom_ledgers_title">Factory per Labour Ledger</h2>
+            <p data-i18n="custom_ledgers_sub">Separate ledgers for specific factories, kept apart from the ledger above.</p>
+            <p data-i18n="custom_ledgers_debit_credit_sub">Track cost (debit) and payments received (credit) per custom ledger.</p>
+          </div>
+        </div>
+        <div class="stat-grid" id="customledger-stats" style="margin-bottom:18px;"></div>
+        <div id="customledger-list"></div>
       </div>
 
       <div id="view-sales" style="display:none;">
@@ -2247,6 +2276,49 @@
         </div>
         <div class="stat-grid" id="notifications-stats" style="margin-bottom:18px;"></div>
         <div id="notifications-body"></div>
+
+        <!-- MOVED (2026-08-24, user request: "move notifications settings
+             from setting menu and move along side notifications in
+             notifications bar for ease of access") — relocated from
+             Settings so it sits right next to the alerts it configures.
+             Same ids, same JS wiring (renderNotifSettingsList_/
+             renderNotifPushStatus_/notifFreqSel_/notifReminderSel_ etc. —
+             all plain getElementById lookups, unaffected by where this
+             markup lives) — see renderNotifications() below for where the
+             per-view-open repopulation moved to (was in
+             renderSettingsView_()). -->
+        <div class="settings-card" style="margin-top:22px;">
+          <div class="settings-card-header" style="--settings-icon-color:var(--orange);">
+            <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+            <div class="settings-card-title" data-i18n="notif_settings_title">Notification Alerts</div>
+          </div>
+          <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="notif_settings_desc">Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.</div>
+          <div id="settings-notif-push-status" style="font-family:var(--mono); font-size:11.5px; margin-bottom:10px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line); color:var(--text-dim);"></div>
+          <button id="settings-notif-enable-btn" type="button" style="background:var(--yellow); color:#1C1F22; border:none; padding:9px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase; margin-bottom:16px;" data-i18n="notif_enable_btn">Enable Push Notifications</button>
+
+          <label class="field-label" data-i18n="notif_settings_frequency_label">Check For New Alerts Every</label>
+          <select id="settings-notif-frequency" class="field-input">
+            <option value="5" data-i18n="notif_freq_5">5 minutes</option>
+            <option value="15" data-i18n="notif_freq_15">15 minutes</option>
+            <option value="30" data-i18n="notif_freq_30">30 minutes</option>
+            <option value="60" data-i18n="notif_freq_60">1 hour</option>
+          </select>
+
+          <label class="field-label" style="margin-top:12px;" data-i18n="notif_settings_reminder_label">Remind Me Again After</label>
+          <select id="settings-notif-reminder" class="field-input">
+            <option value="0" data-i18n="notif_reminder_never">Never (only once)</option>
+            <option value="1" data-i18n="notif_reminder_1h">1 hour</option>
+            <option value="6" data-i18n="notif_reminder_6h">6 hours</option>
+            <option value="12" data-i18n="notif_reminder_12h">12 hours</option>
+            <option value="24" data-i18n="notif_reminder_24h">24 hours</option>
+            <option value="72" data-i18n="notif_reminder_72h">3 days</option>
+          </select>
+
+          <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--steel-line);">
+            <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;" data-i18n="notif_settings_types_label">Alert Me About</div>
+            <div id="settings-notif-types-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+          </div>
+        </div>
       </div>
 
       <div id="view-expenses" style="display:none;">
@@ -2305,15 +2377,6 @@
         <div class="stat-grid" id="rawledger-stats" style="margin-bottom:18px;"></div>
         <div class="overdue-cheque-banner-slot"></div>
         <div id="rawledger-table"></div>
-        <div class="view-header" style="margin-top:22px;">
-          <div class="view-header-text">
-            <h2 style="font-size:15px;" data-i18n="custom_ledgers_title">Custom Ledgers</h2>
-            <p data-i18n="custom_ledgers_sub">Separate ledgers for specific suppliers, kept apart from the ledger above.</p>
-            <p data-i18n="custom_ledgers_debit_credit_sub">Track cost (debit) and payments received (credit) per custom ledger.</p>
-          </div>
-        </div>
-        <div class="stat-grid" id="customledger-stats" style="margin-bottom:18px;"></div>
-        <div id="customledger-list"></div>
       </div>
 
       <div id="view-labour" style="display:none;">
@@ -2692,47 +2755,9 @@
         <p id="settings-backup-status" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0; display:none;"></p>
       </div>
 
-      <div class="settings-section-label" data-i18n="settings_section_notifications">Notifications</div>
-
-      <!-- ADD (2026-08-22): per-type mute + check-frequency controls for
-           the Notifications tab's alerts, PLUS real outside-app delivery
-           via Firebase Cloud Messaging — see enablePushNotifications_/
-           renderNotifPushStatus_ in the script below for the actual
-           permission-request + registration flow, and
-           checkAndSendPushNotifications_ in Code.gs for the backend
-           trigger that does the actual sending. -->
-      <div class="settings-card">
-        <div class="settings-card-header" style="--settings-icon-color:var(--orange);">
-          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
-          <div class="settings-card-title" data-i18n="notif_settings_title">Notification Alerts</div>
-        </div>
-        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="notif_settings_desc">Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.</div>
-        <div id="settings-notif-push-status" style="font-family:var(--mono); font-size:11.5px; margin-bottom:10px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line); color:var(--text-dim);"></div>
-        <button id="settings-notif-enable-btn" type="button" style="background:var(--yellow); color:#1C1F22; border:none; padding:9px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase; margin-bottom:16px;" data-i18n="notif_enable_btn">Enable Push Notifications</button>
-
-        <label class="field-label" data-i18n="notif_settings_frequency_label">Check For New Alerts Every</label>
-        <select id="settings-notif-frequency" class="field-input">
-          <option value="5" data-i18n="notif_freq_5">5 minutes</option>
-          <option value="15" data-i18n="notif_freq_15">15 minutes</option>
-          <option value="30" data-i18n="notif_freq_30">30 minutes</option>
-          <option value="60" data-i18n="notif_freq_60">1 hour</option>
-        </select>
-
-        <label class="field-label" style="margin-top:12px;" data-i18n="notif_settings_reminder_label">Remind Me Again After</label>
-        <select id="settings-notif-reminder" class="field-input">
-          <option value="0" data-i18n="notif_reminder_never">Never (only once)</option>
-          <option value="1" data-i18n="notif_reminder_1h">1 hour</option>
-          <option value="6" data-i18n="notif_reminder_6h">6 hours</option>
-          <option value="12" data-i18n="notif_reminder_12h">12 hours</option>
-          <option value="24" data-i18n="notif_reminder_24h">24 hours</option>
-          <option value="72" data-i18n="notif_reminder_72h">3 days</option>
-        </select>
-
-        <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--steel-line);">
-          <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;" data-i18n="notif_settings_types_label">Alert Me About</div>
-          <div id="settings-notif-types-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-        </div>
-      </div>
+      <!-- MOVED (2026-08-24, user request): Notification Alerts settings
+           card relocated to the Notifications page itself, right below its
+           alert list — see #view-notifications above. -->
     </div>
 
     <aside class="cart-panel" id="cart-panel" style="display:none;">
@@ -6978,6 +7003,7 @@
         order_number: "Order Number", order_receipt_search_placeholder: "Search by order # or factory…",
         no_orders_need_receipt: "Every factory order already has its gate pass / receiving receipt.", no_matching_orders_receipt: "No matching orders",
         receipt_received_tag: "✓ Receipt Received", select_order_above: "Select an order above",
+        order_delivered_tag: "Delivered",
         pending_gate_receipts: "Pending Gate Receipts", no_pending_gate_receipts: "No factory orders are missing a gate pass / receiving receipt.",
         gate_receipt_missing: "Gate Receipt Missing",
         tap_to_resolve: "Tap to open and resolve →",
@@ -7053,9 +7079,9 @@
         item_size: "Item Size", item_type: "Item Type", factory_name: "Factory Name",
         item_count: "Item Count", rate_per_item: "Rate per Item (Rs)",
         item: "Item", item_colour: "Item Colour", debit_cost: "Labour — Cost (Rs)", credit_payment: "Credit — Payment (Rs)",
-        add_specific_ledger: "Add Specific Ledger", supplier_party_name: "Supplier / Party Name",
-        no_custom_ledgers_yet: "No custom ledgers yet", custom_ledgers_title: "Custom Ledgers",
-        custom_ledgers_sub: "Separate ledgers for specific suppliers, kept apart from the ledger above.",
+        add_specific_ledger: "Add Specific Ledger", supplier_party_name: "Supplier / Party Name", custom_ledger_name_col: "Party Name",
+        no_custom_ledgers_yet: "No custom ledgers yet", custom_ledgers_title: "Factory per Labour Ledger",
+        custom_ledgers_sub: "Separate ledgers for specific factories, kept apart from the ledger above.",
         custom_ledgers_debit_credit_sub: "Track cost (debit) and payments received (credit) per custom ledger.",
         total_cost_debit: "Total Cost (Debit)", total_payment_credit: "Total Payment (Credit)",
         custom_ledgers_overall_balance: "Overall Balance",
@@ -7286,6 +7312,7 @@
         order_number: "آرڈر نمبر", order_receipt_search_placeholder: "آرڈر نمبر یا فیکٹری تلاش کریں…",
         no_orders_need_receipt: "تمام فیکٹری آرڈرز کے پاس گیٹ پاس / وصولی رسید موجود ہے۔", no_matching_orders_receipt: "کوئی مماثل آرڈر نہیں",
         receipt_received_tag: "✓ رسید موصول", select_order_above: "اوپر آرڈر منتخب کریں",
+        order_delivered_tag: "ڈیلیور ہو گیا",
         pending_gate_receipts: "زیر التوا گیٹ رسیدیں", no_pending_gate_receipts: "کسی فیکٹری آرڈر میں گیٹ پاس / وصولی رسید کی کمی نہیں۔",
         gate_receipt_missing: "گیٹ رسید موجود نہیں",
         tap_to_resolve: "کھولنے اور حل کرنے کے لیے تھپتھپائیں ←",
@@ -7360,9 +7387,9 @@
         item_size: "آئٹم سائز", item_type: "آئٹم قسم", factory_name: "فیکٹری کا نام",
         item_count: "آئٹم تعداد", rate_per_item: "فی آئٹم ریٹ (روپے)",
         item: "آئٹم", item_colour: "آئٹم رنگ", debit_cost: "لیبر — لاگت (روپے)", credit_payment: "کریڈٹ — ادائیگی (روپے)",
-        add_specific_ledger: "مخصوص لیجر شامل کریں", supplier_party_name: "سپلائر / پارٹی کا نام",
-        no_custom_ledgers_yet: "ابھی تک کوئی مخصوص لیجر نہیں", custom_ledgers_title: "مخصوص لیجرز",
-        custom_ledgers_sub: "مخصوص سپلائرز کے لیے علیحدہ لیجرز، اوپر والے لیجر سے الگ۔",
+        add_specific_ledger: "مخصوص لیجر شامل کریں", supplier_party_name: "سپلائر / پارٹی کا نام", custom_ledger_name_col: "پارٹی کا نام",
+        no_custom_ledgers_yet: "ابھی تک کوئی مخصوص لیجر نہیں", custom_ledgers_title: "فیکٹری فی مزدور لیجر",
+        custom_ledgers_sub: "مخصوص فیکٹریوں کے لیے علیحدہ لیجرز، اوپر والے لیجر سے الگ۔",
         custom_ledgers_debit_credit_sub: "ہر کسٹم لیجر میں لاگت (ڈیبٹ) اور موصولہ ادائیگیاں (کریڈٹ) کا ٹریک رکھیں۔",
         total_cost_debit: "کل لاگت (ڈیبٹ)", total_payment_credit: "کل ادائیگی (کریڈٹ)",
         custom_ledgers_overall_balance: "مجموعی بیلنس",
@@ -8439,12 +8466,10 @@
       // below). Only "Show on Overview Dashboard" is still a global,
       // Settings-page-owned preference.
       renderOverviewModulesSettingsList_();
-      renderNotifSettingsList_();
-      renderNotifPushStatus_();
-      const notifFreqSelEl = document.getElementById('settings-notif-frequency');
-      if(notifFreqSelEl) notifFreqSelEl.value = String(notifPushFrequencyMinutes_);
-      const notifReminderSelEl = document.getElementById('settings-notif-reminder');
-      if(notifReminderSelEl) notifReminderSelEl.value = String(notifPushReminderHours_);
+      // MOVED (2026-08-24): the Notification Alerts card's own per-open
+      // repopulation (renderNotifSettingsList_/renderNotifPushStatus_/
+      // frequency+reminder select values) moved to renderNotifications() —
+      // the card itself now lives on the Notifications page, not here.
       const autoLockSel = document.getElementById('settings-autolock');
       if(autoLockSel) autoLockSel.value = String(autoLockMinutes_);
       renderGoogleAccountSettingsCard_();
@@ -9089,14 +9114,16 @@
     // down) that don't have a gate receipt attached yet (receiptFiles[t.id]
     // or t.receiptUrl). The moment a gate receipt IS attached, the order
     // simply no longer matches this filter and drops off the list — no
-    // separate "mark as sold" step needed. Deliberately does NOT touch
-    // isCountedSale_()/Sales Summary's own counting logic (that's already
-    // driven by t.confirmed, unchanged, and has ~10 call sites across
-    // Factory/Customer Ledger reconciliation) — a confirmed factory order
-    // already counts in Sales Summary today regardless of receipt status,
-    // so nothing needed to change there; this page is purely an added lens
-    // on top of data that already syncs (transactionsLog + receipt status),
-    // not a new sheet/column.
+    // separate "mark as sold" step needed.
+    // UPDATED (2026-08-24, same day, follow-up request): originally this
+    // page was deliberately built as an ADDITIONAL lens without touching
+    // isCountedSale_() — a confirmed order counted as a sale immediately,
+    // same as before. The user then asked for a real 3-step lifecycle:
+    // confirm → shows here (Stock Ready) + in the factory's own ledger
+    // (reconcileFactoryLedgerOrders_, already driven by t.confirmed,
+    // unchanged) but NOT yet counted as a sale; receipt attached → NOW
+    // counts as a sale. isCountedSale_() (see below) was changed to match —
+    // it now gates on receipt presence for factory orders, not t.confirmed.
     function renderStockReady(){
       const wrap = document.getElementById('stockready-table');
       const statsWrap = document.getElementById('stockready-stats');
@@ -9391,8 +9418,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.6";
-    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs); reordered the Add Product Weight field to match Name/Size (dropdown box first, then Add-new row); removed Stock Quantity from the Add Product form (existing product stock data and low-stock alerts are unaffected); fixed a broken Android build file that had silently dropped the Filesystem plugin (exports/receipts/backups) from the app — resynced so it's actually included again; added a new Stock tab (side menu, under Inventory) listing every product's stock quantity with inline editing and low-stock highlighting; split the Stock tab into a new \"Stock Ready (in Factory)\" section — confirmed factory orders awaiting their gate receipt, with an Attach Gate Receipt shortcut — above the existing on-hand stock list; renamed sidebar labels to \"Factories (Customers)\" and \"Raw Material (Suppliers)\"; moved Raw Material Ledger (with its Custom Ledgers section) out of Inventory to sit next to Factories under Business, since suppliers are a customer-style ledger relationship too — no data changed, purely a menu reorganization, Sheet untouched";
+    const APP_VERSION = "2026.08.24.7";
+    const APP_VERSION_NOTE = "Renamed sidebar labels to \"Factories (Customers)\" and \"Raw Material (Suppliers)\"; moved Raw Material Ledger (with its Custom Ledgers section, renamed \"Factory per Labour Ledger\") out of Inventory to sit next to Factories under Business; removed the non-functional Fullscreen button from the side menu; moved the Notification Alerts settings card from Settings onto the Notifications page itself, right next to the alerts it configures; changed order lifecycle — confirming a factory order now only moves it into Stock Ready (in Factory) and the factory's own ledger, it no longer counts as a sale by itself; attaching the gate pass/receipt is what now counts it as a sale, and the order number in Order Booked shows a new \"Delivered\" line once that happens.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -10441,6 +10468,17 @@
           }
         });
       });
+      // MOVED (2026-08-24, user request): the Notification Alerts settings
+      // card (push enable/status, check-frequency, reminder interval, per-
+      // type mute list) now lives on this page — repopulate it every time
+      // this view opens, same as renderSettingsView_() used to do when the
+      // card lived in Settings.
+      renderNotifSettingsList_();
+      renderNotifPushStatus_();
+      const notifFreqSelEl = document.getElementById('settings-notif-frequency');
+      if(notifFreqSelEl) notifFreqSelEl.value = String(notifPushFrequencyMinutes_);
+      const notifReminderSelEl = document.getElementById('settings-notif-reminder');
+      if(notifReminderSelEl) notifReminderSelEl.value = String(notifPushReminderHours_);
     }
     function customerLedgerTotals_(c){
       const entries = c.entries || [];
@@ -10510,6 +10548,11 @@
       // space (see the #factory-grid CSS rule above).
       populateInvoiceFactoryDropdown();
       renderOverdueChequeBanner_();
+      // MOVED (2026-08-24, user request): the Custom Ledgers section
+      // (renamed "Factory per Labour Ledger" the same day) now lives on
+      // this page instead of Raw Material Ledger's — see the HTML comment
+      // above #view-factories's own custom-ledgers block.
+      renderCustomLedgersList_();
     }
     const factoryModal = document.getElementById('factory-modal');
     const factoryDeleteBtn = document.getElementById('factory-delete');
@@ -12443,7 +12486,9 @@
       addRow.addEventListener('click', openAddRawSupplierModal);
       wrap.appendChild(addRow);
       renderOverdueChequeBanner_();
-      renderCustomLedgersList_();
+      // MOVED (2026-08-24, user request): renderCustomLedgersList_() call
+      // relocated to renderFactories() — the Custom Ledgers section (now
+      // "Factory per Labour Ledger") moved to the Factories page. See there.
     }
 
     const rawSupplierAddModal = document.getElementById('rawsupplier-add-modal');
@@ -13484,7 +13529,7 @@
           <div class="table-scroll"><table class="inv-table">
             <thead>
               <tr>
-                <th>${tr('supplier')}</th>
+                <th>${tr('custom_ledger_name_col')}</th>
                 <th class="num">${tr('debit_cost')}</th>
                 <th class="num">${tr('credit_payment')}</th>
                 <th class="num">${tr('balance')}</th>
@@ -16201,14 +16246,21 @@
       }catch(e){}
       return fallback;
     }
-    // A factory order that hasn't been confirmed yet (via the "Order
-    // Confirm" tab) doesn't count as a completed sale anywhere in the
-    // app — not just the Sales-by-Factory breakdown, but the Sales
-    // Summary totals, the Overview Sales module, the sales trend chart,
-    // and the sheet-synced summary rows too. Non-factory orders (which
-    // never get a confirm step) always count, same as before.
+    // CHANGED (2026-08-24, user request): a factory order used to count as
+    // a completed sale as soon as it was Order-Confirmed. User asked for a
+    // 3-step lifecycle instead — confirming an order only moves it into
+    // Stock Ready (in Factory) and the factory's own ledger (both already
+    // driven by t.confirmed elsewhere, see renderStockReady()/
+    // reconcileFactoryLedgerOrders_ — neither needed to change); the order
+    // does NOT count as a sale until its gate pass/receipt is actually
+    // attached. So this now gates on receipt presence, not confirmed status
+    // — everywhere this function is used: the Sales-by-Factory breakdown,
+    // Sales Summary totals, the Overview Sales module, the sales trend
+    // chart, and the sheet-synced summary rows. Non-factory orders (which
+    // have no confirm/receipt step at all) always count, same as before.
     function isCountedSale_(t){
-      return !(t.factory && t.confirmed === false);
+      if(!t.factory) return true;
+      return !!(receiptFiles[t.id] || t.receiptUrl);
     }
     function computeFactoryBreakdown_(){
       const map = {};
@@ -17233,8 +17285,28 @@
         const info = txnPaymentInfo_(t);
         const statusCls = info.status === 'Paid' ? 'is-paid' : info.status === 'Partial' ? 'is-partial' : 'is-unpaid';
         const statusTxt = info.status === 'Paid' ? tr('paid') : info.status === 'Partial' ? (tr('partial') + ' · ' + fmt(info.due)) : tr('unpaid');
+        // FIX: this used to check ONLY receiptFiles[t.id] -- the in-memory/
+        // localStorage map that only exists on the device the receipt was
+        // actually attached from. A synced receipt (t.receiptUrl, the
+        // real Drive link written to the sheet -- see readTransactions_ in
+        // Code.gs) was already being read back correctly on every OTHER
+        // device, but this tag never looked at it, so the receipt
+        // appeared to have vanished there even though it was safely on
+        // the sheet/Drive the whole time. Same receiptFiles-id-or-URL
+        // fallback every other ledger's receipt badge already uses (see
+        // e.g. the Paint Ledger's hasReceipt check).
+        const hasReceipt = !!(t.factory && (receiptFiles[t.id] || t.receiptUrl));
         row.innerHTML = `
-          <div class="txn-id${isConfirmedFactoryOrder ? ' txn-id-confirmed' : ''}">#${t.id}</div>
+          <div class="txn-id${isConfirmedFactoryOrder ? ' txn-id-confirmed' : ''}">
+            <div>#${t.id}</div>
+            <!-- MOVED (2026-08-24, user request): "order number should be
+                 double line and should add one more line that is order is
+                 delivered" — this used to be a separate floating badge
+                 further along the row (title="Receipt Attached"); now it's
+                 the order number's own second line, since receiving the
+                 gate pass/receipt is what marks an order delivered. -->
+            ${hasReceipt ? `<div class="txn-id-delivered" title="${tr('receipt_attached')}">${tr('order_delivered_tag')}</div>` : ''}
+          </div>
           <div class="txn-when">${t.date} · ${formatTime12_(t.time)}</div>
           <div class="txn-items">
             <div>${t.itemsSummary}${t.factory ? ` <span class="txn-factory-tag">${t.factory}</span>` : ''}</div>
@@ -17242,20 +17314,14 @@
           </div>
           <div class="txn-amt">${fmt(t.total)}</div>
           <span class="txn-paid-toggle ${statusCls}" ${(info.due > 0 && !t.factory) ? '' : 'style="cursor:default;"'}>${statusTxt}</span>
+          <!-- CHANGED (2026-08-24, user request): confirming no longer
+               marks an order as counted in Sales — it now just moves it
+               into Stock Ready (in Factory) and the factory's own ledger.
+               Only attaching the gate pass/receipt (see the delivered line
+               above) makes it count as a sale — see isCountedSale_(). -->
           ${t.factory ? (t.confirmed === false
-            ? `<button type="button" class="txn-confirm-tab" data-act="confirm" title="Mark this factory order as confirmed so it counts in Sales by Factory">Order Confirm</button>`
-            : `<span class="txn-confirmed-tag" title="Counted in Sales by Factory">✓ Confirmed</span>`) : ''}
-          <!-- FIX: this used to check ONLY receiptFiles[t.id] -- the in-memory/
-               localStorage map that only exists on the device the receipt was
-               actually attached from. A synced receipt (t.receiptUrl, the
-               real Drive link written to the sheet -- see readTransactions_ in
-               Code.gs) was already being read back correctly on every OTHER
-               device, but this tag never looked at it, so the receipt
-               appeared to have vanished there even though it was safely on
-               the sheet/Drive the whole time. Same receiptFiles-id-or-URL
-               fallback every other ledger's receipt badge already uses (see
-               e.g. the Paint Ledger's hasReceipt check). -->
-          ${(t.factory && (receiptFiles[t.id] || t.receiptUrl)) ? `<span class="txn-confirmed-tag" title="${tr('receipt_attached')}">${tr('receipt_received_tag')}</span>` : ''}
+            ? `<button type="button" class="txn-confirm-tab" data-act="confirm" title="Mark this factory order as confirmed — moves it into Stock Ready and the factory's ledger">Order Confirm</button>`
+            : `<span class="txn-confirmed-tag" title="Ready at the factory — attach the gate receipt to count it as a sale">✓ Confirmed</span>`) : ''}
           <div class="txn-row-actions">
             ${(receiptFiles[t.id] || t.receiptUrl) ? `
             <button data-act="receipt" title="${tr('view_attached_receipt')}">
