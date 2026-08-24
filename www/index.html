@@ -7779,7 +7779,22 @@
           detail: '', chequeDate: '', chequeStatus: '', txnId: t.id
         };
       });
-      const manualRows = (c.entries || []).filter(e => !orderIdOf(e));
+      // FIX (2026-08-24): this used to exclude EVERY entry with an order id
+      // (any txnId or "Order #..." desc), assuming orderRows above always
+      // covers it. That's only true for orders still in transactionsLog —
+      // orderRows is built from confirmedOrders, so an order missing
+      // locally (sync gap, or the 2026-08-24 data-loss bug) produces no
+      // orderRows entry at all, and the old filter here would ALSO drop the
+      // matching c.entries row (now sent back by Code.gs's
+      // readCustomerLedger_ — see its 2026-08-24 fix), silently zeroing out
+      // real sheet data on every save. Only excluding entries whose order
+      // IS in this run's regenerated set avoids double-counting a live
+      // order while still preserving an orphaned one intact.
+      const regeneratedOrderIds = new Set(confirmedOrders.map(t => t.id));
+      const manualRows = (c.entries || []).filter(e => {
+        const oid = orderIdOf(e);
+        return !oid || !regeneratedOrderIds.has(oid);
+      });
       const merged = orderRows.concat(manualRows);
       merged.sort((a,b)=>{
         const da = parseDMY_(a.date), db = parseDMY_(b.date);
@@ -9580,8 +9595,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.9";
-    const APP_VERSION_NOTE = "Renamed the Stock page's \"Product Stock (On Hand)\" section to \"Raw Material Stock\" and rebuilt it to compute automatically: raw material received (from new Raw Material Name / Weight Received / Items Received fields on each Raw Material Ledger entry) minus what's been used by every order booked (from a new \"Raw Material Used\" recipe you set once per product, on the Add/Edit Product screen), remaining per material name, with a settable Low Stock threshold per material. Requires an Apps Script redeploy (Products and Raw Material Ledger sheet columns changed, plus a new Meta setting) as well as the app rebuild.";
+    const APP_VERSION = "2026.08.24.10";
+    const APP_VERSION_NOTE = "CRITICAL FIX: a factory's Customer/Factory Ledger could get permanently stuck showing \"Refused to overwrite 'CustomerLedger'... this save would leave it empty\" forever, even after fully closing and reopening the app. Root cause: the sheet's order-linked ledger rows were never sent back to any device on load (the app was expected to regenerate them itself from its own order list); if an order ever went missing from a device's local order list for any reason (a sync gap, or the earlier 2026-08-24 data-loss bug), the app treated that as proof the order was deleted and permanently erased its ledger row too, with no way for any device to ever get it back. Fixed in three places: the sheet now sends these rows back on load, and the app no longer erases one unless its order is confirmed gone (still on record but unconfirmed, or genuinely deleted) rather than merely missing. Requires an Apps Script redeploy as well as the app rebuild.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -11117,10 +11132,34 @@
           if(existing.desc !== newDesc){ existing.desc = newDesc; changed = true; }
         }
       });
+      // FIX (2026-08-24): this used to drop an auto-debit entry the moment
+      // its order wasn't in confirmedIds — treating "order not currently
+      // found locally" as proof the order was deleted/unconfirmed. That's
+      // only true if the order genuinely IS gone (tombstoned) or is still
+      // on record but explicitly unconfirmed. An order that's merely
+      // ABSENT from transactionsLog for some other reason — a sync gap
+      // between devices, or (see the 2026-08-24 critical data-loss bug)
+      // a load that temporarily wiped local orders — is NOT proof of
+      // deletion, and wrongly deleting the entry here permanently orphans
+      // the matching sheet row: Code.gs sends txnId rows back on load (see
+      // readCustomerLedger_'s matching fix) specifically so a case like
+      // this can self-heal, but only if THIS filter stops re-deleting the
+      // entry on every single reconcile pass. Worse, the very next save
+      // then tries to write zero rows for this ledger where the sheet still
+      // has real ones — exactly the "Refused to overwrite CustomerLedger"
+      // deadlock a real device got stuck in, unrecoverable even after a
+      // full close-and-reopen, because every fresh load re-ran this same
+      // wrong deletion. Only remove an entry when its order is confirmed
+      // gone: still present but explicitly unconfirmed, or genuinely
+      // tombstoned as deleted.
       const before = c.entries.length;
       c.entries = c.entries.filter(e=>{
         const oid = orderIdOf(e);
-        return !oid || confirmedIds.has(oid);
+        if(!oid || confirmedIds.has(oid)) return true;
+        const stillPresentButUnconfirmed = transactionsLog.some(t => t.id === oid && t.factory === c.name);
+        if(stillPresentButUnconfirmed) return false;
+        if(isDeleted_('transactionsLog', oid)) return false;
+        return true; // can't prove it's gone — keep it rather than risk losing real data
       });
       if(c.entries.length !== before) changed = true;
       // FIX: auto-debit entries above get appended in transactionsLog's
