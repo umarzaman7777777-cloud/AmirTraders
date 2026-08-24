@@ -3273,7 +3273,10 @@
     <div id="rl-balance-line" style="font-family:var(--mono); font-size:13px; margin:-8px 0 14px;"></div>
     <div id="rl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
     <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
-      <label class="field-label" data-i18n="description">Description</label>
+      <div style="display:flex; align-items:baseline; justify-content:space-between;">
+        <label class="field-label" style="margin:0;" data-i18n="description">Description</label>
+        <button type="button" id="rl-desc-manage-btn" class="ml-manage-link" data-list="rawdesc" data-i18n="manage">Manage</button>
+      </div>
       <div class="pl-colour-wrap" id="rl-desc-wrap">
         <div class="pl-colour-bar" id="rl-desc-bar">
           <input class="pl-colour-search" id="rl-desc" placeholder="e.g. Steel Taar / Advance payment" autocomplete="off">
@@ -3288,7 +3291,10 @@
            that material's running stock — everything here is optional, so
            an entry that's purely a payment (no material actually received)
            can leave all three blank exactly as before this change. -->
-      <label class="field-label" data-i18n="rl_stock_name">Raw Material Name (for stock tracking, optional)</label>
+      <div style="display:flex; align-items:baseline; justify-content:space-between;">
+        <label class="field-label" style="margin:0;" data-i18n="rl_stock_name">Raw Material Name (for stock tracking, optional)</label>
+        <button type="button" id="rl-stockname-manage-btn" class="ml-manage-link" data-list="rawmaterialname" data-i18n="manage">Manage</button>
+      </div>
       <input class="field-input" id="rl-stockname" list="dl-rawmaterial" data-i18n-placeholder="rl_stock_name_placeholder" placeholder="e.g. Steel Taar" autocomplete="off">
       <div style="display:flex; gap:10px;">
         <div style="flex:1;">
@@ -3298,6 +3304,36 @@
         <div style="flex:1;">
           <label class="field-label" data-i18n="rl_items_in">Items Received (pcs)</label>
           <input class="field-input" id="rl-itemsin" type="number" min="0" step="1" placeholder="0">
+        </div>
+      </div>
+      <!-- ADD (2026-08-24, user request #2): live Remaining Weight/Items for
+           whatever Raw Material Name is currently typed above (from the same
+           computeRawMaterialStock_ the Raw Material Stock page uses — see
+           rlUpdateStockPreview_), plus a Rate that auto-fills Credit below,
+           and quick Add/Reset controls scoped to that same material — see
+           the weight-add-row block near the bottom of this modal. -->
+      <div id="rl-stock-preview-wrap" style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="remaining_weight">Remaining Weight</label>
+          <input class="field-input" id="rl-remainingweight" readonly placeholder="0" style="opacity:0.85;">
+        </div>
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="rl_remaining_items">Remaining Items</label>
+          <input class="field-input" id="rl-remainingitems" readonly placeholder="0" style="opacity:0.85;">
+        </div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="rl_rate_type">Rate</label>
+          <select class="field-input" id="rl-rate-type">
+            <option value="" data-i18n="rl_rate_none">No Rate</option>
+            <option value="weight" data-i18n="rl_rate_by_weight">Rate per Weight (kg)</option>
+            <option value="item" data-i18n="rl_rate_by_item">Rate per Item</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="rl_rate_value">Rate Amount (Rs)</label>
+          <input class="field-input" id="rl-rate" type="number" min="0" step="any" placeholder="0">
         </div>
       </div>
       <div style="display:flex; gap:10px;">
@@ -3397,6 +3433,29 @@
       <div class="modal-actions">
         <button class="btn-cancel" id="rawsupplier-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_supplier">Delete Supplier</button>
         <button class="btn-confirm" id="rl-add-entry" data-i18n="add_entry">Add Entry</button>
+      </div>
+      <!-- ADD (2026-08-24, user request #2): quick stock top-up + reset,
+           scoped to whichever Raw Material Name is currently in rl-stockname
+           above — same "+ Add Stock / Reset Weight" idea as the Custom
+           Ledger's own weight box (see cul-addstock-btn/cul-resetweight-btn),
+           adapted to this ledger's computed-from-history stock model: Add
+           creates a small zero-cost stock-only entry (so it flows through
+           the same computeRawMaterialStock_ everything else uses); Reset
+           re-bases that material's Remaining to 0 going forward (PIN-gated,
+           via requirePinReverify_) without touching any past entry — see
+           rawMaterialResetAt. -->
+      <div style="font-family:var(--mono); font-size:10.5px; color:var(--text-dim); margin:10px 2px 2px;" data-i18n="rl_quick_stock_hint">Quick stock adjustments for the Raw Material Name above:</div>
+      <div style="display:flex; gap:10px;">
+        <input class="field-input" id="rl-addweight-amount" type="number" min="0" step="any" data-i18n-placeholder="rl_add_weight_placeholder" placeholder="Weight to add (kg)" style="flex:1;">
+        <input class="field-input" id="rl-additems-amount" type="number" min="0" step="1" data-i18n-placeholder="rl_add_items_placeholder" placeholder="Items to add" style="flex:1;">
+      </div>
+      <div class="weight-add-row">
+        <button type="button" class="weight-add-btn" id="rl-addweight-btn" style="flex:1;" data-i18n="rl_add_weight_btn">+ Add Weight</button>
+        <button type="button" class="weight-add-btn" id="rl-additems-btn" style="flex:1;" data-i18n="rl_add_items_btn">+ Add Items</button>
+      </div>
+      <div class="weight-add-row" style="margin-top:8px;">
+        <button type="button" class="weight-add-btn weight-reset-btn" id="rl-resetweight-btn" style="flex:1;" data-i18n="rl_reset_weight_btn">Reset Weight</button>
+        <button type="button" class="weight-add-btn weight-reset-btn" id="rl-resetitems-btn" style="flex:1;" data-i18n="rl_reset_items_btn">Reset Items</button>
       </div>
       <button class="btn-cancel" id="rl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
     </div>
@@ -4555,7 +4614,7 @@
           dirty: dataDirty, savedAt: Date.now(),
           transactionsLog, customerPayments, inventory, factories,
           expenses, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
-          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels,
+          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawLedgerDescriptions, rawMaterialResetAt,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
@@ -4602,6 +4661,8 @@
       if(Array.isArray(snap.rawGaugeCounts) && snap.rawGaugeCounts.length) rawGaugeCounts = snap.rawGaugeCounts;
       if(Array.isArray(snap.rawSizeCounts) && snap.rawSizeCounts.length) rawSizeCounts = snap.rawSizeCounts;
       if(snap.rawMaterialReorderLevels && typeof snap.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = snap.rawMaterialReorderLevels;
+      if(Array.isArray(snap.rawLedgerDescriptions) && snap.rawLedgerDescriptions.length) rawLedgerDescriptions = snap.rawLedgerDescriptions;
+      if(snap.rawMaterialResetAt && typeof snap.rawMaterialResetAt === 'object') rawMaterialResetAt = snap.rawMaterialResetAt;
       if(Array.isArray(snap.paintItemSizes) && snap.paintItemSizes.length) paintItemSizes = snap.paintItemSizes;
       if(Array.isArray(snap.paintItemTypes) && snap.paintItemTypes.length) paintItemTypes = snap.paintItemTypes;
       if(Array.isArray(snap.paintFactoryNames) && snap.paintFactoryNames.length) paintFactoryNames = snap.paintFactoryNames;
@@ -5468,6 +5529,30 @@
         if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object'){
           rawMaterialReorderLevels = Object.assign({}, d.rawMaterialReorderLevels, rawMaterialReorderLevels);
         }
+        // ADD (2026-08-24, user request #2): rawMaterialResetAt is keyed by
+        // material name -> {weight:{date,time}, items:{date,time}} — a plain
+        // per-key union (like rawMaterialReorderLevels above) would let one
+        // device's entry for a material silently overwrite the OTHER
+        // device's reset for that same material's other dimension (weight
+        // vs items) if both were set around the same time. Merged one level
+        // deeper instead: per material, per weight/items, whichever mark is
+        // actually more recent wins — never "whichever device saves last".
+        if(d.rawMaterialResetAt && typeof d.rawMaterialResetAt === 'object'){
+          const mergedResetAt = Object.assign({}, d.rawMaterialResetAt);
+          Object.keys(rawMaterialResetAt).forEach(name=>{
+            const remote = mergedResetAt[name] || {};
+            const local = rawMaterialResetAt[name] || {};
+            const combined = {};
+            ['weight','items'].forEach(kind=>{
+              const r = remote[kind], l = local[kind];
+              if(!r) combined[kind] = l;
+              else if(!l) combined[kind] = r;
+              else combined[kind] = (rawStockTs_(l.date,l.time) >= rawStockTs_(r.date,r.time)) ? l : r;
+            });
+            mergedResetAt[name] = combined;
+          });
+          rawMaterialResetAt = mergedResetAt;
+        }
         if(Array.isArray(d.customLedgers)) customLedgers = mergeCustomLedgersWithEntries_(customLedgers, d.customLedgers);
         if(d.inventory){
           lastRemoteRosters_ = {
@@ -5905,7 +5990,7 @@
           transactionsLog: transactionsForSync, customerPayments: customerPaymentsForSync, inventory: inventoryForSync, factories,
           confirmedEmpty,
           expenses: expensesForSync, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
-          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels,
+          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawLedgerDescriptions, rawMaterialResetAt,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers: customLedgersForSync, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
@@ -6411,6 +6496,8 @@
           if(Array.isArray(d.rawGaugeCounts) && d.rawGaugeCounts.length > 0) rawGaugeCounts = d.rawGaugeCounts;
           if(Array.isArray(d.rawSizeCounts) && d.rawSizeCounts.length > 0) rawSizeCounts = d.rawSizeCounts;
           if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = d.rawMaterialReorderLevels;
+          if(Array.isArray(d.rawLedgerDescriptions) && d.rawLedgerDescriptions.length > 0) rawLedgerDescriptions = d.rawLedgerDescriptions;
+          if(d.rawMaterialResetAt && typeof d.rawMaterialResetAt === 'object') rawMaterialResetAt = d.rawMaterialResetAt;
           if(Array.isArray(d.paintItemSizes) && d.paintItemSizes.length > 0) paintItemSizes = d.paintItemSizes;
           if(Array.isArray(d.paintItemTypes) && d.paintItemTypes.length > 0) paintItemTypes = d.paintItemTypes;
           if(Array.isArray(d.paintFactoryNames) && d.paintFactoryNames.length > 0) paintFactoryNames = d.paintFactoryNames;
@@ -6953,6 +7040,22 @@
         rawmat_threshold: "Low Stock At", rawmat_threshold_placeholder: "Not set", no_raw_material_stock: "No raw material stock yet — add a Raw Material Ledger entry with a Raw Material Name and weight/items received, or link a product's recipe, to see it here.",
         rl_stock_name: "Raw Material Name (for stock tracking, optional)", rl_stock_name_placeholder: "e.g. Steel Taar",
         rl_weight_in: "Weight Received (kg)", rl_items_in: "Items Received (pcs)",
+        // ADD (2026-08-24, user request #2): Raw Material Ledger — Remaining
+        // Weight/Items preview, Rate → Credit auto-fill, quick Add/Reset.
+        rl_remaining_items: "Remaining Items",
+        rl_rate_type: "Rate", rl_rate_none: "No Rate", rl_rate_by_weight: "Rate per Weight (kg)", rl_rate_by_item: "Rate per Item",
+        rl_rate_value: "Rate Amount (Rs)",
+        rl_quick_stock_hint: "Quick stock adjustments for the Raw Material Name above:",
+        rl_quick_add_desc: "Stock Added",
+        rl_add_weight_placeholder: "Weight to add (kg)", rl_add_items_placeholder: "Items to add",
+        rl_add_weight_btn: "+ Add Weight", rl_add_items_btn: "+ Add Items",
+        rl_reset_weight_btn: "Reset Weight", rl_reset_items_btn: "Reset Items",
+        rl_enter_add_amount_first: "Enter a Weight or Items amount first.",
+        rl_pick_material_first: "Type or pick a Raw Material Name above first.",
+        rl_stock_added_msg: "Stock added — Remaining updated.",
+        rl_weight_reset_msg: "Remaining Weight reset to 0 for this material — past entries are untouched.",
+        rl_items_reset_msg: "Remaining Items reset to 0 for this material — past entries are untouched.",
+        confirm_pin_reset_rawstock_hint: "Enter your PIN to reset this material's Remaining — this can't be undone.",
         recipe_title: "Raw Material Used (per unit)", recipe_sub: "Optional — set once and every order of this product automatically deducts from Raw Material Stock.", recipe_add_row: "+ Add Material",
         recipe_material_placeholder: "Material name", recipe_weight_placeholder: "Weight/unit (kg)", recipe_items_placeholder: "Items/unit",
         notif_settings_title: "Notification Alerts", notif_settings_desc: "Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.",
@@ -7270,6 +7373,20 @@
         rawmat_threshold: "کم اسٹاک حد", rawmat_threshold_placeholder: "سیٹ نہیں", no_raw_material_stock: "ابھی تک کوئی خام مال اسٹاک نہیں — خام مال لیجر میں خام مال کا نام اور وزن/آئٹمز درج کریں، یا کسی پروڈکٹ کی ریسیپی سے لنک کریں۔",
         rl_stock_name: "خام مال کا نام (اسٹاک ٹریکنگ کے لیے، اختیاری)", rl_stock_name_placeholder: "مثلاً اسٹیل تار",
         rl_weight_in: "وزن موصول ہوا (کلوگرام)", rl_items_in: "آئٹمز موصول ہوئے (عدد)",
+        rl_remaining_items: "باقی آئٹمز",
+        rl_rate_type: "ریٹ", rl_rate_none: "کوئی ریٹ نہیں", rl_rate_by_weight: "فی وزن ریٹ (کلوگرام)", rl_rate_by_item: "فی آئٹم ریٹ",
+        rl_rate_value: "ریٹ رقم (روپے)",
+        rl_quick_stock_hint: "اوپر درج خام مال کے نام کے لیے فوری اسٹاک ایڈجسٹمنٹ:",
+        rl_quick_add_desc: "اسٹاک شامل کیا گیا",
+        rl_add_weight_placeholder: "شامل کرنے کے لیے وزن (کلوگرام)", rl_add_items_placeholder: "شامل کرنے کے لیے آئٹمز",
+        rl_add_weight_btn: "+ وزن شامل کریں", rl_add_items_btn: "+ آئٹمز شامل کریں",
+        rl_reset_weight_btn: "وزن ری سیٹ کریں", rl_reset_items_btn: "آئٹمز ری سیٹ کریں",
+        rl_enter_add_amount_first: "پہلے وزن یا آئٹمز کی مقدار درج کریں۔",
+        rl_pick_material_first: "پہلے اوپر خام مال کا نام لکھیں یا منتخب کریں۔",
+        rl_stock_added_msg: "اسٹاک شامل ہو گیا — باقی مقدار اپ ڈیٹ ہو گئی۔",
+        rl_weight_reset_msg: "اس خام مال کے لیے باقی وزن 0 پر ری سیٹ ہو گیا — پرانی انٹریز محفوظ ہیں۔",
+        rl_items_reset_msg: "اس خام مال کے لیے باقی آئٹمز 0 پر ری سیٹ ہو گئے — پرانی انٹریز محفوظ ہیں۔",
+        confirm_pin_reset_rawstock_hint: "اس خام مال کی باقی مقدار ری سیٹ کرنے کے لیے اپنا پن درج کریں — یہ واپس نہیں ہو سکتا۔",
         recipe_title: "استعمال شدہ خام مال (فی یونٹ)", recipe_sub: "اختیاری — ایک بار سیٹ کریں اور اس پروڈکٹ کا ہر آرڈر خودکار طور پر خام مال اسٹاک سے منہا ہو جائے گا۔", recipe_add_row: "+ خام مال شامل کریں",
         recipe_material_placeholder: "خام مال کا نام", recipe_weight_placeholder: "وزن/یونٹ (کلوگرام)", recipe_items_placeholder: "آئٹمز/یونٹ",
         notif_settings_title: "نوٹیفیکیشن الرٹس", notif_settings_desc: "منتخب کریں کہ اطلاعات ٹیب کے کون سے الرٹس ایپ سے باہر بھی دکھائے جائیں (نوٹیفیکیشن ٹرے / لاک اسکرین)، اور ایپ کتنی دیر بعد نئے الرٹس چیک کرے۔",
@@ -7937,6 +8054,17 @@
     // to reuse, ✕ to delete" combo box as Work Type above. Synced/persisted
     // the same way as the other suggestion lists.
     let rawItemNames = ["Steel Taar","Steel Patri","Kirrik Karri Patri","Chutki","Tala","Mono"];
+    // FIX (2026-08-24, user request #2): rl-desc (the free-text Description
+    // combo) used to share rawItemNames with rl-stockname/dl-rawmaterial
+    // (the Raw Material Name field) — a leftover from before stockName
+    // existed (see the comment above rawItemNames). That meant managing one
+    // ("Manage" link) silently managed the other too, and a Description like
+    // "Advance Payment" would show up as a raw-material-name suggestion and
+    // vice versa. Split into its own list, seeded with the same starting
+    // values so existing suggestions don't just disappear, but now
+    // independently add/removable via its own "Manage" link (list key
+    // 'rawdesc') — see MANAGEABLE_LISTS.
+    let rawLedgerDescriptions = ["Steel Taar","Steel Patri","Kirrik Karri Patri","Chutki","Tala","Mono"];
     let rawWeights = [];
     let rawBundleCounts = [];
     let rawGaugeCounts = [];
@@ -7949,6 +8077,19 @@
     // p.reorderLevel. Synced via Code.gs's Meta tab (readMeta_/writeMeta_),
     // since it's a small flat settings map, not a per-row sheet column.
     let rawMaterialReorderLevels = {};
+    // ADD (2026-08-24, user request #2): "Reset Weight"/"Reset Items" on the
+    // Raw Material Ledger — since Remaining is computed fresh every time
+    // from real history (ledger entries + recipe usage on booked orders,
+    // see computeRawMaterialStock_), there's no bare counter to "reset" the
+    // way Custom Ledger's cl.weightStock has. Instead this records, per
+    // material name, the date+time Reset was last pressed — independently
+    // for weight and items — and computeRawMaterialStock_ simply ignores
+    // any ledger entry or order dated at/before that point when totalling
+    // that dimension. Past entries stay exactly as they were (visible,
+    // unedited) — only the running total re-bases to 0 from that moment on,
+    // same end result as Custom Ledger's Reset Weight without needing a
+    // separate counter to keep in sync with the real entries.
+    let rawMaterialResetAt = {}; // { [materialName]: { weight:{date,time}, items:{date,time} } }
     // The standard product-name/size chart for the "American Pedestal Fan"
     // category (used to populate the Product edit modal's dropdowns below)
     // — moved up here so the Paint Ledger's Item Type suggestions (right
@@ -9320,24 +9461,56 @@
     // itemsSummary/itemCounts pairing) — if a product is renamed or deleted
     // after being ordered, older orders under the old name won't be found
     // and won't count toward usage for that material.
+    // Combines a DD/MM/YYYY date string with an HH:MM time string into one
+    // comparable number (ms since epoch, minute precision) — used only to
+    // compare against a rawMaterialResetAt marker below. Missing/unparsable
+    // date returns 0 (oldest possible), so a malformed date never crashes
+    // the comparison, just sorts first.
+    function rawStockTs_(dateStr, timeStr){
+      const d = parseDMY_(dateStr);
+      if(!d) return 0;
+      const m = /^(\d{1,2}):(\d{2})/.exec(String(timeStr || ''));
+      const mins = m ? (parseInt(m[1],10)*60 + parseInt(m[2],10)) : 0;
+      return d.getTime() + mins*60000;
+    }
     function computeRawMaterialStock_(){
       const byName = {};
       function getRec_(name){
         if(!byName[name]) byName[name] = { name, weightIn:0, weightUsed:0, itemsIn:0, itemsUsed:0 };
         return byName[name];
       }
+      // ADD (2026-08-24, user request #2): "Reset Weight"/"Reset Items" —
+      // any ledger entry or order dated at/before that material's reset
+      // marker is excluded from the running total (both the received AND
+      // used side, so Remaining is exactly 0 right after a reset), without
+      // touching the entries themselves — see rawMaterialResetAt above.
+      // Ties (strictly ">", not ">=") go to the reset: an entry timestamped
+      // the same minute as the reset is treated as pre-reset and excluded,
+      // since minute-precision can't tell "just before" from "at" — the only
+      // corner case this misses is stock added in that SAME minute right
+      // after pressing Reset, which won't count until the next minute ticks
+      // over. Deliberate tradeoff: a reset that's supposed to zero
+      // everything but silently doesn't would be far more confusing than
+      // this.
+      function resetTs_(name, kind){
+        const r = rawMaterialResetAt[name];
+        const mark = r && r[kind];
+        return mark ? rawStockTs_(mark.date, mark.time) : -Infinity;
+      }
       (inventory.rawledger || []).forEach(s=>{
         (s.entries || []).forEach(e=>{
           if(!e || !e.stockName) return;
           const rec = getRec_(e.stockName);
-          if(typeof e.weightIn === 'number') rec.weightIn += e.weightIn;
-          if(typeof e.itemsIn === 'number') rec.itemsIn += e.itemsIn;
+          const ts = rawStockTs_(e.date, e.time);
+          if(typeof e.weightIn === 'number' && ts > resetTs_(e.stockName,'weight')) rec.weightIn += e.weightIn;
+          if(typeof e.itemsIn === 'number' && ts > resetTs_(e.stockName,'items')) rec.itemsIn += e.itemsIn;
         });
       });
       transactionsLog.forEach(t=>{
         const names = String(t.itemsSummary || '').split('\n').filter(Boolean);
         const counts = String(t.itemCounts || '').split('\n').filter(Boolean);
         if(!names.length || names.length !== counts.length) return;
+        const ts = rawStockTs_(t.date, t.time);
         names.forEach((name,i)=>{
           const qty = parseFloat(counts[i]) || 0;
           if(qty <= 0) return;
@@ -9346,8 +9519,8 @@
           p.recipe.forEach(r=>{
             if(!r || !r.material) return;
             const rec = getRec_(r.material);
-            if(typeof r.weightPerUnit === 'number') rec.weightUsed += qty * r.weightPerUnit;
-            if(typeof r.itemsPerUnit === 'number') rec.itemsUsed += qty * r.itemsPerUnit;
+            if(typeof r.weightPerUnit === 'number' && ts > resetTs_(r.material,'weight')) rec.weightUsed += qty * r.weightPerUnit;
+            if(typeof r.itemsPerUnit === 'number' && ts > resetTs_(r.material,'items')) rec.itemsUsed += qty * r.itemsPerUnit;
           });
         });
       });
@@ -9595,8 +9768,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.10";
-    const APP_VERSION_NOTE = "CRITICAL FIX: a factory's Customer/Factory Ledger could get permanently stuck showing \"Refused to overwrite 'CustomerLedger'... this save would leave it empty\" forever, even after fully closing and reopening the app. Root cause: the sheet's order-linked ledger rows were never sent back to any device on load (the app was expected to regenerate them itself from its own order list); if an order ever went missing from a device's local order list for any reason (a sync gap, or the earlier 2026-08-24 data-loss bug), the app treated that as proof the order was deleted and permanently erased its ledger row too, with no way for any device to ever get it back. Fixed in three places: the sheet now sends these rows back on load, and the app no longer erases one unless its order is confirmed gone (still on record but unconfirmed, or genuinely deleted) rather than merely missing. Requires an Apps Script redeploy as well as the app rebuild.";
+    const APP_VERSION = "2026.08.24.11";
+    const APP_VERSION_NOTE = "Raw Material Ledger upgrades (user request): Description and Raw Material Name now each have their own \"Manage\" add/remove list (previously they secretly shared one list). Typing/picking a Raw Material Name now shows that material's live Remaining Weight/Remaining Items right on the entry form. A new Rate (per Weight or per Item) auto-fills Credit as Rate × Weight/Items Received (still editable by hand). New \"+ Add Weight\"/\"+ Add Items\" quick boxes top up a material's Remaining without needing a full dated entry. New \"Reset Weight\"/\"Reset Items\" buttons (PIN-protected) re-base a material's Remaining to 0 going forward without touching any past ledger entry. Requires an Apps Script redeploy (new RawLedger columns + new Meta settings) as well as the app rebuild.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -12837,6 +13010,11 @@
       document.getElementById('rl-stockname').value = '';
       document.getElementById('rl-weightin').value = '';
       document.getElementById('rl-itemsin').value = '';
+      document.getElementById('rl-rate-type').value = '';
+      document.getElementById('rl-rate').value = '';
+      document.getElementById('rl-addweight-amount').value = '';
+      document.getElementById('rl-additems-amount').value = '';
+      rlCreditWasAutoFilled = false;
       document.getElementById('rl-weight').value = '';
       document.getElementById('rl-bundle').value = '';
       document.getElementById('rl-gauge').value = '';
@@ -12855,6 +13033,7 @@
       rlReceiptFileInput.value = '';
       rlReceiptCurrent.style.display = 'none';
       renderRawLedgerModalContent_();
+      rlUpdateStockPreview_();
       rawLedgerModal.classList.add('active');
     }
     function renderRawLedgerModalContent_(){
@@ -12939,6 +13118,10 @@
             document.getElementById('rl-stockname').value = e.stockName || '';
             document.getElementById('rl-weightin').value = (e.weightIn || e.weightIn === 0) ? e.weightIn : '';
             document.getElementById('rl-itemsin').value = (e.itemsIn || e.itemsIn === 0) ? e.itemsIn : '';
+            document.getElementById('rl-rate-type').value = e.rateType || '';
+            document.getElementById('rl-rate').value = (e.rate || e.rate === 0) ? e.rate : '';
+            rlCreditWasAutoFilled = false; // editing an existing entry — never clobber its stored Credit on open
+            rlUpdateStockPreview_();
             document.getElementById('rl-weight').value = e.weight || '';
             document.getElementById('rl-bundle').value = e.bundleCount || '';
             document.getElementById('rl-gauge').value = e.gaugeCount || '';
@@ -13035,6 +13218,14 @@
       const itemsInRaw = document.getElementById('rl-itemsin').value.trim();
       const weightIn = (weightInRaw !== '' && parseFloat(weightInRaw) >= 0) ? parseFloat(weightInRaw) : undefined;
       const itemsIn = (itemsInRaw !== '' && parseFloat(itemsInRaw) >= 0) ? parseFloat(itemsInRaw) : undefined;
+      // ADD (2026-08-24, user request #2): Rate Type + Rate — stored on the
+      // entry (same blank-means-not-set convention as stockName/weightIn/
+      // itemsIn) purely as an audit trail of what was used to auto-fill
+      // Credit below; the Credit value itself is what actually gets synced/
+      // used everywhere else, this is just "what rate produced that number".
+      const rateType = document.getElementById('rl-rate-type').value;
+      const rateRaw = document.getElementById('rl-rate').value.trim();
+      const rate = (rateType && rateRaw !== '' && parseFloat(rateRaw) >= 0) ? parseFloat(rateRaw) : undefined;
       const weight = document.getElementById('rl-weight').value.trim();
       const bundleCount = document.getElementById('rl-bundle').value.trim();
       const gaugeCount = document.getElementById('rl-gauge').value.trim();
@@ -13062,6 +13253,8 @@
             if(stockName) existing.stockName = stockName; else delete existing.stockName;
             if(weightIn !== undefined) existing.weightIn = weightIn; else delete existing.weightIn;
             if(itemsIn !== undefined) existing.itemsIn = itemsIn; else delete existing.itemsIn;
+            if(rateType) existing.rateType = rateType; else delete existing.rateType;
+            if(rate !== undefined) existing.rate = rate; else delete existing.rate;
             existing.weight = weight;
             existing.bundleCount = bundleCount;
             existing.gaugeCount = gaugeCount;
@@ -13100,6 +13293,8 @@
           if(stockName) newEntry.stockName = stockName;
           if(weightIn !== undefined) newEntry.weightIn = weightIn;
           if(itemsIn !== undefined) newEntry.itemsIn = itemsIn;
+          if(rateType) newEntry.rateType = rateType;
+          if(rate !== undefined) newEntry.rate = rate;
           s.entries.push(newEntry);
           if(pendingRawReceipt){
             rawReceiptFiles[entryId] = pendingRawReceipt;
@@ -13110,6 +13305,9 @@
         document.getElementById('rl-stockname').value = '';
         document.getElementById('rl-weightin').value = '';
         document.getElementById('rl-itemsin').value = '';
+        document.getElementById('rl-rate-type').value = '';
+        document.getElementById('rl-rate').value = '';
+        rlCreditWasAutoFilled = false;
         document.getElementById('rl-weight').value = '';
         document.getElementById('rl-bundle').value = '';
         document.getElementById('rl-gauge').value = '';
@@ -13130,6 +13328,7 @@
         renderRawLedgerModalContent_();
         renderRawLedger();
         renderOverdueChequeBanner_();
+        rlUpdateStockPreview_();
         queueSync();
         showToast_(
           sheetConfigured()
@@ -13143,6 +13342,112 @@
         commitRlEntrySave_();
       }
     });
+
+    // ADD (2026-08-24, user request #2): live "Remaining Weight"/"Remaining
+    // Items" preview for whatever Raw Material Name is currently typed in
+    // rl-stockname — reads the same computeRawMaterialStock_ the Raw
+    // Material Stock page uses, so it's always exactly in sync with it.
+    // Shows blank (not "0") when the field is empty, same as the rest of
+    // this app's "nothing entered yet" convention.
+    function rlUpdateStockPreview_(){
+      const wEl = document.getElementById('rl-remainingweight');
+      const iEl = document.getElementById('rl-remainingitems');
+      if(!wEl || !iEl) return;
+      const name = document.getElementById('rl-stockname').value.trim();
+      if(!name){ wEl.value = ''; iEl.value = ''; return; }
+      const rec = computeRawMaterialStock_().find(r => r.name === name);
+      wEl.value = rec ? rawmatNum_(rec.weightRemaining) : rawmatNum_(0);
+      iEl.value = rec ? rawmatNum_(rec.itemsRemaining) : rawmatNum_(0);
+    }
+    document.getElementById('rl-stockname').addEventListener('input', rlUpdateStockPreview_);
+    // Rate Type × Rate → auto-fills Credit — same "keep recalculating live
+    // until the person edits Credit directly, then stop touching it" pattern
+    // as the Paint Ledger's plRecalcCreditFromRate_ above (see its comment
+    // for the full reasoning), just switched between Weight Received and
+    // Items Received depending on which Rate Type is picked.
+    let rlCreditWasAutoFilled = false;
+    function rlRecalcCreditFromRate_(){
+      const rateType = document.getElementById('rl-rate-type').value;
+      const rate = parseFloat(document.getElementById('rl-rate').value) || 0;
+      if(!rateType || rate <= 0) return;
+      const qty = rateType === 'weight'
+        ? (parseFloat(document.getElementById('rl-weightin').value) || 0)
+        : (parseFloat(document.getElementById('rl-itemsin').value) || 0);
+      if(qty <= 0) return;
+      const creditEl = document.getElementById('rl-credit');
+      const creditIsEmpty = (parseFloat(creditEl.value) || 0) === 0;
+      if(creditIsEmpty || rlCreditWasAutoFilled){
+        creditEl.value = qty * rate;
+        rlCreditWasAutoFilled = true;
+      }
+    }
+    document.getElementById('rl-rate-type').addEventListener('change', rlRecalcCreditFromRate_);
+    document.getElementById('rl-rate').addEventListener('input', rlRecalcCreditFromRate_);
+    document.getElementById('rl-weightin').addEventListener('input', function(){ rlRecalcCreditFromRate_(); });
+    document.getElementById('rl-itemsin').addEventListener('input', function(){ rlRecalcCreditFromRate_(); });
+    document.getElementById('rl-credit').addEventListener('input', function(){
+      rlCreditWasAutoFilled = false;
+    });
+    // ADD (2026-08-24, user request #2): "+ Add Weight" / "+ Add Items" —
+    // a quick top-up for whatever material is in rl-stockname, without
+    // needing to fill in Description/Credit/etc. Creates the same kind of
+    // zero-cost, quantity-only entry a normal Add Entry would if only
+    // Weight/Items Received were filled in — so it flows through
+    // computeRawMaterialStock_ exactly like any other received stock, fully
+    // auditable in this supplier's own entry list, and naturally respects a
+    // later Reset (see rawMaterialResetAt) since it's timestamped like any
+    // other entry.
+    function rlQuickAddStock_(kind){
+      if(currentRawSupplierIdx === null) return;
+      const name = document.getElementById('rl-stockname').value.trim();
+      if(!name){ alert(tr('rl_pick_material_first')); return; }
+      const amountEl = document.getElementById(kind === 'weight' ? 'rl-addweight-amount' : 'rl-additems-amount');
+      const amount = parseFloat(amountEl.value) || 0;
+      if(amount <= 0){ alert(tr('rl_enter_add_amount_first')); return; }
+      const s = inventory.rawledger[currentRawSupplierIdx];
+      s.entries = s.entries || [];
+      const now = new Date();
+      const entry = {
+        id: 'rl' + Date.now(),
+        date: now.toLocaleDateString('en-GB'),
+        time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+        desc: tr('rl_quick_add_desc'),
+        weight:'', bundleCount:'', gaugeCount:'', sizeCount:'', debit:0, credit:0, method:'', detail:'', receivedBy:'', receivedIn:'', chequeDate:'', chequeStatus:'',
+        device: DEVICE_NAME,
+        stockName: name
+      };
+      if(kind === 'weight') entry.weightIn = amount; else entry.itemsIn = amount;
+      s.entries.push(entry);
+      amountEl.value = '';
+      renderRawLedgerModalContent_();
+      renderRawLedger();
+      rlUpdateStockPreview_();
+      queueSync();
+      showToast_(tr('rl_stock_added_msg'));
+    }
+    document.getElementById('rl-addweight-btn').addEventListener('click', ()=> rlQuickAddStock_('weight'));
+    document.getElementById('rl-additems-btn').addEventListener('click', ()=> rlQuickAddStock_('items'));
+    // ADD (2026-08-24, user request #2): "Reset Weight" / "Reset Items" —
+    // re-bases the currently-typed material's Remaining (weight or items,
+    // independently) to 0 going forward, without touching any past entry —
+    // see rawMaterialResetAt and its use in computeRawMaterialStock_.
+    // PIN-gated like every other destructive action in this app.
+    function rlResetStock_(kind){
+      if(currentRawSupplierIdx === null) return;
+      const name = document.getElementById('rl-stockname').value.trim();
+      if(!name){ alert(tr('rl_pick_material_first')); return; }
+      requirePinReverify_(()=>{
+        const now = new Date();
+        const mark = { date: now.toLocaleDateString('en-GB'), time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) };
+        if(!rawMaterialResetAt[name]) rawMaterialResetAt[name] = {};
+        rawMaterialResetAt[name][kind] = mark;
+        rlUpdateStockPreview_();
+        queueSync();
+        showToast_(kind === 'weight' ? tr('rl_weight_reset_msg') : tr('rl_items_reset_msg'));
+      }, tr('confirm_pin_reset_rawstock_hint'));
+    }
+    document.getElementById('rl-resetweight-btn').addEventListener('click', ()=> rlResetStock_('weight'));
+    document.getElementById('rl-resetitems-btn').addEventListener('click', ()=> rlResetStock_('items'));
 
     function rawLedgerRows_(dateFrom, dateTo, supplierName){
       const rows = [];
@@ -14875,7 +15180,7 @@
     // Description with this reusable list) plus Weight/Bundle Count/Gauge/
     // Size, each its own independent suggestion list.
     createSuggestCombo_(document.getElementById('rl-desc'), document.getElementById('rl-desc-dropdown'), document.getElementById('rl-desc-wrap'),
-      () => rawItemNames, v => { rawItemNames = v; });
+      () => rawLedgerDescriptions, v => { rawLedgerDescriptions = v; });
     createSuggestCombo_(document.getElementById('rl-weight'), document.getElementById('rl-weight-dropdown'), document.getElementById('rl-weight-wrap'),
       () => rawWeights, v => { rawWeights = v; });
     createSuggestCombo_(document.getElementById('rl-bundle'), document.getElementById('rl-bundle-dropdown'), document.getElementById('rl-bundle-wrap'),
@@ -15052,7 +15357,17 @@
       // manages the SAME customDescriptions list the Description field's own
       // inline suggestion dropdown reads from, so anything added here shows
       // up as a suggestion there too (and vice versa — they're one list).
-      description: { get: () => customDescriptions, set: v => { customDescriptions = v; }, placeholderKey: 'description', labelOverride: 'description', inputPlaceholder: 'e.g. Steel Wire delivery / Advance payment' }
+      description: { get: () => customDescriptions, set: v => { customDescriptions = v; }, placeholderKey: 'description', labelOverride: 'description', inputPlaceholder: 'e.g. Steel Wire delivery / Advance payment', solo: true },
+      // ADD (2026-08-24, user request #2): the Raw Material Ledger's own
+      // Description "Manage" link — same idea as 'description' above, just
+      // its own independent list (see rawLedgerDescriptions) now that it's
+      // been split off from the Raw Material Name list below.
+      rawdesc: { get: () => rawLedgerDescriptions, set: v => { rawLedgerDescriptions = v; }, placeholderKey: 'description', labelOverride: 'description', inputPlaceholder: 'e.g. Steel Wire delivery / Advance payment', solo: true },
+      // Raw Material Name "Manage" link — backs rl-stockname's datalist
+      // (dl-rawmaterial) and the Product recipe's material picker
+      // (pe-recipe-material). refreshRawMaterialDatalist_ keeps the
+      // datalist in sync — see the manage-lists-close/add handlers below.
+      rawmaterialname: { get: () => rawItemNames, set: v => { rawItemNames = v; }, placeholderKey: 'rl_stock_name', labelOverride: 'rl_stock_name', inputPlaceholder: 'e.g. Steel Taar', solo: true }
     };
     // Tracks which MANAGEABLE_LISTS entry is currently being managed —
     // NOT read from the <select> element's value, because 'description'
@@ -15081,6 +15396,7 @@
             cfg.set(list);
             renderManageListsItems_();
             refreshLabourDatalists_();
+            refreshRawMaterialDatalist_();
             queueSync();
           });
         });
@@ -15091,18 +15407,21 @@
     function openManageListsModal(key){
       const k = (key && MANAGEABLE_LISTS[key]) ? key : 'worktype';
       mlCurrentKey = k;
-      // Opened via the Custom Ledger Description's own "Manage" link, this
-      // modal only ever concerns the Description list — showing the List
-      // dropdown (and generic "Manage Lists" title) there would just be
-      // confusing clutter, so both are swapped for a plain "Description"
-      // title and the dropdown is hidden. Every other entry point (Work
-      // Type, Guard Size, etc.) still gets the dropdown as before, and the
-      // dropdown is set to match so switching lists there stays in sync.
-      const isDescription = k === 'description';
-      if(!isDescription) document.getElementById('ml-list-select').value = k;
+      // Opened via a field's own dedicated "Manage" link (Description,
+      // Raw Ledger Description, Raw Material Name — see `solo` on each
+      // MANAGEABLE_LISTS entry), this modal only ever concerns that ONE
+      // list — showing the List dropdown (and generic "Manage Lists"
+      // title) there would just be confusing clutter, so both are swapped
+      // for that field's own label and the dropdown is hidden. Every other
+      // entry point (Work Type, Guard Size, etc.) still gets the dropdown
+      // as before, and the dropdown is set to match so switching lists
+      // there stays in sync.
+      const cfg = MANAGEABLE_LISTS[k];
+      const isSolo = !!cfg.solo;
+      if(!isSolo) document.getElementById('ml-list-select').value = k;
       document.getElementById('ml-new-input').value = '';
-      document.getElementById('ml-list-select-wrap').style.display = isDescription ? 'none' : '';
-      document.getElementById('ml-modal-title').textContent = isDescription ? tr('description') : tr('manage_lists');
+      document.getElementById('ml-list-select-wrap').style.display = isSolo ? 'none' : '';
+      document.getElementById('ml-modal-title').textContent = isSolo ? tr(cfg.labelOverride || 'manage_lists') : tr('manage_lists');
       renderManageListsItems_();
       manageListsModal.classList.add('active');
     }
@@ -15124,11 +15443,13 @@
       input.value = '';
       renderManageListsItems_();
       refreshLabourDatalists_();
+      refreshRawMaterialDatalist_();
       queueSync();
     });
     document.getElementById('manage-lists-close').addEventListener('click', ()=>{
       manageListsModal.classList.remove('active');
       refreshLabourDatalists_();
+      refreshRawMaterialDatalist_();
     });
 
     // ---- Worker Ledger modal ----
