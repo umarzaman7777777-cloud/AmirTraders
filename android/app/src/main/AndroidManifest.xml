@@ -40,4 +40,21 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Needed for fingerprint quick-unlock (@capgo/capacitor-native-biometric) -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- FIX (2026-08-23, Galaxy Tab A / Android 8 report): exported files
+         (PDF/JPG/CSV), receipt photos, and backups all write through the
+         @capacitor/filesystem plugin to Directory.Documents (shared/public
+         storage). On classic Android (API <= 28 / Android 9 and below,
+         which includes this Android 8 tablet) writing to shared storage
+         requires WRITE_EXTERNAL_STORAGE to be BOTH declared here AND
+         granted at runtime - the plugin already requests it at runtime
+         automatically, but Android silently refuses to even show that
+         request for a permission the manifest never declared, so every
+         write was failing before the user ever saw a prompt. maxSdkVersion
+         caps these to the old permission model only: API 29-32 use scoped
+         storage (no broad grant needed for the plugin's own writes) and API
+         33+ has no such permission at all, so declaring it unbounded would
+         be a no-op there anyway. READ is included because the plugin
+         checks/requests both together as one group. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 </manifest>

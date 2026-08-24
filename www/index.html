@@ -285,6 +285,26 @@
     }
     .pin-input-box::placeholder{ color:var(--text-dim); letter-spacing:10px; }
     .pin-input-box:focus{ outline:none; border-color:var(--yellow); }
+    .pin-field-wrap{ position:relative; display:block; width:190px; margin:0 auto; }
+    .lock-action-width{ width:230px; }
+
+    /* Tablet+/desktop: the lock card was sized for phones and looked
+       cramped/tiny with lots of empty dead space around it on larger
+       screens. Widen and enlarge it (and its inner controls) from
+       600px up; phones (<600px) are completely untouched. */
+    @media (min-width:600px){
+      .lock-card{ width:460px; padding:44px 44px 36px; }
+      .brand-mark{ width:72px; height:72px; margin:0 auto 18px; }
+      .brand-mark img{ width:54px; }
+      .brand-tag{ font-size:12px; margin:0 0 28px; }
+      .pin-field-wrap{ width:260px; }
+      .pin-input-box{ width:260px; padding:15px 46px 15px 16px; font-size:21px; letter-spacing:12px; margin:0 auto 24px; }
+      .keypad{ gap:14px; max-width:320px; margin:0 auto; }
+      .key{ font-size:21px; padding:18px 0; }
+      .key.wide{ font-size:13px; }
+      .lock-hint{ margin-top:20px; font-size:12px; }
+      .lock-action-width{ width:300px; }
+    }
 
     /* ---------- POS SHELL ---------- */
     #pos{ display:none; min-height:100vh; flex-direction:column; }
@@ -349,6 +369,15 @@
     .side-theme-picker{
       display:flex; flex-wrap:wrap; gap:12px;
       padding:4px 12px 16px;
+    }
+    /* ADD (2026-08-23): compact "Theme" row that opens the swatch picker
+       as a popup (#theme-picker-modal) instead of showing the swatches
+       inline — see the FIX comment above #side-theme-trigger in the HTML. */
+    .side-theme-trigger{ width:100%; }
+    .side-theme-trigger-swatch{
+      width:16px; height:16px; border-radius:50%; flex-shrink:0;
+      background:linear-gradient(135deg,#F5B700,#E8590C); /* amber default, overwritten by applyLogoTheme() on load */
+      box-shadow:inset 0 -2px 3px rgba(0,0,0,0.28), inset 0 1px 2px rgba(255,255,255,0.4);
     }
     .logo-theme-swatch{
       width:30px; height:30px; border-radius:50%; cursor:pointer; padding:0;
@@ -609,8 +638,16 @@
     .main-grid{ flex:1; display:flex; overflow:hidden; }
 
     /* ---- sidebar ---- */
+    /* FIX (2026-08-23, user request: "add more wider buttons for side
+       menu") — sidebar widened from 210px so every nav button (they stretch
+       to fill it, flex column's default align-items:stretch) gets more
+       horizontal room; padding bumped alongside so the extra width reads as
+       a bigger, easier-to-tap button rather than just empty space on the
+       right. Only referenced here — nothing else in the CSS hardcodes the
+       old 210px, so this is a safe, self-contained change. Mobile already
+       overrides to width:100% below, so this only affects desktop/tablet. */
     .sidebar{
-      width:210px; flex-shrink:0; background:var(--panel);
+      width:250px; flex-shrink:0; background:var(--panel);
       border-right:1px solid var(--steel-line);
       display:flex; flex-direction:column; padding:20px 14px;
     }
@@ -619,7 +656,7 @@
       display:flex; align-items:center; gap:10px;
       background:none; border:none; color:var(--text-dim);
       font-family:var(--body); font-size:13px; font-weight:500;
-      padding:10px 12px; border-radius:8px; cursor:pointer; text-align:left;
+      padding:12px 16px; border-radius:8px; cursor:pointer; text-align:left;
       transition:background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
     }
     .side-nav-item svg{ flex-shrink:0; }
@@ -658,7 +695,7 @@
       display:flex; align-items:center; gap:9px;
       background:none; border:none; color:var(--text-dim);
       font-family:var(--body); font-size:12.5px; font-weight:500;
-      padding:8px 12px; border-radius:7px; cursor:pointer; text-align:left;
+      padding:10px 14px; border-radius:7px; cursor:pointer; text-align:left;
       border-left:2px solid var(--steel-line);
       transition:background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     }
@@ -678,7 +715,7 @@
     .side-footer-link{
       display:flex; align-items:center; gap:9px; background:none; border:none;
       color:var(--text-dim); font-family:var(--body); font-size:12px;
-      padding:8px 12px; border-radius:7px; cursor:pointer; text-align:left;
+      padding:10px 14px; border-radius:7px; cursor:pointer; text-align:left;
     }
     .side-footer-link:hover{ background:var(--panel-raised); color:var(--text); }
     .side-footer-link.is-on{ color:var(--green); }
@@ -695,6 +732,17 @@
     .nav-badge{
       margin-left:auto; background:var(--red); color:#fff; font-family:var(--mono); font-size:10px; font-weight:700;
       padding:1px 6px; border-radius:10px; line-height:1.5;
+    }
+    /* ADD (2026-08-23): badge for the new header notifications shortcut
+       button (see .top-right #header-notifications-btn) — same red/count
+       pattern as .nav-badge, but positioned as a small overlapping dot on
+       the circular icon button instead of sitting inline in a nav row. */
+    .header-notif-btn{ position:relative; }
+    .header-notif-badge{
+      position:absolute; top:-3px; right:-3px; min-width:16px; height:16px; padding:0 4px;
+      background:var(--red); color:#fff; font-family:var(--mono); font-size:9.5px; font-weight:700;
+      border-radius:999px; border:2px solid var(--panel-raised);
+      display:flex; align-items:center; justify-content:center; line-height:1;
     }
     .notif-section{ margin-bottom:22px; }
     .notif-section h3{ font-size:13px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; }
@@ -1422,6 +1470,10 @@
        ledger), same as the two cases above. */
     #ledger-export-settings-modal.modal-overlay{ z-index:110; }
     #ledger-settings-modal.modal-overlay{ z-index:110; }
+    /* Same fix again — the generic PIN re-verify gate (2026-08-23, delete/
+       edit protection) opens from a button INSIDE whichever ledger/product/
+       factory modal is already open, same as the cases above. */
+    #pin-reverify-modal.modal-overlay{ z-index:110; }
     .modal-box{
       background:var(--panel); border:1px solid var(--steel-line); border-radius:var(--radius);
       width:100%; max-width:360px; padding:22px; max-height:90vh; overflow-y:auto;
@@ -1483,6 +1535,17 @@
       padding:10px 12px; color:var(--text); font-family:var(--mono); font-size:14px; margin-bottom:14px;
     }
     .field-input:focus{ outline:none; border-color:var(--yellow); }
+    /* FIX (2026-08-23, user report + screenshot): the "Saved weights…"
+       placeholder option in the Add Product weight picker rendered in the
+       same bright var(--text) color as a real selected value — every OTHER
+       placeholder-style box in this same form ("Add a new saved name…",
+       "Add a new saved size…") is a plain <input> using the browser's
+       dimmer ::placeholder color, so this one stood out as wrong/too white
+       by comparison. A <select>'s own text always follows .field-input's
+       color:var(--text) rule (there's no browser-native ::placeholder for
+       <select>), so the empty placeholder <option> itself needs its own
+       explicit dim color to actually match the other boxes' look. */
+    #pe-weight-select option[value=""]{ color:var(--text-dim); }
     /* Removes the native up/down spinner control browsers add to
        <input type="number"> — every amount/qty field in the app uses this,
        and the little stepper arrows aren't wanted here (typing the number
@@ -1686,6 +1749,31 @@
         box-shadow:none;
       }
     }
+
+    /* FIX (2026-08-23): on a tablet (wider than the 820px phone cutoff
+       above, so it didn't get the edge-to-edge treatment, but not a big
+       desktop monitor either) the five wide ledger detail modals
+       (Painter/Factory, Worker/Labour, Raw Material, Custom, Customer)
+       fell back to the same small ~560-600px floating-dialog sizing used
+       for a tiny confirm popup. On a real tablet screen that left a
+       cramped little box with a lot of dead backdrop above/below/around
+       it instead of comfortably filling the space. Widen the box and let
+       it use noticeably more of the screen's height here — phones
+       (<=820px, already full-screen above) and real desktops (>1366px,
+       where the compact centered dialog is intentional) are untouched. */
+    @media (min-width:821px) and (max-width:1366px){
+      #painter-ledger-modal.modal-overlay .modal-box,
+      #worker-ledger-modal.modal-overlay .modal-box,
+      #rawledger-modal.modal-overlay .modal-box,
+      #customledger-modal.modal-overlay .modal-box,
+      #customerledger-modal.modal-overlay .modal-box{
+        width:92% !important; max-width:720px !important; max-height:88vh !important; padding:28px 32px;
+      }
+      #pl-entries-wrap, #wl-entries-wrap, #rl-entries-wrap,
+      #cul-entries-wrap, #cl-entries-wrap{
+        max-height:400px !important;
+      }
+    }
     @media print{
       body *{ visibility:hidden; }
       #receipt-modal, #receipt-modal *{ visibility:visible; }
@@ -1754,7 +1842,7 @@
          since it's an independent quick-path that should work no matter
          which of the two blocks is currently showing, not just from
          inside the Google block. -->
-    <div id="google-unlock-block" style="display:none; width:230px; margin:0 auto;">
+    <div id="google-unlock-block" class="lock-action-width" style="display:none; margin:0 auto;">
       <div id="google-unlock-status" style="font-family:var(--mono); font-size:12px; color:var(--text-dim); margin-bottom:16px; min-height:16px;"></div>
       <button type="button" id="google-signin-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; color:#1f1f1f; border:1px solid var(--steel-line); padding:12px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13.5px; cursor:pointer;">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34 5.1 29.3 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.6 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34 5.1 29.3 3 24 3 16.3 3 9.6 7.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 45c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 36.6 26.8 37.5 24 37.5c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.4 40.5 16.1 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.2 5.2C40.9 36 44 30.5 44 24c0-1.4-.1-2.4-.4-3.5z"/></svg>
@@ -1764,14 +1852,14 @@
     </div>
 
     <div id="pin-unlock-block">
-      <div style="position:relative; display:block; width:190px; margin:0 auto;">
+      <div class="pin-field-wrap">
         <input type="text" id="user-display" class="pin-input-box" value="Amir" readonly tabindex="-1" style="letter-spacing:0.5px; cursor:default;">
         <span style="position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--text-dim); display:flex; align-items:center;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         </span>
       </div>
       <p class="brand-tag" style="margin:-14px 0 18px;">Username</p>
-      <div style="position:relative; display:block; width:190px; margin:0 auto;">
+      <div class="pin-field-wrap">
         <input type="password" id="pin-input" class="pin-input-box" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
         <button type="button" id="pin-toggle-visibility" title="Show/Hide PIN" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px; display:flex; align-items:center;">
           <svg id="pin-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -1796,7 +1884,7 @@
       <button type="button" id="switch-to-google-link" class="lock-hint" style="display:none;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-top:8px;">Sign in with Google instead</button>
     </div>
 
-    <button type="button" id="fingerprint-unlock-btn-standalone" style="display:none; width:230px; margin:14px auto 0; align-items:center; justify-content:center; gap:8px; background:none; color:var(--text-dim); border:1px solid var(--steel-line); padding:10px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12.5px; cursor:pointer;">
+    <button type="button" id="fingerprint-unlock-btn-standalone" class="lock-action-width" style="display:none; margin:14px auto 0; align-items:center; justify-content:center; gap:8px; background:none; color:var(--text-dim); border:1px solid var(--steel-line); padding:10px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12.5px; cursor:pointer;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11c0-3.87-2.69-7-6-7s-6 3.13-6 7v2c0 4.42 2.69 8 6 8"/><path d="M12 4c3.31 0 6 3.13 6 7v2"/><path d="M9 11a3 3 0 0 1 6 0v2c0 3.87-1.79 7-4 7"/><path d="M6 11c0-5.52 3.13-10 7-10"/></svg>
       <span>Use Fingerprint</span>
     </button>
@@ -1855,6 +1943,42 @@
 </div>
 
 <!-- ================= RESET WEIGHT PIN CONFIRM MODAL ================= -->
+<!-- ADD (2026-08-23): popup version of the sidebar's Theme swatch picker
+     — see the FIX comment above #side-theme-trigger for why this moved out
+     of the always-open drawer. Sized/styled like the app's other compact
+     popups (#resetweight-pin-modal right below), not a full-page modal. -->
+<div class="modal-overlay" id="theme-picker-modal">
+  <div class="modal-box" style="max-width:320px;">
+    <h3>Theme</h3>
+    <div class="side-theme-picker" id="side-theme-picker" style="padding:4px 0 6px;">
+      <button type="button" class="logo-theme-swatch" data-logo-theme="amber" title="Amber" style="background:linear-gradient(135deg,#F5B700,#E8590C); --swatch-glow:rgba(245,183,0,0.55);">
+        <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+      <button type="button" class="logo-theme-swatch" data-logo-theme="ocean" title="Ocean" style="background:linear-gradient(135deg,#22D3EE,#2563EB); --swatch-glow:rgba(34,211,238,0.55);">
+        <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+      <button type="button" class="logo-theme-swatch" data-logo-theme="emerald" title="Emerald" style="background:linear-gradient(135deg,#34D399,#059669); --swatch-glow:rgba(52,211,153,0.55);">
+        <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+      <button type="button" class="logo-theme-swatch" data-logo-theme="royal" title="Royal Purple" style="background:linear-gradient(135deg,#C084FC,#7C3AED); --swatch-glow:rgba(192,132,252,0.55);">
+        <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+      <button type="button" class="logo-theme-swatch" data-logo-theme="crimson" title="Crimson" style="background:linear-gradient(135deg,#F87171,#B91C1C); --swatch-glow:rgba(248,113,113,0.55);">
+        <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+      <button type="button" class="logo-theme-swatch" data-logo-theme="sunset" title="Sunset" style="background:linear-gradient(135deg,#FB7185,#F97316); --swatch-glow:rgba(251,113,133,0.55);">
+        <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+      <button type="button" class="logo-theme-swatch" data-logo-theme="steel" title="Steel" style="background:linear-gradient(135deg,#CBD5E1,#64748B); --swatch-glow:rgba(203,213,225,0.55);">
+        <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
+      </button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="theme-picker-close" style="flex:1;" data-i18n="close">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="resetweight-pin-modal">
   <div class="modal-box" style="max-width:320px;">
     <h3 data-i18n="confirm_pin_title">Confirm PIN</h3>
@@ -1864,6 +1988,27 @@
     <div class="modal-actions">
       <button class="btn-cancel" id="resetweight-pin-cancel" style="flex:1;" data-i18n="cancel">Cancel</button>
       <button class="btn-confirm" id="resetweight-pin-confirm" style="flex:1;" data-i18n="confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Generic PIN re-verify gate (2026-08-23) — shared confirm-PIN popup used
+     by every delete and edit-save action across every ledger, Factories,
+     and Products, so deleting/editing an existing record always asks for
+     the app PIN again even though the app itself is already unlocked.
+     Same PIN as the lock screen (the `PIN` var), not a separate secret.
+     One shared modal + requirePinReverify_() helper (defined further down,
+     near the other PIN logic) instead of a one-off copy per call site —
+     modeled on #resetweight-pin-modal above. -->
+<div class="modal-overlay" id="pin-reverify-modal">
+  <div class="modal-box" style="max-width:320px;">
+    <h3 data-i18n="confirm_pin_title">Confirm PIN</h3>
+    <p id="pin-reverify-hint" style="font-family:var(--mono); font-size:11.5px; color:var(--text-dim); margin:-6px 0 14px;" data-i18n="confirm_pin_generic_hint">Enter your PIN to continue.</p>
+    <input type="password" class="field-input" id="pin-reverify-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" autocomplete="off">
+    <p id="pin-reverify-error" style="color:var(--red); font-size:11.5px; font-family:var(--mono); margin:-8px 0 12px; display:none;" data-i18n="wrong_pin_try_again">Incorrect PIN. Try again.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="pin-reverify-cancel" style="flex:1;" data-i18n="cancel">Cancel</button>
+      <button class="btn-confirm" id="pin-reverify-confirm" style="flex:1;" data-i18n="confirm">Confirm</button>
     </div>
   </div>
 </div>
@@ -1907,6 +2052,19 @@
       </div>
     </div>
     <div class="top-right">
+      <!-- ADD (2026-08-23, user request: "Notifications should be in
+           notifications panel on right top corner for ease of access") —
+           Notifications previously lived only inside the hamburger side
+           menu (see notificationsBtn in side-overview-nav below), so
+           getting to it meant opening the drawer first. This gives it a
+           one-tap shortcut right in the header, matching the badge/count
+           behaviour of that side-nav entry (see updateNotificationsBadge_
+           below, which now updates both). The side-menu entry is left in
+           place too — this only adds a faster way in, nothing is removed. -->
+      <button type="button" class="theme-toggle header-notif-btn" id="header-notifications-btn" title="Notifications">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="header-notif-badge" id="header-notifications-badge" style="display:none;"></span>
+      </button>
       <button type="button" class="fullscreen-widget" id="fullscreen-toggle" title="Toggle fullscreen" style="display:none;">
         <span class="fs-dot" id="fs-dot"></span>
         <span class="fs-icon-wrap">
@@ -1952,30 +2110,21 @@
         <div class="side-section-label">Account</div>
         <nav class="side-nav" id="side-settings-nav"></nav>
 
-        <div class="side-section-label">Theme</div>
-        <div class="side-theme-picker" id="side-theme-picker">
-          <button type="button" class="logo-theme-swatch" data-logo-theme="amber" title="Amber" style="background:linear-gradient(135deg,#F5B700,#E8590C); --swatch-glow:rgba(245,183,0,0.55);">
-            <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-          </button>
-          <button type="button" class="logo-theme-swatch" data-logo-theme="ocean" title="Ocean" style="background:linear-gradient(135deg,#22D3EE,#2563EB); --swatch-glow:rgba(34,211,238,0.55);">
-            <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-          </button>
-          <button type="button" class="logo-theme-swatch" data-logo-theme="emerald" title="Emerald" style="background:linear-gradient(135deg,#34D399,#059669); --swatch-glow:rgba(52,211,153,0.55);">
-            <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-          </button>
-          <button type="button" class="logo-theme-swatch" data-logo-theme="royal" title="Royal Purple" style="background:linear-gradient(135deg,#C084FC,#7C3AED); --swatch-glow:rgba(192,132,252,0.55);">
-            <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-          </button>
-          <button type="button" class="logo-theme-swatch" data-logo-theme="crimson" title="Crimson" style="background:linear-gradient(135deg,#F87171,#B91C1C); --swatch-glow:rgba(248,113,113,0.55);">
-            <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-          </button>
-          <button type="button" class="logo-theme-swatch" data-logo-theme="sunset" title="Sunset" style="background:linear-gradient(135deg,#FB7185,#F97316); --swatch-glow:rgba(251,113,133,0.55);">
-            <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-          </button>
-          <button type="button" class="logo-theme-swatch" data-logo-theme="steel" title="Steel" style="background:linear-gradient(135deg,#CBD5E1,#64748B); --swatch-glow:rgba(203,213,225,0.55);">
-            <svg class="swatch-check" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M20 6L9 17l-5-5"/></svg>
-          </button>
-        </div>
+        <!-- FIX (2026-08-23, user request: "theme should be seen like
+             popup when it's touch just like calender because its takes
+             more space like this") — the 7 swatches used to sit inline
+             here, always expanded, permanently taking up two rows of the
+             side drawer. Now this is a single compact row (matching the
+             other side-nav items above it) that opens a small popup (see
+             #theme-picker-modal below, sized like the app's other compact
+             modals e.g. #resetweight-pin-modal) — the swatches themselves,
+             their ids/classes and applyLogoTheme()'s click handling are
+             unchanged, just relocated out of the always-visible drawer. -->
+        <button type="button" class="side-nav-item side-theme-trigger" id="side-theme-trigger">
+          <span class="side-theme-trigger-swatch" id="side-theme-trigger-swatch"></span>
+          <span>Theme</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="margin-left:auto;"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
 
         <div class="side-spacer"></div>
 
@@ -3881,8 +4030,16 @@
          getLowStockAlerts_() below for how this is actually used. -->
     <label class="field-label" data-i18n="stock_qty">Stock Quantity <span style="font-weight:400; color:var(--text-dim); text-transform:none;" data-i18n="stock_qty_optional_hint">— optional, leave blank to not track stock for this item</span></label>
     <input class="field-input" id="pe-stock" type="number" min="0" step="1" placeholder="0">
-    <label class="field-label" data-i18n="reorder_level">Low Stock Alert Level <span style="font-weight:400; color:var(--text-dim); text-transform:none;" data-i18n="reorder_level_hint">— get notified at/below this quantity (default 5)</span></label>
-    <input class="field-input" id="pe-reorder" type="number" min="0" step="1" placeholder="5">
+    <!-- REMOVED (2026-08-23, user request): "Low Stock Alert Level" used to
+         be editable per-product right here — user asked for it to come out
+         of this form entirely ("I'll decide low stock later on"). Low-stock
+         alerting itself is unaffected: every product without its own
+         reorderLevel still falls back to DEFAULT_REORDER_LEVEL_ (5) exactly
+         as before, see getLowStockAlerts_()/the product-card "low" class
+         below — this only removes the ability to set a CUSTOM level from
+         this screen. A product that already had a custom level saved from
+         before this change keeps it untouched (pe-save no longer reads or
+         writes reorderLevel at all). -->
     <label class="field-label" data-i18n="colour">Colour</label>
     <select class="field-input" id="pe-color">
       <option value="Black" data-i18n="color_black">Black</option>
@@ -3966,6 +4123,21 @@
     // ---------------- LOGO COLOUR THEME (sidebar picker, under Inventory) ----------------
     const LOGO_THEMES = ['amber','ocean','emerald','royal','crimson','sunset','steel'];
     const sideThemePicker = document.getElementById('side-theme-picker');
+    // ADD (2026-08-23): swatch-gradient lookup reused for the compact
+    // trigger button's own preview dot (#side-theme-trigger-swatch) — kept
+    // as one table here instead of re-reading each button's inline style,
+    // since the swatch buttons themselves now live inside the popup and
+    // aren't always in the DOM's visible/measurable state.
+    const LOGO_THEME_GRADIENTS_ = {
+      amber: 'linear-gradient(135deg,#F5B700,#E8590C)',
+      ocean: 'linear-gradient(135deg,#22D3EE,#2563EB)',
+      emerald: 'linear-gradient(135deg,#34D399,#059669)',
+      royal: 'linear-gradient(135deg,#C084FC,#7C3AED)',
+      crimson: 'linear-gradient(135deg,#F87171,#B91C1C)',
+      sunset: 'linear-gradient(135deg,#FB7185,#F97316)',
+      steel: 'linear-gradient(135deg,#CBD5E1,#64748B)'
+    };
+    const sideThemeTriggerSwatch = document.getElementById('side-theme-trigger-swatch');
     function applyLogoTheme(theme){
       if(LOGO_THEMES.indexOf(theme) === -1) theme = 'amber';
       document.documentElement.setAttribute('data-logo-theme', theme);
@@ -3973,17 +4145,27 @@
       document.querySelectorAll('.logo-theme-swatch').forEach(sw=>{
         sw.classList.toggle('active', sw.getAttribute('data-logo-theme') === theme);
       });
+      if(sideThemeTriggerSwatch) sideThemeTriggerSwatch.style.background = LOGO_THEME_GRADIENTS_[theme] || LOGO_THEME_GRADIENTS_.amber;
     }
     (function initLogoTheme(){
       let saved = null;
       try{ saved = localStorage.getItem('pos-logo-theme'); } catch(e){}
       applyLogoTheme(saved || 'amber');
     })();
+    const themePickerModal = document.getElementById('theme-picker-modal');
     sideThemePicker.addEventListener('click', (e)=>{
       const sw = e.target.closest('.logo-theme-swatch');
       if(!sw) return;
       applyLogoTheme(sw.getAttribute('data-logo-theme'));
+      // ADD (2026-08-23): close right after a pick, same as tapping a date
+      // on the calendar popup closes it — picking a theme is a single,
+      // complete action, no separate "confirm" step needed.
+      themePickerModal.classList.remove('active');
     });
+    document.getElementById('side-theme-trigger').addEventListener('click', ()=>{
+      themePickerModal.classList.add('active');
+    });
+    document.getElementById('theme-picker-close').addEventListener('click', ()=> themePickerModal.classList.remove('active'));
 
     // ---------------- FULLSCREEN TOGGLE ----------------
     // Inside a packaged Capacitor Android WebView, document.requestFullscreen()
@@ -4358,6 +4540,13 @@
             }
           } catch(err){
             console.warn('[receipts] could not save to device storage, falling back to inline copy:', err);
+            // FIX (2026-08-23, Android 8 report): the inline fallback below
+            // still keeps the receipt (as base64 in localStorage, same as
+            // before this feature existed), so this isn't data loss — but a
+            // string of these can eventually exhaust localStorage's small
+            // quota on an older device, and that failure used to be
+            // invisible. Let the user know when it happens.
+            if(isNativeApp_()) showToast_('Receipt saved, but not to device storage — check storage permission for this app.');
           }
           resolve({ name: file.name, kind, dataUrl });
         };
@@ -4594,6 +4783,10 @@
           savedNote = ' — saved to Documents/' + filename;
         } catch(err){
           console.warn('[backup] native save failed, falling back to browser download:', err);
+          // FIX (2026-08-23, Android 8 report): see saveGeneratedFile_ above
+          // — the browser fallback below does nothing inside the packaged
+          // app, so surface the failure instead of leaving it silent.
+          if(isNativeApp_()) showToast_('Could not save the backup — check storage permission for this app.');
         }
       }
       if(!savedNote){
@@ -6824,6 +7017,9 @@
         weight_reset_msg: "Weight and Remaining Weight reset to 0.",
         confirm_pin_title: "Confirm PIN",
         confirm_pin_reset_weight_hint: "Enter your PIN to reset Weight and Remaining Weight — this can't be undone.",
+        confirm_pin_generic_hint: "Enter your PIN to continue.",
+        confirm_pin_delete_hint: "Enter your PIN to delete this — this can't be undone.",
+        confirm_pin_edit_hint: "Enter your PIN to save these changes.",
         wrong_pin_try_again: "Incorrect PIN. Try again.",
         weight_stock_per_desc_hint: "Weight / Remaining Weight below are shared for the whole ledger — same for every Description.",
         add_item_btn: "+ Add Item", remove_item_btn: "Remove Item",
@@ -8936,8 +9132,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.23.1";
-    const APP_VERSION_NOTE = "Merged in the new base build (Firebase push notifications, PIN recovery by email, cross-device deletion sync, switchable Google/PIN lock, invoice backdating) and ported over the receipt date safety check plus sync-merge fixes";
+    const APP_VERSION = "2026.08.23.4";
+    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs)";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -9081,7 +9277,6 @@
     const pePrice = document.getElementById('pe-price');
     const peCost = document.getElementById('pe-cost');
     const peStock = document.getElementById('pe-stock');
-    const peReorder = document.getElementById('pe-reorder');
     const peColor = document.getElementById('pe-color');
     const peColorOther = document.getElementById('pe-color-other');
     const peDeleteBtn = document.getElementById('pe-delete');
@@ -9187,7 +9382,6 @@
         pePrice.value = '';
         peCost.value = '';
         peStock.value = '';
-        peReorder.value = '';
         peColor.value = 'Black';
         peColorOther.style.display = 'none';
         peColorOther.value = '';
@@ -9228,7 +9422,6 @@
         pePrice.value = p.price;
         peCost.value = (p.cost || p.cost === 0) ? p.cost : '';
         peStock.value = (p.stock || p.stock === 0) ? p.stock : '';
-        peReorder.value = (p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : '';
         const color = p.color || 'Black';
         if(STANDARD_COLORS.includes(color)){
           peColor.value = color;
@@ -9268,30 +9461,39 @@
       // rule as Cost above — see the HTML comment above #pe-stock.
       const stockRaw = parseInt(peStock.value, 10);
       const stock = (peStock.value.trim() !== '' && stockRaw >= 0) ? stockRaw : undefined;
-      const reorderRaw = parseInt(peReorder.value, 10);
-      const reorderLevel = (peReorder.value.trim() !== '' && reorderRaw >= 0) ? reorderRaw : undefined;
       const color = (peColor.value === 'Other') ? peColorOther.value.trim() || 'Other' : peColor.value;
       if(!name || !(price >= 0)) return;
-      if(editingProductId === null){
-        const product = { id: nextProductId(), name, price, cat: activeCat, color, device: DEVICE_NAME };
-        if(cost !== undefined) product.cost = cost;
-        if(stock !== undefined) product.stock = stock;
-        if(reorderLevel !== undefined) product.reorderLevel = reorderLevel;
-        if(isAmericanPedestal){ product.weight = weight; product.size = size; }
-        PRODUCTS.push(product);
-      } else {
-        const p = PRODUCTS.find(x=>x.id===editingProductId);
-        if(p){
-          p.name = name; p.price = price; p.color = color;
-          if(cost !== undefined) p.cost = cost; else delete p.cost;
-          if(stock !== undefined) p.stock = stock; else delete p.stock;
-          if(reorderLevel !== undefined) p.reorderLevel = reorderLevel; else delete p.reorderLevel;
-          if(isAmericanPedestal){ p.weight = weight; p.size = size; } else { delete p.weight; delete p.size; }
+      function commitProductSave_(){
+        if(editingProductId === null){
+          // No reorderLevel set here (2026-08-23: removed from this form) —
+          // a new product with none falls back to DEFAULT_REORDER_LEVEL_
+          // wherever low-stock is computed, same as before.
+          const product = { id: nextProductId(), name, price, cat: activeCat, color, device: DEVICE_NAME };
+          if(cost !== undefined) product.cost = cost;
+          if(stock !== undefined) product.stock = stock;
+          if(isAmericanPedestal){ product.weight = weight; product.size = size; }
+          PRODUCTS.push(product);
+        } else {
+          const p = PRODUCTS.find(x=>x.id===editingProductId);
+          if(p){
+            // p.reorderLevel is deliberately left untouched here — this form
+            // no longer offers a way to set/clear it, so whatever a product
+            // already had (or didn't) stays exactly as it was.
+            p.name = name; p.price = price; p.color = color;
+            if(cost !== undefined) p.cost = cost; else delete p.cost;
+            if(stock !== undefined) p.stock = stock; else delete p.stock;
+            if(isAmericanPedestal){ p.weight = weight; p.size = size; } else { delete p.weight; delete p.size; }
+          }
         }
+        productEditModal.classList.remove('active');
+        renderProducts();
+        queueSync();
       }
-      productEditModal.classList.remove('active');
-      renderProducts();
-      queueSync();
+      if(editingProductId !== null){
+        requirePinReverify_(commitProductSave_, tr('confirm_pin_edit_hint'));
+      } else {
+        commitProductSave_();
+      }
     });
 
     // FIX (2026-08-20): the only two ways to delete a product — the small
@@ -9308,10 +9510,12 @@
       if(idx === -1) return;
       const p = PRODUCTS[idx];
       if(!confirm(tr('confirm_delete_product').replace('{name}', (p && p.name) || ''))) return;
-      markDeleted_('products', id);
-      PRODUCTS.splice(idx,1);
-      renderProducts();
-      queueSync();
+      requirePinReverify_(()=>{
+        markDeleted_('products', id);
+        PRODUCTS.splice(idx,1);
+        renderProducts();
+        queueSync();
+      }, tr('confirm_pin_delete_hint'));
     }
     peDeleteBtn.addEventListener('click', ()=>{
       if(editingProductId !== null) deleteProduct(editingProductId);
@@ -9366,6 +9570,15 @@
         // (Boolean), which would break the line-for-line pairing this needs
         // — a missing cost is a blank segment, not a skipped one).
         itemCosts: cartSnapshot.map(l=> (l.cost !== undefined ? String(l.cost) : '')).join('\n'),
+        // ADD (2026-08-23, user report: "not showing rate per item column
+        // even on sheets/exports/and in order book") — same one-per-line,
+        // blank-not-dropped shape as itemCosts just above, but this is the
+        // actual SELLING price per unit at time of sale (l.price, what the
+        // customer paid), not l.cost (wholesale cost, a different figure).
+        // Nothing captured this anywhere before now — Total only ever
+        // stored the already-multiplied sum, so there was no way to show a
+        // real rate for a multi-item order at a different price per item.
+        itemRates: cartSnapshot.map(l=> (l.price !== undefined ? String(l.price) : '')).join('\n'),
         total: due,
         factory: factoryName || null,
         confirmed: factoryName ? false : true,
@@ -9439,6 +9652,15 @@
         // (Boolean), which would break the line-for-line pairing this needs
         // — a missing cost is a blank segment, not a skipped one).
         itemCosts: cartSnapshot.map(l=> (l.cost !== undefined ? String(l.cost) : '')).join('\n'),
+        // ADD (2026-08-23, user report: "not showing rate per item column
+        // even on sheets/exports/and in order book") — same one-per-line,
+        // blank-not-dropped shape as itemCosts just above, but this is the
+        // actual SELLING price per unit at time of sale (l.price, what the
+        // customer paid), not l.cost (wholesale cost, a different figure).
+        // Nothing captured this anywhere before now — Total only ever
+        // stored the already-multiplied sum, so there was no way to show a
+        // real rate for a multi-item order at a different price per item.
+        itemRates: cartSnapshot.map(l=> (l.price !== undefined ? String(l.price) : '')).join('\n'),
         total: due,
         factory: factoryName || null,
         confirmed: factoryName ? false : true,
@@ -9804,10 +10026,16 @@
     }
     function updateNotificationsBadge_(){
       const badge = document.getElementById('notifications-badge');
-      if(!badge) return;
+      // ADD (2026-08-23): keep the new header shortcut's badge (see
+      // #header-notifications-btn in .top-right) in lockstep with the
+      // side-menu one — same count, same show/hide, computed once here.
+      const headerBadge = document.getElementById('header-notifications-badge');
+      if(!badge && !headerBadge) return;
       const total = getPendingInquiries_().length + getPendingCheques_().length + getPendingSlips_().length + getLowStockAlerts_().length + getPendingOrderReceipts_().length;
-      badge.textContent = total > 99 ? '99+' : String(total);
-      badge.style.display = total > 0 ? '' : 'none';
+      const text = total > 99 ? '99+' : String(total);
+      const show = total > 0;
+      if(badge){ badge.textContent = text; badge.style.display = show ? '' : 'none'; }
+      if(headerBadge){ headerBadge.textContent = text; headerBadge.style.display = show ? '' : 'none'; }
     }
     // clickable=true adds the "Tap to open and resolve →" hint under the
     // subtitle — every section is clickable now (see renderNotifications
@@ -10012,10 +10240,12 @@
           // this one card is where a factory's contact info AND its whole
           // ledger balance live — an accidental tap had no way back.
           if(!confirm(tr('confirm_delete_factory').replace('{name}', f.name))) return;
-          if(f.name) markDeleted_('factories', f.name);
-          factories.splice(idx,1);
-          renderFactories();
-          queueSync();
+          requirePinReverify_(()=>{
+            if(f.name) markDeleted_('factories', f.name);
+            factories.splice(idx,1);
+            renderFactories();
+            queueSync();
+          }, tr('confirm_pin_delete_hint'));
         });
         factoryGrid.appendChild(card);
       });
@@ -10057,33 +10287,42 @@
       // Same missing-confirmation gap as the Factories grid's own delete
       // button above, fixed the same way — see the comment there.
       if(!confirm(tr('confirm_delete_factory').replace('{name}', fname || ''))) return;
-      if(fname) markDeleted_('factories', fname);
-      factories.splice(editingFactoryIdx,1);
-      factoryModal.classList.remove('active');
-      renderFactories();
-      queueSync();
+      requirePinReverify_(()=>{
+        if(fname) markDeleted_('factories', fname);
+        factories.splice(editingFactoryIdx,1);
+        factoryModal.classList.remove('active');
+        renderFactories();
+        queueSync();
+      }, tr('confirm_pin_delete_hint'));
     });
     document.getElementById('factory-add').addEventListener('click', ()=>{
       const name = document.getElementById('factory-name').value.trim();
       const location = document.getElementById('factory-location').value.trim();
       const contact = document.getElementById('factory-contact').value.trim();
       if(!name || !location) return;
-      if(editingFactoryIdx === null){
-        factories.push({ name, location, contact: contact || '—' });
-      } else {
-        const oldName = factories[editingFactoryIdx].name;
-        factories[editingFactoryIdx] = { name, location, contact: contact || '—' };
-        // Keep the customer's ledger history attached if the name changed —
-        // otherwise it'd silently orphan under the old name and this factory
-        // would start a fresh, empty ledger under the new one.
-        if(oldName !== name){
-          const c = (inventory.customerledger || []).find(x => x.name === oldName);
-          if(c) c.name = name;
+      function commitFactorySave_(){
+        if(editingFactoryIdx === null){
+          factories.push({ name, location, contact: contact || '—' });
+        } else {
+          const oldName = factories[editingFactoryIdx].name;
+          factories[editingFactoryIdx] = { name, location, contact: contact || '—' };
+          // Keep the customer's ledger history attached if the name changed —
+          // otherwise it'd silently orphan under the old name and this factory
+          // would start a fresh, empty ledger under the new one.
+          if(oldName !== name){
+            const c = (inventory.customerledger || []).find(x => x.name === oldName);
+            if(c) c.name = name;
+          }
         }
+        factoryModal.classList.remove('active');
+        renderFactories();
+        queueSync();
       }
-      factoryModal.classList.remove('active');
-      renderFactories();
-      queueSync();
+      if(editingFactoryIdx !== null){
+        requirePinReverify_(commitFactorySave_, tr('confirm_pin_edit_hint'));
+      } else {
+        commitFactorySave_();
+      }
     });
 
     // ---------------- CUSTOMER LEDGER (per-factory Debit/Credit ledger) ----------------
@@ -10269,13 +10508,15 @@
       const totalDue = dueOrders.reduce((s,x)=> s + x.due, 0);
       const msg = tr('confirm_nil_all').replace('{n}', String(dueOrders.length)).replace('{amount}', fmt(totalDue));
       if(!window.confirm(msg)) return;
-      let writtenOffTotal = 0;
-      dueOrders.forEach(x => { writtenOffTotal += applyNilToOrder_(x.t); });
-      queueSync();
-      renderCustomerLedgerModalContent_();
-      renderTransactions();
-      renderFactories();
-      showToast_(tr('all_orders_nilled_toast').replace('{n}', String(dueOrders.length)).replace('{amount}', fmt(writtenOffTotal)));
+      requirePinReverify_(()=>{
+        let writtenOffTotal = 0;
+        dueOrders.forEach(x => { writtenOffTotal += applyNilToOrder_(x.t); });
+        queueSync();
+        renderCustomerLedgerModalContent_();
+        renderTransactions();
+        renderFactories();
+        showToast_(tr('all_orders_nilled_toast').replace('{n}', String(dueOrders.length)).replace('{amount}', fmt(writtenOffTotal)));
+      }, tr('confirm_pin_edit_hint'));
     }
     document.getElementById('cl-nil-all-btn').addEventListener('click', (ev)=>{
       ev.stopPropagation();
@@ -10499,18 +10740,20 @@
       entriesWrap.querySelectorAll('.ledger-entry-del:not(.cl-entry-receipt):not(.cl-entry-edit)').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           if(!confirm(tr('confirm_delete_entry'))) return;
-          const eIdx = parseInt(btn.dataset.idx,10);
-          const removed = c.entries[eIdx];
-          if(removed && removed.id){ delete customerReceiptFiles[removed.id]; persistCustomerReceiptLocally_(removed.id, null); markDeleted_('customerledgerEntries', removed.id); }
-          c.entries.splice(eIdx,1);
-          if(editingClEntryIdx === eIdx){
-            editingClEntryIdx = null;
-            document.getElementById('cl-add-entry').textContent = tr('add_entry');
-          }
-          renderCustomerLedgerModalContent_();
-          renderFactories();
-          renderOverdueChequeBanner_();
-          queueSync();
+          requirePinReverify_(()=>{
+            const eIdx = parseInt(btn.dataset.idx,10);
+            const removed = c.entries[eIdx];
+            if(removed && removed.id){ delete customerReceiptFiles[removed.id]; persistCustomerReceiptLocally_(removed.id, null); markDeleted_('customerledgerEntries', removed.id); }
+            c.entries.splice(eIdx,1);
+            if(editingClEntryIdx === eIdx){
+              editingClEntryIdx = null;
+              document.getElementById('cl-add-entry').textContent = tr('add_entry');
+            }
+            renderCustomerLedgerModalContent_();
+            renderFactories();
+            renderOverdueChequeBanner_();
+            queueSync();
+          }, tr('confirm_pin_delete_hint'));
         });
       });
       entriesWrap.querySelectorAll('.cheque-action-btn').forEach(btn=>{
@@ -10575,72 +10818,80 @@
       const c = getOrCreateCustomerLedgerEntry_(currentCustomerName);
       c.entries = c.entries || [];
       const chosenDate = isoToDMY_(document.getElementById('cl-date').value) || new Date().toLocaleDateString('en-GB');
-      if(editingClEntryIdx !== null){
-        // Update the existing entry in place — keeps its id/time/receipt/
-        // chequeStatus (a cheque being edited stays whatever clearance state
-        // it was already in, it doesn't reset to 'pending').
-        const existing = c.entries[editingClEntryIdx];
-        if(existing){
-          existing.desc = desc;
-          existing.date = chosenDate;
-          existing.debit = debit;
-          existing.credit = credit;
-          existing.method = method;
-          existing.detail = detail;
-          existing.receivedBy = receivedBy;
-          existing.receivedIn = receivedIn;
-          if(hasAmount && method === 'Cheque'){
-            existing.chequeDate = chequeDate;
-            if(!existing.chequeStatus) existing.chequeStatus = 'pending';
-          } else {
-            existing.chequeDate = '';
-            existing.chequeStatus = '';
+      const wasEditingClEntry_ = editingClEntryIdx !== null;
+      function commitClEntrySave_(){
+        if(editingClEntryIdx !== null){
+          // Update the existing entry in place — keeps its id/time/receipt/
+          // chequeStatus (a cheque being edited stays whatever clearance state
+          // it was already in, it doesn't reset to 'pending').
+          const existing = c.entries[editingClEntryIdx];
+          if(existing){
+            existing.desc = desc;
+            existing.date = chosenDate;
+            existing.debit = debit;
+            existing.credit = credit;
+            existing.method = method;
+            existing.detail = detail;
+            existing.receivedBy = receivedBy;
+            existing.receivedIn = receivedIn;
+            if(hasAmount && method === 'Cheque'){
+              existing.chequeDate = chequeDate;
+              if(!existing.chequeStatus) existing.chequeStatus = 'pending';
+            } else {
+              existing.chequeDate = '';
+              existing.chequeStatus = '';
+            }
+            if(pendingCustomerReceipt && existing.id){
+              customerReceiptFiles[existing.id] = pendingCustomerReceipt;
+              persistCustomerReceiptLocally_(existing.id, pendingCustomerReceipt);
+            }
           }
-          if(pendingCustomerReceipt && existing.id){
-            customerReceiptFiles[existing.id] = pendingCustomerReceipt;
-            persistCustomerReceiptLocally_(existing.id, pendingCustomerReceipt);
+          editingClEntryIdx = null;
+          document.getElementById('cl-add-entry').textContent = tr('add_entry');
+        } else {
+          const now = new Date();
+          const entryId = 'cl' + Date.now();
+          c.entries.push({
+            id: entryId,
+            date: chosenDate,
+            time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+            desc, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (hasAmount && method === 'Cheque') ? 'pending' : '',
+            device: DEVICE_NAME
+          });
+          if(hasAmount && pendingCustomerReceipt){
+            customerReceiptFiles[entryId] = pendingCustomerReceipt;
+            persistCustomerReceiptLocally_(entryId, pendingCustomerReceipt);
           }
         }
-        editingClEntryIdx = null;
-        document.getElementById('cl-add-entry').textContent = tr('add_entry');
-      } else {
-        const now = new Date();
-        const entryId = 'cl' + Date.now();
-        c.entries.push({
-          id: entryId,
-          date: chosenDate,
-          time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
-          desc, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (hasAmount && method === 'Cheque') ? 'pending' : '',
-          device: DEVICE_NAME
-        });
-        if(hasAmount && pendingCustomerReceipt){
-          customerReceiptFiles[entryId] = pendingCustomerReceipt;
-          persistCustomerReceiptLocally_(entryId, pendingCustomerReceipt);
-        }
+        document.getElementById('cl-desc').value = '';
+        document.getElementById('cl-date').value = todayISO_();
+        document.getElementById('cl-debit').value = '';
+        document.getElementById('cl-credit').value = '';
+        document.getElementById('cl-method-wrap').style.display = 'none';
+        document.getElementById('cl-method-detail-wrap').style.display = 'none';
+        document.getElementById('cl-method-detail').value = '';
+        document.getElementById('cl-cheque-date-wrap').style.display = 'none';
+        document.getElementById('cl-cheque-date').value = '';
+        document.getElementById('cl-receivedby').value = '';
+        document.getElementById('cl-receivedin').value = '';
+        pendingCustomerReceipt = null;
+        clReceiptFileInput.value = '';
+        clReceiptCurrent.style.display = 'none';
+        renderCustomerLedgerModalContent_();
+        renderFactories();
+        renderOverdueChequeBanner_();
+        queueSync();
+        showToast_(
+          sheetConfigured()
+            ? `Entry added to ${c.name}'s customer ledger — syncing to sheet`
+            : `Entry added to ${c.name}'s customer ledger`
+        );
       }
-      document.getElementById('cl-desc').value = '';
-      document.getElementById('cl-date').value = todayISO_();
-      document.getElementById('cl-debit').value = '';
-      document.getElementById('cl-credit').value = '';
-      document.getElementById('cl-method-wrap').style.display = 'none';
-      document.getElementById('cl-method-detail-wrap').style.display = 'none';
-      document.getElementById('cl-method-detail').value = '';
-      document.getElementById('cl-cheque-date-wrap').style.display = 'none';
-      document.getElementById('cl-cheque-date').value = '';
-      document.getElementById('cl-receivedby').value = '';
-      document.getElementById('cl-receivedin').value = '';
-      pendingCustomerReceipt = null;
-      clReceiptFileInput.value = '';
-      clReceiptCurrent.style.display = 'none';
-      renderCustomerLedgerModalContent_();
-      renderFactories();
-      renderOverdueChequeBanner_();
-      queueSync();
-      showToast_(
-        sheetConfigured()
-          ? `Entry added to ${c.name}'s customer ledger — syncing to sheet`
-          : `Entry added to ${c.name}'s customer ledger`
-      );
+      if(wasEditingClEntry_){
+        requirePinReverify_(commitClEntrySave_, tr('confirm_pin_edit_hint'));
+      } else {
+        commitClEntrySave_();
+      }
     });
 
     // ---------------- INVENTORY VIEWS (Raw Material / Labour / Paint) ----------------
@@ -11047,10 +11298,12 @@
           btn.addEventListener('click', ()=>{
             const idx = parseInt(btn.dataset.idx,10);
             if(!confirm(tr('confirm_delete_painter').replace('{name}', painters[idx].name))) return;
-            if(painters[idx] && painters[idx].name) markDeleted_('paintRoster', painters[idx].name);
-            inventory.paint.splice(idx,1);
-            renderPaintLedger();
-            queueSync();
+            requirePinReverify_(()=>{
+              if(painters[idx] && painters[idx].name) markDeleted_('paintRoster', painters[idx].name);
+              inventory.paint.splice(idx,1);
+              renderPaintLedger();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
           });
         });
       }
@@ -11478,18 +11731,20 @@
         entriesWrap.querySelectorAll('.ledger-entry-del:not(.pl-entry-receipt):not(.pl-entry-edit)').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             if(!confirm(tr('confirm_delete_entry'))) return;
-            const eIdx = parseInt(btn.dataset.idx,10);
-            const removed = p.entries[eIdx];
-            if(removed && removed.id){ delete paintReceiptFiles[removed.id]; persistPaintReceiptLocally_(removed.id, null); markDeleted_('paintEntries', removed.id); }
-            p.entries.splice(eIdx,1);
-            if(editingPlEntryIdx === eIdx){
-              editingPlEntryIdx = null;
-              document.getElementById('pl-add-entry').textContent = tr('add_entry');
-            }
-            renderPainterLedgerModalContent_();
-            renderPaintLedger();
-            renderOverdueChequeBanner_();
-            queueSync();
+            requirePinReverify_(()=>{
+              const eIdx = parseInt(btn.dataset.idx,10);
+              const removed = p.entries[eIdx];
+              if(removed && removed.id){ delete paintReceiptFiles[removed.id]; persistPaintReceiptLocally_(removed.id, null); markDeleted_('paintEntries', removed.id); }
+              p.entries.splice(eIdx,1);
+              if(editingPlEntryIdx === eIdx){
+                editingPlEntryIdx = null;
+                document.getElementById('pl-add-entry').textContent = tr('add_entry');
+              }
+              renderPainterLedgerModalContent_();
+              renderPaintLedger();
+              renderOverdueChequeBanner_();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
           });
         });
         entriesWrap.querySelectorAll('.cheque-action-btn').forEach(btn=>{
@@ -11514,14 +11769,16 @@
       if(currentPainterIdx === null) return;
       const p = inventory.paint[currentPainterIdx];
       if(!confirm(tr('confirm_delete_painter').replace('{name}', p.name))) return;
-      (p.entries || []).forEach(e=>{
-        if(e.id){ delete paintReceiptFiles[e.id]; persistPaintReceiptLocally_(e.id, null); markDeleted_('paintEntries', e.id); }
-      });
-      if(p.name) markDeleted_('paintRoster', p.name);
-      inventory.paint.splice(currentPainterIdx,1);
-      painterLedgerModal.classList.remove('active');
-      renderPaintLedger();
-      queueSync();
+      requirePinReverify_(()=>{
+        (p.entries || []).forEach(e=>{
+          if(e.id){ delete paintReceiptFiles[e.id]; persistPaintReceiptLocally_(e.id, null); markDeleted_('paintEntries', e.id); }
+        });
+        if(p.name) markDeleted_('paintRoster', p.name);
+        inventory.paint.splice(currentPainterIdx,1);
+        painterLedgerModal.classList.remove('active');
+        renderPaintLedger();
+        queueSync();
+      }, tr('confirm_pin_delete_hint'));
     });
     document.getElementById('pl-debit').addEventListener('input', function(){
       const show = parseFloat(this.value) > 0;
@@ -11670,88 +11927,101 @@
       persistPainterColoursLocally_(p);
       const color = [...plSelectedColours].join(', ');
       p.entries = p.entries || [];
-      if(editingPlEntryIdx !== null){
-        // Update the existing entry in place — keeps its id/time/receipt/
-        // chequeStatus (a cheque being edited stays whatever clearance state
-        // it was already in, it doesn't reset to 'pending').
-        const existing = p.entries[editingPlEntryIdx];
-        if(existing){
-          existing.desc = desc;
-          existing.color = color;
-          existing.itemSize = itemSize;
-          existing.itemType = itemType;
-          existing.itemFactory = itemFactory;
-          existing.itemCount = itemCount;
-          existing.ratePerItem = ratePerItem;
-          existing.date = chosenDate;
-          existing.debit = debit;
-          existing.credit = credit;
-          existing.method = method;
-          existing.detail = detail;
-          existing.receivedBy = receivedBy;
-          existing.receivedIn = receivedIn;
-          if(debit > 0 && method === 'Cheque'){
-            existing.chequeDate = chequeDate;
-            if(!existing.chequeStatus) existing.chequeStatus = 'pending';
-          } else {
-            existing.chequeDate = '';
-            existing.chequeStatus = '';
+      // PIN re-verify gate (2026-08-23): editing an existing entry needs to
+      // wait on an async PIN confirm, so the shared save logic below is
+      // pulled into its own function and only the edit path is deferred
+      // behind requirePinReverify_() — the add-new path below still runs
+      // immediately, unchanged.
+      const wasEditingPlEntry_ = editingPlEntryIdx !== null;
+      function commitPlEntrySave_(){
+        if(editingPlEntryIdx !== null){
+          // Update the existing entry in place — keeps its id/time/receipt/
+          // chequeStatus (a cheque being edited stays whatever clearance state
+          // it was already in, it doesn't reset to 'pending').
+          const existing = p.entries[editingPlEntryIdx];
+          if(existing){
+            existing.desc = desc;
+            existing.color = color;
+            existing.itemSize = itemSize;
+            existing.itemType = itemType;
+            existing.itemFactory = itemFactory;
+            existing.itemCount = itemCount;
+            existing.ratePerItem = ratePerItem;
+            existing.date = chosenDate;
+            existing.debit = debit;
+            existing.credit = credit;
+            existing.method = method;
+            existing.detail = detail;
+            existing.receivedBy = receivedBy;
+            existing.receivedIn = receivedIn;
+            if(debit > 0 && method === 'Cheque'){
+              existing.chequeDate = chequeDate;
+              if(!existing.chequeStatus) existing.chequeStatus = 'pending';
+            } else {
+              existing.chequeDate = '';
+              existing.chequeStatus = '';
+            }
+            if(pendingPaintReceipt && existing.id){
+              paintReceiptFiles[existing.id] = pendingPaintReceipt;
+              persistPaintReceiptLocally_(existing.id, pendingPaintReceipt);
+            }
           }
-          if(pendingPaintReceipt && existing.id){
-            paintReceiptFiles[existing.id] = pendingPaintReceipt;
-            persistPaintReceiptLocally_(existing.id, pendingPaintReceipt);
+          editingPlEntryIdx = null;
+          document.getElementById('pl-add-entry').textContent = tr('add_entry');
+        } else {
+          const now = new Date();
+          const entryId = 'pl' + Date.now();
+          p.entries.push({
+            id: entryId,
+            date: chosenDate,
+            time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+            desc, color, itemSize, itemType, itemFactory, itemCount, ratePerItem, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (debit > 0 && method === 'Cheque') ? 'pending' : '',
+            device: DEVICE_NAME
+          });
+          if(pendingPaintReceipt){
+            paintReceiptFiles[entryId] = pendingPaintReceipt;
+            persistPaintReceiptLocally_(entryId, pendingPaintReceipt);
           }
         }
-        editingPlEntryIdx = null;
-        document.getElementById('pl-add-entry').textContent = tr('add_entry');
-      } else {
-        const now = new Date();
-        const entryId = 'pl' + Date.now();
-        p.entries.push({
-          id: entryId,
-          date: chosenDate,
-          time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
-          desc, color, itemSize, itemType, itemFactory, itemCount, ratePerItem, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (debit > 0 && method === 'Cheque') ? 'pending' : '',
-          device: DEVICE_NAME
-        });
-        if(pendingPaintReceipt){
-          paintReceiptFiles[entryId] = pendingPaintReceipt;
-          persistPaintReceiptLocally_(entryId, pendingPaintReceipt);
-        }
+        document.getElementById('pl-desc').value = '';
+        document.getElementById('pl-date').value = todayISO_();
+        plColourSearch.value = '';
+        plSelectedColours = new Set();
+        renderPlColourBar_();
+        plColourDropdown.style.display = 'none';
+        document.getElementById('pl-itemsize').value = '';
+        document.getElementById('pl-itemtype').value = '';
+        document.getElementById('pl-itemfactory').value = '';
+        document.getElementById('pl-itemcount').value = '';
+        document.getElementById('pl-rateperitem').value = '';
+        document.getElementById('pl-debit').value = '';
+        document.getElementById('pl-credit').value = '';
+        plCreditWasAutoFilled = false;
+        document.getElementById('pl-method-wrap').style.display = 'none';
+        document.getElementById('pl-method-detail-wrap').style.display = 'none';
+        document.getElementById('pl-method-detail').value = '';
+        document.getElementById('pl-cheque-date-wrap').style.display = 'none';
+        document.getElementById('pl-cheque-date').value = '';
+        document.getElementById('pl-receivedby').value = '';
+        document.getElementById('pl-receivedin').value = '';
+        pendingPaintReceipt = null;
+        plReceiptFileInput.value = '';
+        plReceiptCurrent.style.display = 'none';
+        renderPainterLedgerModalContent_();
+        renderPaintLedger();
+        renderOverdueChequeBanner_();
+        queueSync();
+        showToast_(
+          sheetConfigured()
+            ? `Entry added to ${p.name}'s paint ledger — syncing to sheet`
+            : `Entry added to ${p.name}'s paint ledger`
+        );
       }
-      document.getElementById('pl-desc').value = '';
-      document.getElementById('pl-date').value = todayISO_();
-      plColourSearch.value = '';
-      plSelectedColours = new Set();
-      renderPlColourBar_();
-      plColourDropdown.style.display = 'none';
-      document.getElementById('pl-itemsize').value = '';
-      document.getElementById('pl-itemtype').value = '';
-      document.getElementById('pl-itemfactory').value = '';
-      document.getElementById('pl-itemcount').value = '';
-      document.getElementById('pl-rateperitem').value = '';
-      document.getElementById('pl-debit').value = '';
-      document.getElementById('pl-credit').value = '';
-      plCreditWasAutoFilled = false;
-      document.getElementById('pl-method-wrap').style.display = 'none';
-      document.getElementById('pl-method-detail-wrap').style.display = 'none';
-      document.getElementById('pl-method-detail').value = '';
-      document.getElementById('pl-cheque-date-wrap').style.display = 'none';
-      document.getElementById('pl-cheque-date').value = '';
-      document.getElementById('pl-receivedby').value = '';
-      document.getElementById('pl-receivedin').value = '';
-      pendingPaintReceipt = null;
-      plReceiptFileInput.value = '';
-      plReceiptCurrent.style.display = 'none';
-      renderPainterLedgerModalContent_();
-      renderPaintLedger();
-      renderOverdueChequeBanner_();
-      queueSync();
-      showToast_(
-        sheetConfigured()
-          ? `Entry added to ${p.name}'s paint ledger — syncing to sheet`
-          : `Entry added to ${p.name}'s paint ledger`
-      );
+      if(wasEditingPlEntry_){
+        requirePinReverify_(commitPlEntrySave_, tr('confirm_pin_edit_hint'));
+      } else {
+        commitPlEntrySave_();
+      }
     });
 
     function parseDMY_(str){
@@ -11904,10 +12174,12 @@
           btn.addEventListener('click', ()=>{
             const idx = parseInt(btn.dataset.idx,10);
             if(!confirm(tr('confirm_delete_supplier').replace('{name}', suppliers[idx].name))) return;
-            if(suppliers[idx] && suppliers[idx].name) markDeleted_('rawledgerRoster', suppliers[idx].name);
-            inventory.rawledger.splice(idx,1);
-            renderRawLedger();
-            queueSync();
+            requirePinReverify_(()=>{
+              if(suppliers[idx] && suppliers[idx].name) markDeleted_('rawledgerRoster', suppliers[idx].name);
+              inventory.rawledger.splice(idx,1);
+              renderRawLedger();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
           });
         });
       }
@@ -12121,18 +12393,20 @@
         entriesWrap.querySelectorAll('.ledger-entry-del:not(.rl-entry-receipt):not(.rl-entry-edit)').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             if(!confirm(tr('confirm_delete_entry'))) return;
-            const eIdx = parseInt(btn.dataset.idx,10);
-            const removed = s.entries[eIdx];
-            if(removed && removed.id){ delete rawReceiptFiles[removed.id]; persistRawReceiptLocally_(removed.id, null); markDeleted_('rawledgerEntries', removed.id); }
-            s.entries.splice(eIdx,1);
-            if(editingRlEntryIdx === eIdx){
-              editingRlEntryIdx = null;
-              document.getElementById('rl-add-entry').textContent = tr('add_entry');
-            }
-            renderRawLedgerModalContent_();
-            renderRawLedger();
-            renderOverdueChequeBanner_();
-            queueSync();
+            requirePinReverify_(()=>{
+              const eIdx = parseInt(btn.dataset.idx,10);
+              const removed = s.entries[eIdx];
+              if(removed && removed.id){ delete rawReceiptFiles[removed.id]; persistRawReceiptLocally_(removed.id, null); markDeleted_('rawledgerEntries', removed.id); }
+              s.entries.splice(eIdx,1);
+              if(editingRlEntryIdx === eIdx){
+                editingRlEntryIdx = null;
+                document.getElementById('rl-add-entry').textContent = tr('add_entry');
+              }
+              renderRawLedgerModalContent_();
+              renderRawLedger();
+              renderOverdueChequeBanner_();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
           });
         });
         entriesWrap.querySelectorAll('.cheque-action-btn').forEach(btn=>{
@@ -12153,14 +12427,16 @@
       if(currentRawSupplierIdx === null) return;
       const s = inventory.rawledger[currentRawSupplierIdx];
       if(!confirm(tr('confirm_delete_supplier').replace('{name}', s.name))) return;
-      (s.entries || []).forEach(e=>{
-        if(e.id){ delete rawReceiptFiles[e.id]; persistRawReceiptLocally_(e.id, null); markDeleted_('rawledgerEntries', e.id); }
-      });
-      if(s.name) markDeleted_('rawledgerRoster', s.name);
-      inventory.rawledger.splice(currentRawSupplierIdx,1);
-      rawLedgerModal.classList.remove('active');
-      renderRawLedger();
-      queueSync();
+      requirePinReverify_(()=>{
+        (s.entries || []).forEach(e=>{
+          if(e.id){ delete rawReceiptFiles[e.id]; persistRawReceiptLocally_(e.id, null); markDeleted_('rawledgerEntries', e.id); }
+        });
+        if(s.name) markDeleted_('rawledgerRoster', s.name);
+        inventory.rawledger.splice(currentRawSupplierIdx,1);
+        rawLedgerModal.classList.remove('active');
+        renderRawLedger();
+        queueSync();
+      }, tr('confirm_pin_delete_hint'));
     });
     document.getElementById('rl-debit').addEventListener('input', function(){
       const show = parseFloat(this.value) > 0;
@@ -12194,80 +12470,88 @@
       const chosenDate = isoToDMY_(document.getElementById('rl-date').value) || new Date().toLocaleDateString('en-GB');
       const s = inventory.rawledger[currentRawSupplierIdx];
       s.entries = s.entries || [];
-      if(editingRlEntryIdx !== null){
-        // Update the existing entry in place — keeps its id/time/receipt/
-        // chequeStatus (a cheque being edited stays whatever clearance state
-        // it was already in, it doesn't reset to 'pending').
-        const existing = s.entries[editingRlEntryIdx];
-        if(existing){
-          existing.desc = desc;
-          existing.weight = weight;
-          existing.bundleCount = bundleCount;
-          existing.gaugeCount = gaugeCount;
-          existing.sizeCount = sizeCount;
-          existing.date = chosenDate;
-          existing.debit = debit;
-          existing.credit = credit;
-          existing.method = method;
-          existing.detail = detail;
-          existing.receivedBy = receivedBy;
-          existing.receivedIn = receivedIn;
-          if(debit > 0 && method === 'Cheque'){
-            existing.chequeDate = chequeDate;
-            if(!existing.chequeStatus) existing.chequeStatus = 'pending';
-          } else {
-            existing.chequeDate = '';
-            existing.chequeStatus = '';
+      const wasEditingRlEntry_ = editingRlEntryIdx !== null;
+      function commitRlEntrySave_(){
+        if(editingRlEntryIdx !== null){
+          // Update the existing entry in place — keeps its id/time/receipt/
+          // chequeStatus (a cheque being edited stays whatever clearance state
+          // it was already in, it doesn't reset to 'pending').
+          const existing = s.entries[editingRlEntryIdx];
+          if(existing){
+            existing.desc = desc;
+            existing.weight = weight;
+            existing.bundleCount = bundleCount;
+            existing.gaugeCount = gaugeCount;
+            existing.sizeCount = sizeCount;
+            existing.date = chosenDate;
+            existing.debit = debit;
+            existing.credit = credit;
+            existing.method = method;
+            existing.detail = detail;
+            existing.receivedBy = receivedBy;
+            existing.receivedIn = receivedIn;
+            if(debit > 0 && method === 'Cheque'){
+              existing.chequeDate = chequeDate;
+              if(!existing.chequeStatus) existing.chequeStatus = 'pending';
+            } else {
+              existing.chequeDate = '';
+              existing.chequeStatus = '';
+            }
+            if(pendingRawReceipt && existing.id){
+              rawReceiptFiles[existing.id] = pendingRawReceipt;
+              persistRawReceiptLocally_(existing.id, pendingRawReceipt);
+            }
           }
-          if(pendingRawReceipt && existing.id){
-            rawReceiptFiles[existing.id] = pendingRawReceipt;
-            persistRawReceiptLocally_(existing.id, pendingRawReceipt);
+          editingRlEntryIdx = null;
+          document.getElementById('rl-add-entry').textContent = tr('add_entry');
+        } else {
+          const now = new Date();
+          const entryId = 'rl' + Date.now();
+          s.entries.push({
+            id: entryId,
+            date: chosenDate,
+            time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+            desc, weight, bundleCount, gaugeCount, sizeCount, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (debit > 0 && method === 'Cheque') ? 'pending' : '',
+            device: DEVICE_NAME
+          });
+          if(pendingRawReceipt){
+            rawReceiptFiles[entryId] = pendingRawReceipt;
+            persistRawReceiptLocally_(entryId, pendingRawReceipt);
           }
         }
-        editingRlEntryIdx = null;
-        document.getElementById('rl-add-entry').textContent = tr('add_entry');
-      } else {
-        const now = new Date();
-        const entryId = 'rl' + Date.now();
-        s.entries.push({
-          id: entryId,
-          date: chosenDate,
-          time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
-          desc, weight, bundleCount, gaugeCount, sizeCount, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (debit > 0 && method === 'Cheque') ? 'pending' : '',
-          device: DEVICE_NAME
-        });
-        if(pendingRawReceipt){
-          rawReceiptFiles[entryId] = pendingRawReceipt;
-          persistRawReceiptLocally_(entryId, pendingRawReceipt);
-        }
+        document.getElementById('rl-desc').value = '';
+        document.getElementById('rl-weight').value = '';
+        document.getElementById('rl-bundle').value = '';
+        document.getElementById('rl-gauge').value = '';
+        document.getElementById('rl-size').value = '';
+        document.getElementById('rl-date').value = todayISO_();
+        document.getElementById('rl-debit').value = '';
+        document.getElementById('rl-credit').value = '';
+        document.getElementById('rl-method-wrap').style.display = 'none';
+        document.getElementById('rl-method-detail-wrap').style.display = 'none';
+        document.getElementById('rl-method-detail').value = '';
+        document.getElementById('rl-cheque-date-wrap').style.display = 'none';
+        document.getElementById('rl-cheque-date').value = '';
+        document.getElementById('rl-receivedby').value = '';
+        document.getElementById('rl-receivedin').value = '';
+        pendingRawReceipt = null;
+        rlReceiptFileInput.value = '';
+        rlReceiptCurrent.style.display = 'none';
+        renderRawLedgerModalContent_();
+        renderRawLedger();
+        renderOverdueChequeBanner_();
+        queueSync();
+        showToast_(
+          sheetConfigured()
+            ? `Entry added to ${s.name}'s raw material ledger — syncing to sheet`
+            : `Entry added to ${s.name}'s raw material ledger`
+        );
       }
-      document.getElementById('rl-desc').value = '';
-      document.getElementById('rl-weight').value = '';
-      document.getElementById('rl-bundle').value = '';
-      document.getElementById('rl-gauge').value = '';
-      document.getElementById('rl-size').value = '';
-      document.getElementById('rl-date').value = todayISO_();
-      document.getElementById('rl-debit').value = '';
-      document.getElementById('rl-credit').value = '';
-      document.getElementById('rl-method-wrap').style.display = 'none';
-      document.getElementById('rl-method-detail-wrap').style.display = 'none';
-      document.getElementById('rl-method-detail').value = '';
-      document.getElementById('rl-cheque-date-wrap').style.display = 'none';
-      document.getElementById('rl-cheque-date').value = '';
-      document.getElementById('rl-receivedby').value = '';
-      document.getElementById('rl-receivedin').value = '';
-      pendingRawReceipt = null;
-      rlReceiptFileInput.value = '';
-      rlReceiptCurrent.style.display = 'none';
-      renderRawLedgerModalContent_();
-      renderRawLedger();
-      renderOverdueChequeBanner_();
-      queueSync();
-      showToast_(
-        sheetConfigured()
-          ? `Entry added to ${s.name}'s raw material ledger — syncing to sheet`
-          : `Entry added to ${s.name}'s raw material ledger`
-      );
+      if(wasEditingRlEntry_){
+        requirePinReverify_(commitRlEntrySave_, tr('confirm_pin_edit_hint'));
+      } else {
+        commitRlEntrySave_();
+      }
     });
 
     function rawLedgerRows_(dateFrom, dateTo, supplierName){
@@ -12963,13 +13247,15 @@
           btn.addEventListener('click', ()=>{
             const idx = parseInt(btn.dataset.idx,10);
             if(!confirm(tr('confirm_delete_custom_ledger').replace('{name}', customLedgers[idx].name))) return;
-            (customLedgers[idx].entries || []).forEach(e=>{
-              if(e.id){ delete customLedgerReceiptFiles[e.id]; persistCustomLedgerReceiptLocally_(e.id, null); }
-            });
-            if(customLedgers[idx] && customLedgers[idx].id) markDeleted_('customLedgers', customLedgers[idx].id);
-            customLedgers.splice(idx,1);
-            renderCustomLedgersList_();
-            queueSync();
+            requirePinReverify_(()=>{
+              (customLedgers[idx].entries || []).forEach(e=>{
+                if(e.id){ delete customLedgerReceiptFiles[e.id]; persistCustomLedgerReceiptLocally_(e.id, null); }
+              });
+              if(customLedgers[idx] && customLedgers[idx].id) markDeleted_('customLedgers', customLedgers[idx].id);
+              customLedgers.splice(idx,1);
+              renderCustomLedgersList_();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
           });
         });
       }
@@ -13165,41 +13451,43 @@
       entriesWrap.querySelectorAll('.ledger-entry-del:not(.cul-entry-receipt):not(.cul-entry-edit)').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           if(!confirm(tr('confirm_delete_entry'))) return;
-          const eIdx = parseInt(btn.dataset.idx,10);
-          const removed = cl.entries[eIdx];
-          if(removed && removed.id){ delete customLedgerReceiptFiles[removed.id]; persistCustomLedgerReceiptLocally_(removed.id, null); markDeleted_('customLedgerEntries', removed.id); }
-          // Give back whatever weight this entry had consumed from the
-          // ledger's shared Weight/Remaining Weight pool, so deleting an
-          // entry doesn't leave it permanently short.
-          if(removed){
-            culSplitItems_(removed).forEach(it=>{
-              if(!it.weightPerItem) return;
-              // A Steel Weight payment item never consumed Remaining
-              // Weight in the first place (see cul-add-entry above), so
-              // deleting one must not refund it — only its own confirmed
-              // cl.selfWeightStock credit (if any) is undone.
-              if(it.itemMethod === 'SteelWeight'){
-                if(it.itemWeightStatus === 'confirmed'){
-                  const amt = (parseFloat(it.itemCount) || 0) * (parseFloat(it.weightPerItem) || 0);
-                  cl.selfWeightStock = Math.max(0, (cl.selfWeightStock || 0) - amt);
+          requirePinReverify_(()=>{
+            const eIdx = parseInt(btn.dataset.idx,10);
+            const removed = cl.entries[eIdx];
+            if(removed && removed.id){ delete customLedgerReceiptFiles[removed.id]; persistCustomLedgerReceiptLocally_(removed.id, null); markDeleted_('customLedgerEntries', removed.id); }
+            // Give back whatever weight this entry had consumed from the
+            // ledger's shared Weight/Remaining Weight pool, so deleting an
+            // entry doesn't leave it permanently short.
+            if(removed){
+              culSplitItems_(removed).forEach(it=>{
+                if(!it.weightPerItem) return;
+                // A Steel Weight payment item never consumed Remaining
+                // Weight in the first place (see cul-add-entry above), so
+                // deleting one must not refund it — only its own confirmed
+                // cl.selfWeightStock credit (if any) is undone.
+                if(it.itemMethod === 'SteelWeight'){
+                  if(it.itemWeightStatus === 'confirmed'){
+                    const amt = (parseFloat(it.itemCount) || 0) * (parseFloat(it.weightPerItem) || 0);
+                    cl.selfWeightStock = Math.max(0, (cl.selfWeightStock || 0) - amt);
+                  }
+                  return;
                 }
-                return;
-              }
-              const stock = culGetLedgerStock_(cl);
-              stock.remaining = (stock.remaining || 0) + (parseFloat(it.itemCount) || 0) * (parseFloat(it.weightPerItem) || 0);
-              if(stock.weight) stock.remaining = Math.min(stock.remaining, stock.weight);
-            });
-          }
-          cl.entries.splice(eIdx,1);
-          if(editingCulEntryIdx === eIdx){
-            editingCulEntryIdx = null;
-            document.getElementById('cul-add-entry').textContent = tr('add_entry');
-          }
-          culRefreshWeightUI_();
-          renderCustomLedgerModalContent_();
-          renderCustomLedgersList_();
-          renderOverdueChequeBanner_();
-          queueSync();
+                const stock = culGetLedgerStock_(cl);
+                stock.remaining = (stock.remaining || 0) + (parseFloat(it.itemCount) || 0) * (parseFloat(it.weightPerItem) || 0);
+                if(stock.weight) stock.remaining = Math.min(stock.remaining, stock.weight);
+              });
+            }
+            cl.entries.splice(eIdx,1);
+            if(editingCulEntryIdx === eIdx){
+              editingCulEntryIdx = null;
+              document.getElementById('cul-add-entry').textContent = tr('add_entry');
+            }
+            culRefreshWeightUI_();
+            renderCustomLedgerModalContent_();
+            renderCustomLedgersList_();
+            renderOverdueChequeBanner_();
+            queueSync();
+          }, tr('confirm_pin_delete_hint'));
         });
       });
       entriesWrap.querySelectorAll('.cheque-action-btn').forEach(btn=>{
@@ -13257,14 +13545,16 @@
       const cl = customLedgers[currentCustomLedgerIdx];
       if(!cl) return;
       if(!confirm(tr('confirm_delete_custom_ledger').replace('{name}', cl.name))) return;
-      (cl.entries || []).forEach(e=>{
-        if(e.id){ delete customLedgerReceiptFiles[e.id]; persistCustomLedgerReceiptLocally_(e.id, null); }
-      });
-      if(cl.id) markDeleted_('customLedgers', cl.id);
-      customLedgers.splice(currentCustomLedgerIdx,1);
-      customLedgerModal.classList.remove('active');
-      renderCustomLedgersList_();
-      queueSync();
+      requirePinReverify_(()=>{
+        (cl.entries || []).forEach(e=>{
+          if(e.id){ delete customLedgerReceiptFiles[e.id]; persistCustomLedgerReceiptLocally_(e.id, null); }
+        });
+        if(cl.id) markDeleted_('customLedgers', cl.id);
+        customLedgers.splice(currentCustomLedgerIdx,1);
+        customLedgerModal.classList.remove('active');
+        renderCustomLedgersList_();
+        queueSync();
+      }, tr('confirm_pin_delete_hint'));
     });
     // "+ Add Stock" — this is how a customer/supplier providing THEIR OWN
     // stock gets recorded. If we currently have an outstanding
@@ -13345,6 +13635,50 @@
     document.getElementById('resetweight-pin-input').addEventListener('keydown', (e)=>{
       if(e.key === 'Enter') culConfirmResetWeightPin_();
     });
+
+    // ---------------- GENERIC PIN RE-VERIFY GATE (2026-08-23) ----------------
+    // Shared confirm-PIN gate for every delete and edit-save action across
+    // every ledger (Painter, Worker/Labour, Raw Material, Custom, Customer),
+    // Factories, and Products — asks for the app PIN again before running a
+    // destructive/sensitive mutation, even though the app is already
+    // unlocked. Same `PIN` var as the lock screen and #resetweight-pin-modal
+    // above, not a separate secret. Call requirePinReverify_(fn, hint)
+    // instead of running the mutation directly — fn only runs once the PIN
+    // is confirmed correct; Cancel (or closing without confirming) simply
+    // drops the pending callback and nothing happens.
+    let pinReverifyCallback_ = null;
+    const pinReverifyModal = document.getElementById('pin-reverify-modal');
+    function requirePinReverify_(onConfirmed, hint){
+      pinReverifyCallback_ = onConfirmed;
+      const hintEl = document.getElementById('pin-reverify-hint');
+      if(hintEl) hintEl.textContent = hint || tr('confirm_pin_generic_hint');
+      document.getElementById('pin-reverify-input').value = '';
+      document.getElementById('pin-reverify-error').style.display = 'none';
+      pinReverifyModal.classList.add('active');
+      setTimeout(()=> document.getElementById('pin-reverify-input').focus(), 50);
+    }
+    document.getElementById('pin-reverify-cancel').addEventListener('click', ()=>{
+      pinReverifyModal.classList.remove('active');
+      pinReverifyCallback_ = null;
+    });
+    function confirmPinReverify_(){
+      const input = document.getElementById('pin-reverify-input');
+      if(input.value.trim() !== PIN){
+        document.getElementById('pin-reverify-error').style.display = 'block';
+        input.value = '';
+        input.focus();
+        return;
+      }
+      const cb = pinReverifyCallback_;
+      pinReverifyModal.classList.remove('active');
+      pinReverifyCallback_ = null;
+      if(cb) cb();
+    }
+    document.getElementById('pin-reverify-confirm').addEventListener('click', confirmPinReverify_);
+    document.getElementById('pin-reverify-input').addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter') confirmPinReverify_();
+    });
+
     // culRecalcDebitFromRate_ (sums Item Count × Rate per Item across every
     // item block into Debit — Cost) and its Item Count/Rate listeners are
     // wired per-block in culWireItemBlock_ above.
@@ -13369,6 +13703,16 @@
       if(currentCustomLedgerIdx === null) return;
       const cl = customLedgers[currentCustomLedgerIdx];
       if(!cl) return;
+      // PIN re-verify gate (2026-08-23): this handler mutates the ledger's
+      // shared Weight/Remaining Weight pool BEFORE the add-vs-edit branch
+      // below (see culGetLedgerStock_ usage further down), so the whole
+      // save (validation included) is wrapped in one function and only the
+      // edit path is deferred behind requirePinReverify_ — deferring just
+      // the tail would let the stock pool get decremented even if the PIN
+      // prompt is then cancelled. The add-new path still runs immediately,
+      // unchanged.
+      const wasEditingCulEntry_ = editingCulEntryIdx !== null;
+      function commitCulEntrySave_(){
       // Gather every item block that actually has something in it (a block
       // added via "+ Add Item" and left blank is just ignored) — each one
       // becomes its own line in the entry's (possibly multi-line)
@@ -13564,6 +13908,12 @@
           ? `Entry added to ${cl.name}'s custom ledger — syncing to sheet`
           : `Entry added to ${cl.name}'s custom ledger`
       );
+      }
+      if(wasEditingCulEntry_){
+        requirePinReverify_(commitCulEntrySave_, tr('confirm_pin_edit_hint'));
+      } else {
+        commitCulEntrySave_();
+      }
     });
 
     // ---------------- LABOUR LEDGER (per-worker Attendance / Wages / Payments / Dues) ----------------
@@ -13796,10 +14146,12 @@
           btn.addEventListener('click', ()=>{
             const idx = parseInt(btn.dataset.idx,10);
             if(!confirm(tr('confirm_delete_worker').replace('{name}', workers[idx].name))) return;
-            if(workers[idx] && workers[idx].name) markDeleted_('labourledgerRoster', workers[idx].name);
-            inventory.labourledger.splice(idx,1);
-            renderLabourLedgerTable_();
-            queueSync();
+            requirePinReverify_(()=>{
+              if(workers[idx] && workers[idx].name) markDeleted_('labourledgerRoster', workers[idx].name);
+              inventory.labourledger.splice(idx,1);
+              renderLabourLedgerTable_();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
           });
         });
       }
@@ -14504,20 +14856,22 @@
         entriesWrap.querySelectorAll('.ledger-entry-del').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             if(!confirm(tr('confirm_delete_entry'))) return;
-            const eIdx = parseInt(btn.dataset.idx,10);
-            const removed = w.entries[eIdx];
-            if(removed && removed.id){ delete labourReceiptFiles[removed.id]; persistLabourReceiptLocally_(removed.id, null); markDeleted_('labourledgerEntries', removed.id); }
-            w.entries.splice(eIdx,1);
-            // If that was the last entry using this size, drop the saved
-            // rate config for it too — no longer any work logged against
-            // that config, so nothing should keep matching onto it.
-            if(removed && removed.size){
-              const stillUsed = w.entries.some(e => e.size === removed.size);
-              if(!stillUsed) w.pieceRates = (w.pieceRates || []).filter(pr => pr.size !== removed.size);
-            }
-            renderWorkerLedgerModalContent_();
-            renderLabourLedgerTable_();
-            queueSync();
+            requirePinReverify_(()=>{
+              const eIdx = parseInt(btn.dataset.idx,10);
+              const removed = w.entries[eIdx];
+              if(removed && removed.id){ delete labourReceiptFiles[removed.id]; persistLabourReceiptLocally_(removed.id, null); markDeleted_('labourledgerEntries', removed.id); }
+              w.entries.splice(eIdx,1);
+              // If that was the last entry using this size, drop the saved
+              // rate config for it too — no longer any work logged against
+              // that config, so nothing should keep matching onto it.
+              if(removed && removed.size){
+                const stillUsed = w.entries.some(e => e.size === removed.size);
+                if(!stillUsed) w.pieceRates = (w.pieceRates || []).filter(pr => pr.size !== removed.size);
+              }
+              renderWorkerLedgerModalContent_();
+              renderLabourLedgerTable_();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
           });
         });
         entriesWrap.querySelectorAll('.cheque-action-btn').forEach(btn=>{
@@ -14578,6 +14932,10 @@
       wlUpdateProfileRateFieldsVisibility_();
     }
     document.getElementById('wl-save-profile').addEventListener('click', ()=>{
+      // PIN re-verify gate (2026-08-23): this whole handler only ever edits
+      // an already-existing worker (see currentWorkerIdx check below), so
+      // the entire save is gated, not just part of it.
+      requirePinReverify_(()=>{
       // Everything below used to run unguarded — any unexpected error partway
       // through (a bad row value, a missing element, anything) would throw,
       // get silently swallowed by the browser, and LOOK exactly like the
@@ -14724,6 +15082,7 @@
         console.error('[wl-save-profile] failed:', err);
         alert('Save failed: ' + (err && err.message ? err.message : err) + '\n\nPlease screenshot this message and share it so it can be fixed.');
       }
+      }, tr('confirm_pin_edit_hint'));
     });
     document.getElementById('wl-open-dates-modal').addEventListener('click', ()=>{
       document.getElementById('wl-dates-modal').classList.add('active');
@@ -14734,31 +15093,33 @@
     document.getElementById('wl-dates-save').addEventListener('click', ()=>{
       const w = inventory.labourledger[currentWorkerIdx];
       if(!w) return;
-      const oldStartDate = w.startDate, oldEndDate = w.endDate;
-      // FIX: was storing the date input's raw value directly — ISO format
-      // ("2026-08-16") — while every other date in the app (order dates,
-      // ledger entry dates, etc.) is stored as DD/MM/YYYY ("16/08/2026").
-      // Converting here keeps StartDate/EndDate consistent with that
-      // convention, same as chosenDate does for a new ledger entry's date.
-      w.startDate = isoToDMY_(document.getElementById('wl-start-date').value) || '';
-      w.endDate = isoToDMY_(document.getElementById('wl-end-date').value) || '';
-      // Re-lock (or unlock, if the account was just closed) the Start
-      // Working Date field to match its new state.
-      document.getElementById('wl-start-date').disabled = !!w.startDate && !w.endDate;
-      document.getElementById('wl-dates-modal').classList.remove('active');
-      wlPopulateProfileFields_(w); // refresh the summary line
-      renderLabourLedgerTable_();
-      queueSync();
-      // A newly-set Start or End date is a meaningful enough event (an
-      // account opening or closing) to get its own explicit popup, rather
-      // than blending silently into a generic "saved" toast.
-      if(!oldStartDate && w.startDate){
-        showToast_(tr('account_opened_for').replace('{name}', w.name).replace('{date}', w.startDate));
-      } else if(!oldEndDate && w.endDate){
-        showToast_(tr('account_closed_for').replace('{name}', w.name).replace('{date}', w.endDate));
-      } else {
-        showToast_(tr('details_saved'));
-      }
+      requirePinReverify_(()=>{
+        const oldStartDate = w.startDate, oldEndDate = w.endDate;
+        // FIX: was storing the date input's raw value directly — ISO format
+        // ("2026-08-16") — while every other date in the app (order dates,
+        // ledger entry dates, etc.) is stored as DD/MM/YYYY ("16/08/2026").
+        // Converting here keeps StartDate/EndDate consistent with that
+        // convention, same as chosenDate does for a new ledger entry's date.
+        w.startDate = isoToDMY_(document.getElementById('wl-start-date').value) || '';
+        w.endDate = isoToDMY_(document.getElementById('wl-end-date').value) || '';
+        // Re-lock (or unlock, if the account was just closed) the Start
+        // Working Date field to match its new state.
+        document.getElementById('wl-start-date').disabled = !!w.startDate && !w.endDate;
+        document.getElementById('wl-dates-modal').classList.remove('active');
+        wlPopulateProfileFields_(w); // refresh the summary line
+        renderLabourLedgerTable_();
+        queueSync();
+        // A newly-set Start or End date is a meaningful enough event (an
+        // account opening or closing) to get its own explicit popup, rather
+        // than blending silently into a generic "saved" toast.
+        if(!oldStartDate && w.startDate){
+          showToast_(tr('account_opened_for').replace('{name}', w.name).replace('{date}', w.startDate));
+        } else if(!oldEndDate && w.endDate){
+          showToast_(tr('account_closed_for').replace('{name}', w.name).replace('{date}', w.endDate));
+        } else {
+          showToast_(tr('details_saved'));
+        }
+      }, tr('confirm_pin_edit_hint'));
     });
 
     function openWorkerLedgerModal(idx){
@@ -14791,14 +15152,16 @@
       if(currentWorkerIdx === null) return;
       const w = inventory.labourledger[currentWorkerIdx];
       if(!confirm(tr('confirm_delete_worker').replace('{name}', w.name))) return;
-      (w.entries || []).forEach(e=>{
-        if(e.id){ delete labourReceiptFiles[e.id]; persistLabourReceiptLocally_(e.id, null); markDeleted_('labourledgerEntries', e.id); }
-      });
-      if(w.name) markDeleted_('labourledgerRoster', w.name);
-      inventory.labourledger.splice(currentWorkerIdx,1);
-      workerLedgerModal.classList.remove('active');
-      renderLabourLedgerTable_();
-      queueSync();
+      requirePinReverify_(()=>{
+        (w.entries || []).forEach(e=>{
+          if(e.id){ delete labourReceiptFiles[e.id]; persistLabourReceiptLocally_(e.id, null); markDeleted_('labourledgerEntries', e.id); }
+        });
+        if(w.name) markDeleted_('labourledgerRoster', w.name);
+        inventory.labourledger.splice(currentWorkerIdx,1);
+        workerLedgerModal.classList.remove('active');
+        renderLabourLedgerTable_();
+        queueSync();
+      }, tr('confirm_pin_delete_hint'));
     });
     document.getElementById('wl-add-entry').addEventListener('click', ()=>{
       if(currentWorkerIdx === null) return;
@@ -16598,6 +16961,21 @@
           chips.push(`<span class="txn-meta-chip">${tr('size')}: ${sizeDetail}</span>`);
         }
         if(t.colors) chips.push(`<span class="txn-meta-chip">${tr('colour')}: ${t.colors}</span>`);
+        // ADD (2026-08-23, user report: "not showing rate per item column
+        // even on sheets/exports/and in order book") — per-product rate,
+        // same pairing pattern as the size chip just above. itemRates only
+        // exists on orders placed after this fix; an older order shows one
+        // combined average (Total ÷ Item Count) via txnRateCell_ instead of
+        // just having no Rate chip at all.
+        {
+          const itemLines = String(t.itemsSummary || '').split('\n').filter(Boolean);
+          const rateLines = String(t.itemRates || '').split('\n').filter(Boolean);
+          const singleRate = txnRateCell_(t).split('\n')[0];
+          const rateDetail = (itemLines.length > 1 && rateLines.length === itemLines.length)
+            ? itemLines.map((name,i)=> `${name}: ${fmt(rateLines[i])}`).join(', ')
+            : (singleRate ? fmt(singleRate) : '');
+          if(rateDetail) chips.push(`<span class="txn-meta-chip">${tr('price_rs')}: ${rateDetail}</span>`);
+        }
         const info = txnPaymentInfo_(t);
         const statusCls = info.status === 'Paid' ? 'is-paid' : info.status === 'Partial' ? 'is-partial' : 'is-unpaid';
         const statusTxt = info.status === 'Paid' ? tr('paid') : info.status === 'Partial' ? (tr('partial') + ' · ' + fmt(info.due)) : tr('unpaid');
@@ -16665,11 +17043,13 @@
         }
         row.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
           if(!confirm(tr('confirm_delete_order'))) return;
-          removeTransactionAndPayments_(idx);
-          renderTransactions();
-          renderSalesStats();
-          refreshOverviewIfActive_();
-          queueSync();
+          requirePinReverify_(()=>{
+            removeTransactionAndPayments_(idx);
+            renderTransactions();
+            renderSalesStats();
+            refreshOverviewIfActive_();
+            queueSync();
+          }, tr('confirm_pin_delete_hint'));
         });
         wrap.appendChild(row);
       });
@@ -16754,13 +17134,15 @@
     document.getElementById('txn-delete').addEventListener('click', ()=>{
       if(editingTxnIdx === null) return;
       if(!confirm(tr('confirm_delete_order'))) return;
-      removeTransactionAndPayments_(editingTxnIdx);
-      txnEditModal.classList.remove('active');
-      recomputeSessionTotals();
-      renderTransactions();
-      renderSalesStats();
-      refreshOverviewIfActive_();
-      queueSync();
+      requirePinReverify_(()=>{
+        removeTransactionAndPayments_(editingTxnIdx);
+        txnEditModal.classList.remove('active');
+        recomputeSessionTotals();
+        renderTransactions();
+        renderSalesStats();
+        refreshOverviewIfActive_();
+        queueSync();
+      }, tr('confirm_pin_delete_hint'));
     });
     document.getElementById('txn-save').addEventListener('click', ()=>{
       if(editingTxnIdx === null) return;
@@ -16770,17 +17152,19 @@
       const total = parseFloat(document.getElementById('txn-total').value);
       const factory = document.getElementById('txn-factory').value;
       if(!itemsSummary || !(total >= 0)) return;
-      const t = transactionsLog[editingTxnIdx];
-      t.itemsSummary = itemsSummary;
-      t.date = date || t.date;
-      t.time = time || t.time;
-      t.total = total;
-      t.factory = factory || null;
-      txnEditModal.classList.remove('active');
-      recomputeSessionTotals();
-      renderTransactions();
-      renderSalesStats();
-      queueSync();
+      requirePinReverify_(()=>{
+        const t = transactionsLog[editingTxnIdx];
+        t.itemsSummary = itemsSummary;
+        t.date = date || t.date;
+        t.time = time || t.time;
+        t.total = total;
+        t.factory = factory || null;
+        txnEditModal.classList.remove('active');
+        recomputeSessionTotals();
+        renderTransactions();
+        renderSalesStats();
+        queueSync();
+      }, tr('confirm_pin_edit_hint'));
     });
 
     // ---------------- RECORD PAYMENT (partial/full, against an Order Booked transaction) ----------------
@@ -17017,6 +17401,12 @@
       });
     }
     document.getElementById('global-search-close').addEventListener('click', ()=> globalSearchModal_.classList.remove('active'));
+    // ADD (2026-08-23): header Notifications shortcut — same destination
+    // as the existing side-menu "Notifications" entry (see notificationsBtn
+    // in side-overview-nav above), just reachable without opening the
+    // hamburger drawer first.
+    const headerNotifBtn_ = document.getElementById('header-notifications-btn');
+    if(headerNotifBtn_) headerNotifBtn_.addEventListener('click', ()=> setView('notifications'));
     globalSearchInput_.addEventListener('input', ()=> renderGlobalSearchResults_(globalSearchInput_.value));
     // FIX (2026-08-19): collapsible toggles for the Settings page's Export
     // Settings columns list and Ledger Settings' Overview Dashboard list
@@ -17299,29 +17689,31 @@
         btn.addEventListener('click', ()=>{
           const id = btn.dataset.id;
           if(!confirm(tr('confirm_delete_payment'))) return;
-          markDeleted_('customerPayments', id);
-          customerPayments = customerPayments.filter(p => p.id !== id);
-          delete paymentReceiptFiles[id];
-          syncedPaymentReceiptIds.delete(id);
-          persistPaymentReceiptLocally_(id, null);
-          if(editingPaymentId === id){
-            editingPaymentId = null;
-            editingPaymentMaxAmount = Infinity;
-            document.getElementById('rp-confirm').textContent = tr('record_payment');
-          }
-          if(recordPaymentTxnIdx !== null){
-            const t = transactionsLog[recordPaymentTxnIdx];
-            const info = txnPaymentInfo_(t);
-            document.getElementById('rp-due-info').textContent =
-              tr('total') + ': ' + fmt(t.total) + ' · ' + tr('paid') + ': ' + fmt(info.amountPaid) + ' · ' + tr('due') + ': ' + fmt(info.due);
-            document.getElementById('rp-amount').value = info.due;
-            document.getElementById('rp-amount').max = info.due;
-            renderPaymentHistory_(t.id);
-          }
-          renderTransactions();
-          renderSalesStats();
-          refreshOverviewIfActive_();
-          queueSync();
+          requirePinReverify_(()=>{
+            markDeleted_('customerPayments', id);
+            customerPayments = customerPayments.filter(p => p.id !== id);
+            delete paymentReceiptFiles[id];
+            syncedPaymentReceiptIds.delete(id);
+            persistPaymentReceiptLocally_(id, null);
+            if(editingPaymentId === id){
+              editingPaymentId = null;
+              editingPaymentMaxAmount = Infinity;
+              document.getElementById('rp-confirm').textContent = tr('record_payment');
+            }
+            if(recordPaymentTxnIdx !== null){
+              const t = transactionsLog[recordPaymentTxnIdx];
+              const info = txnPaymentInfo_(t);
+              document.getElementById('rp-due-info').textContent =
+                tr('total') + ': ' + fmt(t.total) + ' · ' + tr('paid') + ': ' + fmt(info.amountPaid) + ' · ' + tr('due') + ': ' + fmt(info.due);
+              document.getElementById('rp-amount').value = info.due;
+              document.getElementById('rp-amount').max = info.due;
+              renderPaymentHistory_(t.id);
+            }
+            renderTransactions();
+            renderSalesStats();
+            refreshOverviewIfActive_();
+            queueSync();
+          }, tr('confirm_pin_delete_hint'));
         });
       });
     }
@@ -17398,12 +17790,14 @@
         ? tr('confirm_nil_order_with_payment').replace('{paid}', fmt(paidJustNow)).replace('{amount}', fmt(due)).replace('{id}', t.id)
         : tr('confirm_nil_order').replace('{amount}', fmt(due)).replace('{id}', t.id);
       if(!window.confirm(msg)) return;
-      applyNilToOrder_(t);
-      queueSync();
-      renderCustomerLedgerModalContent_();
-      renderTransactions();
-      renderFactories();
-      showToast_(tr('order_nilled_toast').replace('{amount}', fmt(due)));
+      requirePinReverify_(()=>{
+        applyNilToOrder_(t);
+        queueSync();
+        renderCustomerLedgerModalContent_();
+        renderTransactions();
+        renderFactories();
+        showToast_(tr('order_nilled_toast').replace('{amount}', fmt(due)));
+      }, tr('confirm_pin_edit_hint'));
     }
     // FIX (2026-08-19): also bind 'input' alongside 'change' — see the
     // identical comment on cl-method's handler for why.
@@ -17445,28 +17839,30 @@
         // capped against editingPaymentMaxAmount (total minus every OTHER
         // payment on this order), not info.due, since info.due still counts
         // this payment's OLD amount.
-        const existing = customerPayments.find(p => p.id === editingPaymentId);
-        if(existing){
-          existing.amount = Math.min(amount, editingPaymentMaxAmount);
-          existing.method = method;
-          existing.detail = detail;
-          existing.receivedBy = receivedBy;
-          existing.receivedIn = receivedIn;
-        }
-        if(pendingPaymentReceipt){
-          paymentReceiptFiles[editingPaymentId] = pendingPaymentReceipt;
-          persistPaymentReceiptLocally_(editingPaymentId, pendingPaymentReceipt);
-        }
-        const editedAmount = existing ? existing.amount : amount;
-        editingPaymentId = null;
-        editingPaymentMaxAmount = Infinity;
-        recordPaymentModal.classList.remove('active');
-        renderTransactions();
-        renderSalesStats();
-        refreshOverviewIfActive_();
-        queueSync();
-        showToast_(tr('payment_recorded'));
-        if(nilFlowActive){ proceedToNilConfirm_(t, editedAmount); }
+        requirePinReverify_(()=>{
+          const existing = customerPayments.find(p => p.id === editingPaymentId);
+          if(existing){
+            existing.amount = Math.min(amount, editingPaymentMaxAmount);
+            existing.method = method;
+            existing.detail = detail;
+            existing.receivedBy = receivedBy;
+            existing.receivedIn = receivedIn;
+          }
+          if(pendingPaymentReceipt){
+            paymentReceiptFiles[editingPaymentId] = pendingPaymentReceipt;
+            persistPaymentReceiptLocally_(editingPaymentId, pendingPaymentReceipt);
+          }
+          const editedAmount = existing ? existing.amount : amount;
+          editingPaymentId = null;
+          editingPaymentMaxAmount = Infinity;
+          recordPaymentModal.classList.remove('active');
+          renderTransactions();
+          renderSalesStats();
+          refreshOverviewIfActive_();
+          queueSync();
+          showToast_(tr('payment_recorded'));
+          if(nilFlowActive){ proceedToNilConfirm_(t, editedAmount); }
+        }, tr('confirm_pin_edit_hint'));
         return;
       }
       // Cap at what's actually due — an overpayment here would just create
@@ -17533,6 +17929,12 @@
           return;
         } catch(err){
           console.warn('[export] native save failed, falling back to browser download:', err);
+          // FIX (2026-08-23, Android 8 report): this used to fail totally
+          // silently on-device — the browser fallback below is a genuine
+          // no-op inside the packaged app (no DownloadListener registered),
+          // so a permission denial or full disk previously looked exactly
+          // like a successful save. Now the user actually sees it failed.
+          if(isNativeApp_()) showToast_('Could not save the file — check storage permission for this app.');
         }
       }
       // Browser fallback (desktop/Electron testing, not the packaged app):
@@ -17740,7 +18142,26 @@
       if(method === 'Online Transfer') return t.detailOnline ? method + ' (' + t.detailOnline + ')' : method;
       return t.detailCash ? method + ' (' + t.detailCash + ')' : method;
     }
-    const TXN_EXPORT_HEADERS = ['ID','Date','Time','Items','Item Count','Size','Colour','Total','Factory','Status','Debit','Credit','Balance','Payment Mode'];
+    const TXN_EXPORT_HEADERS = ['ID','Date','Time','Items','Item Count','Rate','Size','Colour','Total','Factory','Status','Debit','Credit','Balance','Payment Mode'];
+    // ADD (2026-08-23, user report: "not showing rate per item column even
+    // on sheets/exports/and in order book") — same one-per-line, parallel-
+    // with-Items shape as itemCountCell just below. t.itemRates only exists
+    // on orders placed after this fix (see completeSale_/addUnpaidOrder);
+    // an older order falls back to one combined average (Total ÷ Item
+    // Count) so the column is never just blank, even though it can't show
+    // a true per-product rate for an order that mixed prices before this
+    // was captured.
+    // Raw numbers (no "Rs"/thousands-separator formatting) — matches every
+    // other numeric export cell in this row (t.total, info.amountPaid, ...),
+    // which are also left raw for the spreadsheet/CSV to treat as real
+    // numbers. Callers that want it formatted for on-screen display (see
+    // the Rate chip in renderTransactions) run it through fmt() themselves.
+    function txnRateCell_(t){
+      const perLineRates = String(t.itemRates || '').split('\n').filter(Boolean);
+      if(perLineRates.length) return perLineRates.join('\n');
+      if(t.itemCount) return String(Math.round((t.total || 0) / t.itemCount));
+      return '';
+    }
     function txnExportRows_(list){
       const out = [];
       list.forEach(t=>{
@@ -17756,6 +18177,7 @@
         const itemCountCell = perLineCounts.length > 1
           ? perLineCounts.join('\n') + '\nTotal: ' + (t.itemCount || 0)
           : (t.itemCounts || String(t.itemCount || ''));
+        const rateCell = txnRateCell_(t);
 
         // Payment breakdown — one entry per actual payment EVENT (each
         // Record Payment for a retail sale, or each ledger credit allocated
@@ -17777,7 +18199,7 @@
           // Nothing to split (unpaid with no ledger credit yet, an instant
           // paid-in-full sale, or exactly one payment) — same single
           // combined row as before, nothing changes for the simple case.
-          out.push([t.id, t.date, t.time, t.itemsSummary, itemCountCell, t.sizes || '', t.colors || '', t.total, t.factory || '',
+          out.push([t.id, t.date, t.time, t.itemsSummary, itemCountCell, rateCell, t.sizes || '', t.colors || '', t.total, t.factory || '',
             info.status, t.total, info.amountPaid, info.due, paymentModeText_(t)]);
           return;
         }
@@ -17786,12 +18208,12 @@
         // Debit, no Credit yet), then one row per payment (its own Credit +
         // running Balance), so every entry is visible separately just like
         // it happened.
-        out.push([t.id, t.date, t.time, t.itemsSummary, itemCountCell, t.sizes || '', t.colors || '', t.total, t.factory || '',
+        out.push([t.id, t.date, t.time, t.itemsSummary, itemCountCell, rateCell, t.sizes || '', t.colors || '', t.total, t.factory || '',
           info.status, t.total, 0, t.total, '']);
         let running = t.total;
         breakdown.forEach(p=>{
           running = Math.max(0, running - p.amount);
-          out.push([t.id, p.date, '', '', '', '', '', '', t.factory || '', '', 0, p.amount, running,
+          out.push([t.id, p.date, '', '', '', '', '', '', '', t.factory || '', '', 0, p.amount, running,
             p.method + (p.detail ? ' (' + p.detail + ')' : '')]);
         });
       });
@@ -18186,11 +18608,14 @@
     // narrow that even the HEADER text had nowhere to break except mid-word
     // ("Statu"/"s", "Balan"/"ce"). Every column now gets an explicit,
     // header-aware width (mm) so nothing needs to fall back to auto-sizing.
+    // ADD (2026-08-23): index 5 is the new Rate column (see TXN_EXPORT_HEADERS)
+    // — every index from 6 onward (Size/Colour/Total/Factory/.../PaymentMode)
+    // shifted by one from what it used to be.
     const TXN_PDF_COLUMN_STYLES = {
       0:{cellWidth:12}, 1:{cellWidth:18}, 2:{cellWidth:12}, 3:{cellWidth:42},
-      4:{cellWidth:16}, 5:{cellWidth:13}, 6:{cellWidth:26}, 7:{cellWidth:17},
-      8:{cellWidth:18}, 9:{cellWidth:15}, 10:{cellWidth:17}, 11:{cellWidth:17},
-      12:{cellWidth:17}, 13:{cellWidth:24}
+      4:{cellWidth:16}, 5:{cellWidth:14}, 6:{cellWidth:13}, 7:{cellWidth:26},
+      8:{cellWidth:17}, 9:{cellWidth:18}, 10:{cellWidth:15}, 11:{cellWidth:17},
+      12:{cellWidth:17}, 13:{cellWidth:17}, 14:{cellWidth:24}
     };
     function exportTransactionsPDF(list, name){
       const rows = list || transactionsLog;
@@ -18339,7 +18764,11 @@
     // likely to hold long text) noticeably more room than ID/Time/Status,
     // so ordinary words don't get force-wrapped one-per-line the way they
     // did with every column splitting the width evenly.
-    const TXN_JPG_COL_WIDTHS = [5,7,5,15,7,6,9,7,8,6,6,6,6,7];
+    // ADD (2026-08-23): Rate inserted after Item Count — see TXN_EXPORT_HEADERS.
+    // Still sums to 100; borrowed 1pt each from Factory/Debit/Credit/Balance/
+    // PaymentMode (and Colour) to make room instead of shrinking Items, the
+    // column most likely to hold long product names.
+    const TXN_JPG_COL_WIDTHS = [5,7,5,15,7,6,6,9,7,7,5,5,5,5,6];
     function exportTransactionsJPG(list, name){
       const rows = list || transactionsLog;
       const total = txnRemainingBalanceTotal_(rows);
@@ -18473,7 +18902,7 @@
       raw: ['supplier','date','time','desc','weight','bundleCount','gaugeCount','sizeCount','debit','credit','balance','receivedBy','receivedIn'],
       custom: ['ledger','date','time','desc','itemColour','weight','sizeCount','itemCount','ratePerItem','itemMethod','itemWeightStatus','selfWeightStock','weightPerItem','weightPerScrap','remainingWeight','debit','credit','balance','receivedBy','receivedIn'],
       labour: ['worker','date','time','type','size','units','note','payment','advance','loan','credit','balance','receivedBy','receivedIn'],
-      transactions: ['id','date','time','items','itemCount','size','colour','total','factory','status','debit','credit','balance','paymentMode'],
+      transactions: ['id','date','time','items','itemCount','rate','size','colour','total','factory','status','debit','credit','balance','paymentMode'],
       customerledger: ['factory','date','desc','items','size','colour','qty','debit','credit','balance','method','paymentNum','chequeStatus'],
       expenses: ['date','desc','category','amount']
     };
