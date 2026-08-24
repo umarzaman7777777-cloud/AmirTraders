@@ -2404,6 +2404,23 @@
         <div id="labourledger-table"></div>
       </div>
 
+      <!-- ADD (2026-08-24, user request): Stock tab — a dedicated page to
+           view every product's stock quantity across all categories and
+           adjust it right here, since Stock Quantity was removed from the
+           Add Product form the same day ("I'll decide later about stock").
+           This is now that "later" — see renderStock() below for the logic. -->
+      <div id="view-stock" style="display:none;">
+        <div class="view-header">
+          <div class="view-header-text">
+            <h2 data-i18n="stock_title">Stock</h2>
+            <p data-i18n="stock_sub">Every product's stock quantity in one place — set or adjust it here; leave blank to stop tracking stock for that item.</p>
+          </div>
+        </div>
+        <div class="stat-grid" id="stock-stats" style="margin-bottom:18px;"></div>
+        <input class="field-input" id="stock-search" data-i18n-placeholder="stock_search_placeholder" placeholder="Search by product name or category…" style="max-width:320px;">
+        <div id="stock-table"></div>
+      </div>
+
       <div id="view-backup" style="display:none;">
         <div class="view-header">
           <div class="view-header-text">
@@ -6801,6 +6818,9 @@
         low_stock: "Low Stock", low_stock_product_sub: "{stock} left in stock — reorder level is {level}",
         stock_qty: "Stock Quantity", stock_qty_optional_hint: "— optional, leave blank to not track stock for this item",
         reorder_level: "Low Stock Alert Level", reorder_level_hint: "— get notified at/below this quantity (default 5)",
+        stock_title: "Stock", stock_sub: "Every product's stock quantity in one place — set or adjust it here; leave blank to stop tracking stock for that item.",
+        stock_search_placeholder: "Search by product name or category…", stock_total_products: "Total Products", stock_tracked: "Stock Tracked", not_tracked: "Not tracked",
+        category: "Category", no_products_to_show: "No products yet — add one from a category first.",
         notif_settings_title: "Notification Alerts", notif_settings_desc: "Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.",
         notif_settings_pending_note: "Outside-app delivery isn't switched on yet — these preferences will start applying automatically as soon as it is.",
         notif_settings_frequency_label: "Check For New Alerts Every", notif_freq_5: "5 minutes", notif_freq_15: "15 minutes", notif_freq_30: "30 minutes", notif_freq_60: "1 hour",
@@ -7102,6 +7122,9 @@
         low_stock: "کم اسٹاک", low_stock_product_sub: "اسٹاک میں {stock} باقی — دوبارہ آرڈر لیول {level} ہے",
         stock_qty: "اسٹاک مقدار", stock_qty_optional_hint: "— اختیاری، اس آئٹم کا اسٹاک ٹریک نہ کرنے کے لیے خالی چھوڑ دیں",
         reorder_level: "کم اسٹاک الرٹ لیول", reorder_level_hint: "— اس مقدار پر یا اس سے کم ہونے پر مطلع کریں (ڈیفالٹ 5)",
+        stock_title: "اسٹاک", stock_sub: "ہر پروڈکٹ کی اسٹاک مقدار ایک ہی جگہ — یہاں سے سیٹ یا ایڈجسٹ کریں؛ اس آئٹم کا اسٹاک ٹریک نہ کرنے کے لیے خالی چھوڑ دیں۔",
+        stock_search_placeholder: "پروڈکٹ کے نام یا کیٹیگری سے تلاش کریں…", stock_total_products: "کل پروڈکٹس", stock_tracked: "اسٹاک ٹریک شدہ", not_tracked: "ٹریک نہیں ہو رہا",
+        category: "کیٹیگری", no_products_to_show: "ابھی تک کوئی پروڈکٹ نہیں — پہلے کسی کیٹیگری سے ایک شامل کریں۔",
         notif_settings_title: "نوٹیفیکیشن الرٹس", notif_settings_desc: "منتخب کریں کہ اطلاعات ٹیب کے کون سے الرٹس ایپ سے باہر بھی دکھائے جائیں (نوٹیفیکیشن ٹرے / لاک اسکرین)، اور ایپ کتنی دیر بعد نئے الرٹس چیک کرے۔",
         notif_settings_pending_note: "ایپ سے باہر بھیجنا ابھی فعال نہیں ہوا — یہ ترجیحات فعال ہوتے ہی خود بخود لاگو ہو جائیں گی۔",
         notif_settings_frequency_label: "نئے الرٹس چیک کریں ہر", notif_freq_5: "5 منٹ", notif_freq_15: "15 منٹ", notif_freq_30: "30 منٹ", notif_freq_60: "1 گھنٹہ",
@@ -8589,7 +8612,8 @@
       "Fan Guards": "nav_fan_guards", "Bracket Fan": "nav_bracket_fan", "American Fan": "nav_american_fan",
       "Pedestal Fan": "nav_pedestal_fan", "Exhaust Fan": "nav_exhaust_fan", "Universal Fan": "nav_universal_fan",
       "Factories": "nav_factories", "Sales": "nav_sales", "Transactions": "nav_transactions", "Expenses": "nav_expenses",
-      "Raw Material": "nav_rawmaterial", "Labour": "nav_labour", "Paint": "nav_paint", "Labour Ledger": "nav_labourledger"
+      "Raw Material": "nav_rawmaterial", "Labour": "nav_labour", "Paint": "nav_paint", "Labour Ledger": "nav_labourledger",
+      "Stock": "stock_title"
     };
     function i18nSpan_(label){
       const key = NAV_LABEL_KEYS[label];
@@ -8711,15 +8735,19 @@
       "Raw Material": '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.3 7 12 12 20.7 7"/><line x1="12" y1="22" x2="12" y2="12"/>',
       "Labour": '<circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/>',
       "Paint": '<path d="M19 3H9a2 2 0 0 0-2 2v3l-3.5 5.5A3 3 0 0 0 6 18h8a3 3 0 0 0 2.5-4.5L13 8V5h6Z"/><line x1="9" y1="11" x2="16" y2="11"/>',
-      "Labour Ledger": '<rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M7.5 13.5l2 2 4-4.5"/>'
+      "Labour Ledger": '<rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M7.5 13.5l2 2 4-4.5"/>',
+      // ADD (2026-08-24, user request): a box/package icon for the new
+      // top-level Stock tab, distinct from the other inventory icons.
+      "Stock": '<path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/><path d="M7.5 4.5l9 5.2"/>'
     };
     const INVENTORY_VIEWS = [
       { key: "rawmaterial", label: "Raw Material" },
       { key: "paint", label: "Paint" },
-      { key: "labourledger", label: "Labour Ledger" }
+      { key: "labourledger", label: "Labour Ledger" },
+      { key: "stock", label: "Stock" }
     ];
     const inventoryNav = document.getElementById('side-inventory-nav');
-    const ALL_VIEW_KEYS = ["overview","notifications","factories","sales","transactions","expenses","rawmaterial","paint","labourledger","backup","settings"];
+    const ALL_VIEW_KEYS = ["overview","notifications","factories","sales","transactions","expenses","rawmaterial","paint","labourledger","stock","backup","settings"];
     let currentView = 'products';
 
     function setView(v){
@@ -8754,6 +8782,7 @@
       if(v==='rawmaterial') renderRawLedger();
       if(v==='paint') renderPaintLedger();
       if(v==='labourledger') renderLabourLedgerTable_();
+      if(v==='stock') renderStock();
       if(v==='backup') renderBackupView_();
       if(v==='settings') renderSettingsView_();
       // Mobile dropdown menu: collapse it and reflect the newly active
@@ -9006,6 +9035,103 @@
       productGrid.appendChild(addProductCard);
     }
 
+    // ---------------- STOCK TAB ----------------
+    // ADD (2026-08-24, user request): a dedicated page listing every
+    // product's stock quantity across ALL categories (unlike renderProducts
+    // above, which is scoped to activeCat), with an inline editable number
+    // per row — this is where Stock Quantity is set/adjusted now that it's
+    // out of the Add Product form. Same "blank = not tracked" convention as
+    // before: clearing the input removes p.stock entirely rather than
+    // storing 0, and DEFAULT_REORDER_LEVEL_/p.reorderLevel (both untouched
+    // by this page) still decide what counts as "low" exactly as they do
+    // for the product grid and Notifications' low-stock alerts.
+    let stockSearchTerm_ = '';
+    function renderStock(){
+      const wrap = document.getElementById('stock-table');
+      const statsWrap = document.getElementById('stock-stats');
+      if(!wrap || !statsWrap) return;
+      const term = stockSearchTerm_;
+      const list = PRODUCTS.filter(p=>{
+        return !term || p.name.toLowerCase().includes(term) || (p.cat||'').toLowerCase().includes(term);
+      }).slice().sort((a,b)=> (a.cat||'').localeCompare(b.cat||'') || a.name.localeCompare(b.name));
+
+      const trackedCount = list.filter(p=> p.stock !== undefined).length;
+      const lowCount = list.filter(p=>{
+        if(p.stock === undefined) return false;
+        const level = (p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : DEFAULT_REORDER_LEVEL_;
+        return p.stock <= level;
+      }).length;
+      statsWrap.innerHTML = `
+        <div class="stat-card"><div class="stat-label">${tr('stock_total_products')}</div><div class="stat-val">${list.length}</div></div>
+        <div class="stat-card"><div class="stat-label">${tr('stock_tracked')}</div><div class="stat-val">${trackedCount}</div></div>
+        <div class="stat-card"><div class="stat-label">${tr('low_stock_alerts')}</div><div class="stat-val" style="${lowCount>0?'color:var(--red);':''}">${lowCount}</div></div>
+      `;
+
+      if(list.length === 0){
+        wrap.innerHTML = '<div class="empty-state">' + tr('no_products_to_show') + '</div>';
+        return;
+      }
+
+      const rows = list.map(p=>{
+        const level = (p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : DEFAULT_REORDER_LEVEL_;
+        const isLow = p.stock !== undefined && p.stock <= level;
+        return `
+          <tr>
+            <td class="inv-name">${p.name}</td>
+            <td>${p.cat || ''}</td>
+            <td class="num">
+              <input type="number" class="field-input stock-qty-input" data-id="${p.id}" min="0" step="1"
+                value="${p.stock !== undefined ? p.stock : ''}" placeholder="${tr('not_tracked')}"
+                style="width:130px; text-align:right; margin-bottom:0;${isLow ? ' border-color:var(--red);' : ''}">
+            </td>
+            <td>${isLow ? `<span style="color:var(--red); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('low_stock')}</span>` : ''}</td>
+          </tr>`;
+      }).join('');
+
+      wrap.innerHTML = `
+        <div class="table-scroll"><table class="inv-table">
+          <thead>
+            <tr>
+              <th>${tr('product_name')}</th>
+              <th>${tr('category')}</th>
+              <th class="num">${tr('stock_qty')}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      `;
+
+      wrap.querySelectorAll('.stock-qty-input').forEach(inp=>{
+        inp.addEventListener('change', ()=>{
+          const id = parseInt(inp.dataset.id, 10);
+          const p = PRODUCTS.find(x=>x.id===id);
+          if(!p) return;
+          const raw = inp.value.trim();
+          if(raw === ''){
+            delete p.stock;
+          } else {
+            const n = parseInt(raw, 10);
+            if(!(n >= 0)){ inp.value = (p.stock !== undefined ? p.stock : ''); return; }
+            p.stock = n;
+          }
+          queueSync();
+          renderStock();
+          // Keep the product grid's own stock badge (see renderProducts
+          // above) in sync too, in case it's the view the user lands on
+          // next — cheap no-op if that category isn't currently showing.
+          renderProducts();
+        });
+      });
+    }
+    const stockSearchInput = document.getElementById('stock-search');
+    if(stockSearchInput){
+      stockSearchInput.addEventListener('input', (e)=>{
+        stockSearchTerm_ = e.target.value.trim().toLowerCase();
+        renderStock();
+      });
+    }
+
     // ---------------- CART ----------------
     const cartItemsEl = document.getElementById('cart-items');
     function lineDetail_(l){
@@ -9145,8 +9271,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.3";
-    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs); reordered the Add Product Weight field to match Name/Size (dropdown box first, then Add-new row); removed Stock Quantity from the Add Product form (existing product stock data and low-stock alerts are unaffected); fixed a broken Android build file that had silently dropped the Filesystem plugin (exports/receipts/backups) from the app — resynced so it's actually included again";
+    const APP_VERSION = "2026.08.24.4";
+    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs); reordered the Add Product Weight field to match Name/Size (dropdown box first, then Add-new row); removed Stock Quantity from the Add Product form (existing product stock data and low-stock alerts are unaffected); fixed a broken Android build file that had silently dropped the Filesystem plugin (exports/receipts/backups) from the app — resynced so it's actually included again; added a new Stock tab (side menu, under Inventory) listing every product's stock quantity with inline editing and low-stock highlighting";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
