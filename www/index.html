@@ -6204,6 +6204,18 @@
           confirmed: ()=> allTombstoned_(customerPayments, 'customerPayments', p => p && p.id) },
         { label: 'expenses', local: expenses.length, incoming: Array.isArray(d.expenses) ? d.expenses.length : 0,
           confirmed: ()=> allTombstoned_(expenses, 'expenses', e => e && e.id) },
+        // FIX (2026-08-24): CRITICAL — 'factories' was missing from this list
+        // entirely. loadStateFromSheet() applies d.factories with NO
+        // length-guard at all (unlike products, which only ever gets
+        // replaced when d.products.length > 0 — see the comment right next
+        // to that assignment), so this check was the ONLY thing that could
+        // have caught an incomplete/empty factories response before it
+        // silently wiped every real factory this device knew about. This is
+        // the exact bug behind the real-device report: "added product/
+        // factory/order... then all data vanished except products" — Products
+        // survived because of its own separate guard, Factories had none.
+        { label: 'factories', local: factories.length, incoming: Array.isArray(d.factories) ? d.factories.length : 0,
+          confirmed: ()=> allTombstoned_(factories, 'factories', f => f && f.name) },
         { label: 'raw material ledger', local: entryCount(inventory.rawledger), incoming: d.inventory ? entryCount(d.inventory.rawledger) : 0,
           confirmed: ()=> rosterEntriesTombstoned_(inventory.rawledger, 'rawledgerEntries') },
         { label: 'paint ledger', local: entryCount(inventory.paint), incoming: d.inventory ? entryCount(d.inventory.paint) : 0,
@@ -6219,7 +6231,15 @@
       // amount of data is what specifically signals a broken load — unless
       // every one of those local entries is already known to be
       // tombstoned, in which case it's an intentional, confirmed deletion.
-      const MIN_LOCAL_TO_CARE = 3;
+      // FIX (2026-08-24): CRITICAL — this used to be 3, meaning a device
+      // with only 1 or 2 real local records (a factory just added, a single
+      // order just booked — exactly a new/lightly-used device, or literally
+      // anyone's first day on the app) got ZERO protection from this guard:
+      // a bad/incomplete loadAll response could wipe that real data with no
+      // check at all, since c.local >= MIN_LOCAL_TO_CARE was false. There's
+      // no safe amount of real, un-tombstoned local data to silently
+      // discard — 1 record deserves exactly the same protection as 100.
+      const MIN_LOCAL_TO_CARE = 1;
       for(const c of checks){
         if(c.local >= MIN_LOCAL_TO_CARE && c.incoming === 0 && !c.confirmed()) return c.label;
       }
@@ -9418,8 +9438,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.7";
-    const APP_VERSION_NOTE = "Renamed sidebar labels to \"Factories (Customers)\" and \"Raw Material (Suppliers)\"; moved Raw Material Ledger (with its Custom Ledgers section, renamed \"Factory per Labour Ledger\") out of Inventory to sit next to Factories under Business; removed the non-functional Fullscreen button from the side menu; moved the Notification Alerts settings card from Settings onto the Notifications page itself, right next to the alerts it configures; changed order lifecycle — confirming a factory order now only moves it into Stock Ready (in Factory) and the factory's own ledger, it no longer counts as a sale by itself; attaching the gate pass/receipt is what now counts it as a sale, and the order number in Order Booked shows a new \"Delivered\" line once that happens.";
+    const APP_VERSION = "2026.08.24.8";
+    const APP_VERSION_NOTE = "CRITICAL FIX: found and closed the bug behind the real-device report of all data (factories, orders, everything except products) vanishing after a background sync — looksLikeDataLoss_() was missing a check for Factories entirely, and its safety threshold ignored any device with fewer than 3 local records, so a fresh/lightly-used device (e.g. just 1 factory + 1 order) had zero protection against a bad or incomplete background sync silently wiping real local data (Products alone was protected by a separate guard, which is why only Products survived). Both gaps are now closed: Factories is checked, and even a single real, un-tombstoned record is protected.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
