@@ -3996,16 +3996,26 @@
     <input class="field-input" id="pe-size-custom" data-i18n-placeholder="enter_custom_size" placeholder="Enter custom size" style="display:none;">
 
     <label class="field-label" id="pe-weight-label" data-i18n="weight" style="display:none;">Weight</label>
+    <!-- REORDERED (2026-08-24, user request): "big drop... needs to look like
+         other boxes" — Name/Size show their dropdown-styled box FIRST, then
+         the "add a new saved..." row below it. Weight had this backwards
+         (free-text input + Add row first, "Saved weights…" dropdown row
+         second), which both looked inconsistent with Name/Size and created
+         extra visual gap. Swapped to select-row first, add-row second — pure
+         DOM reorder, no behavior change: pe-weight (the free-text input,
+         still the actual value read at save time, see pe-save below) and
+         pe-weight-select (the convenience picker that fills it) keep every
+         existing event listener, just in the other visual order. -->
     <div id="pe-weight-wrap" style="display:none;">
-      <div class="weight-add-row">
-        <input class="field-input" id="pe-weight" placeholder="e.g. 1.2 kg">
-        <button type="button" class="weight-add-btn" id="pe-weight-add" title="Remember this weight">Add</button>
-      </div>
       <div class="weight-select-row">
         <select class="field-input" id="pe-weight-select">
           <option value="">Saved weights…</option>
         </select>
         <button type="button" class="weight-remove-btn" id="pe-weight-remove" title="Remove selected weight" disabled>✕</button>
+      </div>
+      <div class="weight-add-row">
+        <input class="field-input" id="pe-weight" placeholder="e.g. 1.2 kg">
+        <button type="button" class="weight-add-btn" id="pe-weight-add" title="Remember this weight">Add</button>
       </div>
     </div>
     <label class="field-label" data-i18n="price_rs">Price (Rs)</label>
@@ -4020,16 +4030,19 @@
          "unknown", never as zero. -->
     <label class="field-label" data-i18n="cost_rs">Cost (Rs) <span style="font-weight:400; color:var(--text-dim); text-transform:none;" data-i18n="cost_rs_optional_hint">— optional, what this item costs you</span></label>
     <input class="field-input" id="pe-cost" type="number" min="0" placeholder="0">
-    <!-- ADD (2026-08-20): finished-goods stock tracking. Same "blank means
-         unknown/untracked" convention as Cost above — a product with no
-         stock number on record is simply not stock-tracked at all (most
-         installs won't want to bother counting every fan guard), and
-         checkout never blocks a sale even when a tracked product's stock
-         would go negative (short-shipped/back-ordered goods still need to
-         be sellable) — see decrementProductStock_() and
-         getLowStockAlerts_() below for how this is actually used. -->
-    <label class="field-label" data-i18n="stock_qty">Stock Quantity <span style="font-weight:400; color:var(--text-dim); text-transform:none;" data-i18n="stock_qty_optional_hint">— optional, leave blank to not track stock for this item</span></label>
-    <input class="field-input" id="pe-stock" type="number" min="0" step="1" placeholder="0">
+    <!-- REMOVED (2026-08-24, user request): "Stock Quantity" used to be
+         editable per-product right here — user asked for it to come out of
+         this form too ("yeah I'll decide later about stock"), same as the
+         Low Stock Alert Level removal right below this comment on
+         2026-08-23. Stock tracking itself is UNCHANGED for any product that
+         already has a stock number on record — decrementProductStock_() and
+         getLowStockAlerts_() (and the product card's stock/low-stock badge)
+         still read/use p.stock exactly as before; this only removes the
+         ability to SET or CLEAR it from this screen. A product that already
+         had a stock number keeps it untouched (pe-save no longer reads or
+         writes p.stock at all — see commitProductSave_ below). New products
+         simply start with no stock number, i.e. "not tracked," matching the
+         form's own former blank-means-untracked convention. -->
     <!-- REMOVED (2026-08-23, user request): "Low Stock Alert Level" used to
          be editable per-product right here — user asked for it to come out
          of this form entirely ("I'll decide low stock later on"). Low-stock
@@ -9132,8 +9145,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.23.4";
-    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs)";
+    const APP_VERSION = "2026.08.24.3";
+    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs); reordered the Add Product Weight field to match Name/Size (dropdown box first, then Add-new row); removed Stock Quantity from the Add Product form (existing product stock data and low-stock alerts are unaffected); fixed a broken Android build file that had silently dropped the Filesystem plugin (exports/receipts/backups) from the app — resynced so it's actually included again";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -9276,7 +9289,6 @@
     });
     const pePrice = document.getElementById('pe-price');
     const peCost = document.getElementById('pe-cost');
-    const peStock = document.getElementById('pe-stock');
     const peColor = document.getElementById('pe-color');
     const peColorOther = document.getElementById('pe-color-other');
     const peDeleteBtn = document.getElementById('pe-delete');
@@ -9381,7 +9393,6 @@
         peWeightRemoveBtn.disabled = true;
         pePrice.value = '';
         peCost.value = '';
-        peStock.value = '';
         peColor.value = 'Black';
         peColorOther.style.display = 'none';
         peColorOther.value = '';
@@ -9421,7 +9432,8 @@
         }
         pePrice.value = p.price;
         peCost.value = (p.cost || p.cost === 0) ? p.cost : '';
-        peStock.value = (p.stock || p.stock === 0) ? p.stock : '';
+        // p.stock is deliberately not shown/edited here (2026-08-24: Stock
+        // Quantity removed from this form) — see the HTML comment above.
         const color = p.color || 'Black';
         if(STANDARD_COLORS.includes(color)){
           peColor.value = color;
@@ -9457,31 +9469,27 @@
       // just showing "—" until someone fills it in.
       const costRaw = parseFloat(peCost.value);
       const cost = (peCost.value.trim() !== '' && costRaw >= 0) ? costRaw : undefined;
-      // Stock/reorder level follow the exact same "blank = not tracked"
-      // rule as Cost above — see the HTML comment above #pe-stock.
-      const stockRaw = parseInt(peStock.value, 10);
-      const stock = (peStock.value.trim() !== '' && stockRaw >= 0) ? stockRaw : undefined;
       const color = (peColor.value === 'Other') ? peColorOther.value.trim() || 'Other' : peColor.value;
       if(!name || !(price >= 0)) return;
       function commitProductSave_(){
         if(editingProductId === null){
-          // No reorderLevel set here (2026-08-23: removed from this form) —
-          // a new product with none falls back to DEFAULT_REORDER_LEVEL_
-          // wherever low-stock is computed, same as before.
+          // No reorderLevel or stock set here (2026-08-23/24: both removed
+          // from this form) — a new product with neither falls back to
+          // DEFAULT_REORDER_LEVEL_ wherever low-stock is computed, and simply
+          // reads as "not stock-tracked" (p.stock undefined), same as before.
           const product = { id: nextProductId(), name, price, cat: activeCat, color, device: DEVICE_NAME };
           if(cost !== undefined) product.cost = cost;
-          if(stock !== undefined) product.stock = stock;
           if(isAmericanPedestal){ product.weight = weight; product.size = size; }
           PRODUCTS.push(product);
         } else {
           const p = PRODUCTS.find(x=>x.id===editingProductId);
           if(p){
-            // p.reorderLevel is deliberately left untouched here — this form
-            // no longer offers a way to set/clear it, so whatever a product
-            // already had (or didn't) stays exactly as it was.
+            // p.reorderLevel and p.stock are deliberately left untouched
+            // here — this form no longer offers a way to set/clear either,
+            // so whatever a product already had (or didn't) stays exactly
+            // as it was.
             p.name = name; p.price = price; p.color = color;
             if(cost !== undefined) p.cost = cost; else delete p.cost;
-            if(stock !== undefined) p.stock = stock; else delete p.stock;
             if(isAmericanPedestal){ p.weight = weight; p.size = size; } else { delete p.weight; delete p.size; }
           }
         }

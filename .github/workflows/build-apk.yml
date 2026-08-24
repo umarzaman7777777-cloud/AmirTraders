@@ -26,14 +26,7 @@ jobs:
           node-version: 22
 
       - name: Install Capacitor dependencies
-        # CHANGE (2026-08-22): switched from `npm ci` to `npm install` —
-        # ci requires package-lock.json to already exactly match
-        # package.json, and adding @capacitor/push-notifications updated
-        # package.json without a matching regenerated lockfile (no way to
-        # run npm here to produce one). `npm install` resolves and
-        # updates the lockfile itself on this run, same as it would on
-        # your own machine after adding a new dependency.
-        run: npm install
+        run: npm ci
 
       - name: Copy www/ into the native Android project
         run: npx cap sync android
