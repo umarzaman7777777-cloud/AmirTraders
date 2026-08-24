@@ -2408,12 +2408,35 @@
            view every product's stock quantity across all categories and
            adjust it right here, since Stock Quantity was removed from the
            Add Product form the same day ("I'll decide later about stock").
-           This is now that "later" — see renderStock() below for the logic. -->
+           This is now that "later" — see renderStock() below for the logic.
+           UPDATED same day: user asked for this page to be split into named
+           portions — "Stock Ready (in Factory)" (confirmed factory orders
+           awaiting their gate receipt) and "Raw Material Stock (in Factory)"
+           (deferred — "I'll improve the raw material later on", not built
+           yet). The original per-product on-hand list stays too, as its own
+           section below — it's what Low Stock Alerts/product-card badges
+           still read from, so nothing that already depends on it breaks. -->
       <div id="view-stock" style="display:none;">
         <div class="view-header">
           <div class="view-header-text">
             <h2 data-i18n="stock_title">Stock</h2>
             <p data-i18n="stock_sub">Every product's stock quantity in one place — set or adjust it here; leave blank to stop tracking stock for that item.</p>
+          </div>
+        </div>
+
+        <div class="view-header" style="margin-top:0;">
+          <div class="view-header-text">
+            <h2 style="font-size:15px;" data-i18n="stock_ready_title">Stock Ready (in Factory)</h2>
+            <p data-i18n="stock_ready_sub">Confirmed factory orders that haven't been received yet — once you attach the gate receipt, the order drops off this list.</p>
+          </div>
+        </div>
+        <div class="stat-grid" id="stockready-stats" style="margin-bottom:18px;"></div>
+        <div id="stockready-table"></div>
+
+        <div class="view-header" style="margin-top:22px;">
+          <div class="view-header-text">
+            <h2 style="font-size:15px;" data-i18n="stock_onhand_title">Product Stock (On Hand)</h2>
+            <p data-i18n="stock_onhand_sub">Set or adjust each product's on-hand stock quantity here.</p>
           </div>
         </div>
         <div class="stat-grid" id="stock-stats" style="margin-bottom:18px;"></div>
@@ -6821,6 +6844,10 @@
         stock_title: "Stock", stock_sub: "Every product's stock quantity in one place — set or adjust it here; leave blank to stop tracking stock for that item.",
         stock_search_placeholder: "Search by product name or category…", stock_total_products: "Total Products", stock_tracked: "Stock Tracked", not_tracked: "Not tracked",
         category: "Category", no_products_to_show: "No products yet — add one from a category first.",
+        stock_ready_title: "Stock Ready (in Factory)", stock_ready_sub: "Confirmed factory orders that haven't been received yet — once you attach the gate receipt, the order drops off this list.",
+        stockready_orders: "Orders Ready", stockready_value: "Stock Ready Value", no_stock_ready: "Nothing ready at a factory right now.",
+        attach_gate_receipt: "Attach Gate Receipt", stockready_factory: "Factory", stockready_date: "Date", stockready_items: "Items", stockready_total: "Total",
+        stock_onhand_title: "Product Stock (On Hand)", stock_onhand_sub: "Set or adjust each product's on-hand stock quantity here.",
         notif_settings_title: "Notification Alerts", notif_settings_desc: "Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.",
         notif_settings_pending_note: "Outside-app delivery isn't switched on yet — these preferences will start applying automatically as soon as it is.",
         notif_settings_frequency_label: "Check For New Alerts Every", notif_freq_5: "5 minutes", notif_freq_15: "15 minutes", notif_freq_30: "30 minutes", notif_freq_60: "1 hour",
@@ -7125,6 +7152,10 @@
         stock_title: "اسٹاک", stock_sub: "ہر پروڈکٹ کی اسٹاک مقدار ایک ہی جگہ — یہاں سے سیٹ یا ایڈجسٹ کریں؛ اس آئٹم کا اسٹاک ٹریک نہ کرنے کے لیے خالی چھوڑ دیں۔",
         stock_search_placeholder: "پروڈکٹ کے نام یا کیٹیگری سے تلاش کریں…", stock_total_products: "کل پروڈکٹس", stock_tracked: "اسٹاک ٹریک شدہ", not_tracked: "ٹریک نہیں ہو رہا",
         category: "کیٹیگری", no_products_to_show: "ابھی تک کوئی پروڈکٹ نہیں — پہلے کسی کیٹیگری سے ایک شامل کریں۔",
+        stock_ready_title: "اسٹاک تیار (فیکٹری میں)", stock_ready_sub: "کنفرم شدہ فیکٹری آرڈرز جو ابھی وصول نہیں ہوئے — گیٹ رسید لگانے پر یہ آرڈر اس فہرست سے ہٹ جائے گا۔",
+        stockready_orders: "تیار آرڈرز", stockready_value: "اسٹاک تیار ویلیو", no_stock_ready: "فی الحال فیکٹری میں کچھ تیار نہیں۔",
+        attach_gate_receipt: "گیٹ رسید لگائیں", stockready_factory: "فیکٹری", stockready_date: "تاریخ", stockready_items: "آئٹمز", stockready_total: "کل",
+        stock_onhand_title: "پروڈکٹ اسٹاک (دستیاب)", stock_onhand_sub: "ہر پروڈکٹ کی دستیاب اسٹاک مقدار یہاں سے سیٹ یا ایڈجسٹ کریں۔",
         notif_settings_title: "نوٹیفیکیشن الرٹس", notif_settings_desc: "منتخب کریں کہ اطلاعات ٹیب کے کون سے الرٹس ایپ سے باہر بھی دکھائے جائیں (نوٹیفیکیشن ٹرے / لاک اسکرین)، اور ایپ کتنی دیر بعد نئے الرٹس چیک کرے۔",
         notif_settings_pending_note: "ایپ سے باہر بھیجنا ابھی فعال نہیں ہوا — یہ ترجیحات فعال ہوتے ہی خود بخود لاگو ہو جائیں گی۔",
         notif_settings_frequency_label: "نئے الرٹس چیک کریں ہر", notif_freq_5: "5 منٹ", notif_freq_15: "15 منٹ", notif_freq_30: "30 منٹ", notif_freq_60: "1 گھنٹہ",
@@ -8782,7 +8813,7 @@
       if(v==='rawmaterial') renderRawLedger();
       if(v==='paint') renderPaintLedger();
       if(v==='labourledger') renderLabourLedgerTable_();
-      if(v==='stock') renderStock();
+      if(v==='stock'){ renderStockReady(); renderStock(); }
       if(v==='backup') renderBackupView_();
       if(v==='settings') renderSettingsView_();
       // Mobile dropdown menu: collapse it and reflect the newly active
@@ -9036,6 +9067,79 @@
     }
 
     // ---------------- STOCK TAB ----------------
+    // ADD (2026-08-24, user request): "Stock Ready (in Factory)" — confirmed
+    // factory orders (t.confirmed === true, set via the existing "Order
+    // Confirm" button on Order Booked — see the confirmBtn handler further
+    // down) that don't have a gate receipt attached yet (receiptFiles[t.id]
+    // or t.receiptUrl). The moment a gate receipt IS attached, the order
+    // simply no longer matches this filter and drops off the list — no
+    // separate "mark as sold" step needed. Deliberately does NOT touch
+    // isCountedSale_()/Sales Summary's own counting logic (that's already
+    // driven by t.confirmed, unchanged, and has ~10 call sites across
+    // Factory/Customer Ledger reconciliation) — a confirmed factory order
+    // already counts in Sales Summary today regardless of receipt status,
+    // so nothing needed to change there; this page is purely an added lens
+    // on top of data that already syncs (transactionsLog + receipt status),
+    // not a new sheet/column.
+    function renderStockReady(){
+      const wrap = document.getElementById('stockready-table');
+      const statsWrap = document.getElementById('stockready-stats');
+      if(!wrap || !statsWrap) return;
+      const list = (transactionsLog || []).filter(t=>
+        t.factory && t.confirmed === true && !(receiptFiles[t.id] || t.receiptUrl)
+      ).slice().reverse(); // most recently added first
+
+      const totalValue = list.reduce((s,t)=> s + (t.total || 0), 0);
+      statsWrap.innerHTML = `
+        <div class="stat-card"><div class="stat-label">${tr('stockready_orders')}</div><div class="stat-val">${list.length}</div></div>
+        <div class="stat-card"><div class="stat-label">${tr('stockready_value')}</div><div class="stat-val">${fmt(totalValue)}</div></div>
+      `;
+
+      if(list.length === 0){
+        wrap.innerHTML = '<div class="empty-state">' + tr('no_stock_ready') + '</div>';
+        return;
+      }
+
+      const rows = list.map(t=>{
+        const itemLines = String(t.itemsSummary || '').split('\n').filter(Boolean);
+        const countLines = String(t.itemCounts || '').split('\n').filter(Boolean);
+        const itemsDisplay = (itemLines.length && countLines.length === itemLines.length)
+          ? itemLines.map((name,i)=> `${name} x${countLines[i]}`).join(', ')
+          : (t.itemsSummary || '');
+        return `
+          <tr>
+            <td class="inv-name">#${t.id}</td>
+            <td>${t.factory || ''}</td>
+            <td>${t.date || ''}</td>
+            <td>${itemsDisplay}</td>
+            <td class="num">${fmt(t.total)}</td>
+            <td class="inv-actions-cell">
+              <button type="button" class="btn-export stockready-attach-btn" data-id="${t.id}" style="padding:6px 10px; font-size:11px; white-space:nowrap;">${tr('attach_gate_receipt')}</button>
+            </td>
+          </tr>`;
+      }).join('');
+
+      wrap.innerHTML = `
+        <div class="table-scroll"><table class="inv-table">
+          <thead>
+            <tr>
+              <th>${tr('order_number')}</th>
+              <th>${tr('stockready_factory')}</th>
+              <th>${tr('stockready_date')}</th>
+              <th>${tr('stockready_items')}</th>
+              <th class="num">${tr('stockready_total')}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      `;
+
+      wrap.querySelectorAll('.stockready-attach-btn').forEach(btn=>{
+        btn.addEventListener('click', ()=> openAddOrderReceiptModal_(btn.dataset.id));
+      });
+    }
+
     // ADD (2026-08-24, user request): a dedicated page listing every
     // product's stock quantity across ALL categories (unlike renderProducts
     // above, which is scoped to activeCat), with an inline editable number
@@ -9271,8 +9375,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.4";
-    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs); reordered the Add Product Weight field to match Name/Size (dropdown box first, then Add-new row); removed Stock Quantity from the Add Product form (existing product stock data and low-stock alerts are unaffected); fixed a broken Android build file that had silently dropped the Filesystem plugin (exports/receipts/backups) from the app — resynced so it's actually included again; added a new Stock tab (side menu, under Inventory) listing every product's stock quantity with inline editing and low-stock highlighting";
+    const APP_VERSION = "2026.08.24.5";
+    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs); reordered the Add Product Weight field to match Name/Size (dropdown box first, then Add-new row); removed Stock Quantity from the Add Product form (existing product stock data and low-stock alerts are unaffected); fixed a broken Android build file that had silently dropped the Filesystem plugin (exports/receipts/backups) from the app — resynced so it's actually included again; added a new Stock tab (side menu, under Inventory) listing every product's stock quantity with inline editing and low-stock highlighting; split the Stock tab into a new \"Stock Ready (in Factory)\" section — confirmed factory orders awaiting their gate receipt, with an Attach Gate Receipt shortcut — above the existing on-hand stock list";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
