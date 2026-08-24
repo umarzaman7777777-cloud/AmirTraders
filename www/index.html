@@ -6862,8 +6862,8 @@
         notif_push_enabled: "Enabled on this phone — alerts below will show outside the app too.",
         nav_bracket_fan: "Bracket Fan", nav_american_fan: "American Fan",
         nav_pedestal_fan: "Pedestal Fan", nav_exhaust_fan: "Exhaust Fan", nav_universal_fan: "Universal Fan",
-        nav_sales: "Sales", nav_transactions: "Order Booked", nav_factories: "Factories",
-        nav_expenses: "Expenses", nav_rawmaterial: "Raw Material", nav_labour: "Labour", nav_paint: "Paint Ledger",
+        nav_sales: "Sales", nav_transactions: "Order Booked", nav_factories: "Factories (Customers)",
+        nav_expenses: "Expenses", nav_rawmaterial: "Raw Material (Suppliers)", nav_labour: "Labour", nav_paint: "Paint Ledger",
         search_products: "Search products…",
         search_orders: "Search by factory name or order #…", no_matching_orders: "No orders match that search",
         search_order_number: "Search order #…",
@@ -7170,8 +7170,8 @@
         notif_push_enabled: "اس فون پر فعال — نیچے دیے گئے الرٹس اب ایپ سے باہر بھی دکھائے جائیں گے۔",
         nav_bracket_fan: "بریکٹ فین", nav_american_fan: "امریکن فین",
         nav_pedestal_fan: "پیڈسٹل فین", nav_exhaust_fan: "ایگزاسٹ فین", nav_universal_fan: "یونیورسل فین",
-        nav_sales: "سیلز", nav_transactions: "بک شدہ آرڈرز", nav_factories: "فیکٹریاں",
-        nav_expenses: "اخراجات", nav_rawmaterial: "خام مال", nav_labour: "مزدوری", nav_paint: "پینٹ لیجر",
+        nav_sales: "سیلز", nav_transactions: "بک شدہ آرڈرز", nav_factories: "فیکٹریاں (کسٹمرز)",
+        nav_expenses: "اخراجات", nav_rawmaterial: "خام مال (سپلائرز)", nav_labour: "مزدوری", nav_paint: "پینٹ لیجر",
         search_products: "پروڈکٹس تلاش کریں…",
         search_orders: "فیکٹری کا نام یا آرڈر # تلاش کریں…", no_matching_orders: "اس تلاش سے کوئی آرڈر میل نہیں کھاتا",
         search_order_number: "آرڈر # تلاش کریں…",
@@ -8738,11 +8738,27 @@
     // ---------------- VIEW SWITCHING (Products / Business / Inventory) ----------------
     const REPORT_ICONS = {
       "Factories": '<path d="M3 21V10l6 4V10l6 4V6l6 4v11H3Z"/>',
+      // MOVED (2026-08-24, user request): Raw Material Ledger relocated here
+      // from the Inventory group, right next to Factories — user's reasoning:
+      // suppliers are also a "client/customer"-style relationship (a ledger
+      // of who you owe/who owes you), same as Factories, so it belongs in
+      // Business alongside Factories rather than under Inventory. This is a
+      // pure navigation/placement change — the Raw Material Ledger's own
+      // data (suppliers roster, weight/bundle/gauge tracking, its own Sheet
+      // tab) is completely untouched; see claude/status-2026-08-24-* for the
+      // full reasoning and what was deliberately NOT changed (no data merge).
+      "Raw Material": '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.3 7 12 12 20.7 7"/><line x1="12" y1="22" x2="12" y2="12"/>',
       "Sales": '<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>',
       "Transactions": '<rect x="4" y="3" width="16" height="18" rx="1.5"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/>',
       "Expenses": '<circle cx="12" cy="12" r="9"/><line x1="12" y1="7" x2="12" y2="17"/><path d="M9.5 9.5a2.5 2.5 0 0 1 2.5-1 2.3 2.3 0 0 1 0 4.6 2.3 2.3 0 0 0 0 4.6 2.5 2.5 0 0 0 2.5-1"/>'
     };
-    const REPORT_VIEWS = ["Factories","Sales","Transactions","Expenses"];
+    const REPORT_VIEWS = ["Factories","Raw Material","Sales","Transactions","Expenses"];
+    // "Raw Material" is two words, so the default label.toLowerCase() key
+    // derivation below (used for every other REPORT_VIEWS entry) would
+    // produce "raw material" instead of the "rawmaterial" key every other
+    // part of the app expects (view-rawmaterial div, ALL_VIEW_KEYS,
+    // setView()'s dispatch, INV_LABELS_I18N, etc.) — override just this one.
+    const REPORT_VIEW_KEY_OVERRIDES_ = { "Raw Material": "rawmaterial" };
     const reportsNav = document.getElementById('side-reports-nav');
     // ADD (2026-08-23, restoring the 2026-08-20 UI polish batch): tints a
     // few specific sidebar icons so the busiest/most distinct sections are
@@ -8763,7 +8779,6 @@
     }
 
     const INVENTORY_ICONS = {
-      "Raw Material": '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.3 7 12 12 20.7 7"/><line x1="12" y1="22" x2="12" y2="12"/>',
       "Labour": '<circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/>',
       "Paint": '<path d="M19 3H9a2 2 0 0 0-2 2v3l-3.5 5.5A3 3 0 0 0 6 18h8a3 3 0 0 0 2.5-4.5L13 8V5h6Z"/><line x1="9" y1="11" x2="16" y2="11"/>',
       "Labour Ledger": '<rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M7.5 13.5l2 2 4-4.5"/>',
@@ -8771,8 +8786,9 @@
       // top-level Stock tab, distinct from the other inventory icons.
       "Stock": '<path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/><path d="M7.5 4.5l9 5.2"/>'
     };
+    // "Raw Material" MOVED out of here (2026-08-24) into REPORT_VIEWS/
+    // REPORT_ICONS above, next to Factories — see the comment there.
     const INVENTORY_VIEWS = [
-      { key: "rawmaterial", label: "Raw Material" },
       { key: "paint", label: "Paint" },
       { key: "labourledger", label: "Labour Ledger" },
       { key: "stock", label: "Stock" }
@@ -8836,7 +8852,7 @@
     }
 
     REPORT_VIEWS.forEach(label=>{
-      const key = label.toLowerCase();
+      const key = REPORT_VIEW_KEY_OVERRIDES_[label] || label.toLowerCase();
       const b = document.createElement('button');
       b.className = 'side-nav-item side-report-item';
       b.dataset.view = key;
@@ -9375,8 +9391,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.5";
-    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs); reordered the Add Product Weight field to match Name/Size (dropdown box first, then Add-new row); removed Stock Quantity from the Add Product form (existing product stock data and low-stock alerts are unaffected); fixed a broken Android build file that had silently dropped the Filesystem plugin (exports/receipts/backups) from the app — resynced so it's actually included again; added a new Stock tab (side menu, under Inventory) listing every product's stock quantity with inline editing and low-stock highlighting; split the Stock tab into a new \"Stock Ready (in Factory)\" section — confirmed factory orders awaiting their gate receipt, with an Attach Gate Receipt shortcut — above the existing on-hand stock list";
+    const APP_VERSION = "2026.08.24.6";
+    const APP_VERSION_NOTE = "Fixed Android 8/older-device file saving (exports, receipts, backups); added header notifications bell and a popup theme picker; added a Rate/price-per-item column to exports and Order Booked; widened sidebar menu buttons; made the PIN unlock screen and the Painter/Worker/Raw/Custom/Customer ledger popups bigger and roomier on tablets (mobile unchanged); PIN re-verify now required to delete or edit anything in any ledger, Factories, Products, or Order Booked/Transactions (including payments and Nil write-offs); reordered the Add Product Weight field to match Name/Size (dropdown box first, then Add-new row); removed Stock Quantity from the Add Product form (existing product stock data and low-stock alerts are unaffected); fixed a broken Android build file that had silently dropped the Filesystem plugin (exports/receipts/backups) from the app — resynced so it's actually included again; added a new Stock tab (side menu, under Inventory) listing every product's stock quantity with inline editing and low-stock highlighting; split the Stock tab into a new \"Stock Ready (in Factory)\" section — confirmed factory orders awaiting their gate receipt, with an Attach Gate Receipt shortcut — above the existing on-hand stock list; renamed sidebar labels to \"Factories (Customers)\" and \"Raw Material (Suppliers)\"; moved Raw Material Ledger (with its Custom Ledgers section) out of Inventory to sit next to Factories under Business, since suppliers are a customer-style ledger relationship too — no data changed, purely a menu reorganization, Sheet untouched";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
