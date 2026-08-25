@@ -1543,17 +1543,14 @@
       padding:10px 12px; color:var(--text); font-family:var(--mono); font-size:14px; margin-bottom:14px;
     }
     .field-input:focus{ outline:none; border-color:var(--yellow); }
-    /* FIX (2026-08-23, user report + screenshot): the "Saved weights…"
-       placeholder option in the Add Product weight picker rendered in the
-       same bright var(--text) color as a real selected value — every OTHER
-       placeholder-style box in this same form ("Add a new saved name…",
-       "Add a new saved size…") is a plain <input> using the browser's
-       dimmer ::placeholder color, so this one stood out as wrong/too white
-       by comparison. A <select>'s own text always follows .field-input's
-       color:var(--text) rule (there's no browser-native ::placeholder for
-       <select>), so the empty placeholder <option> itself needs its own
-       explicit dim color to actually match the other boxes' look. */
-    #pe-weight-select option[value=""]{ color:var(--text-dim); }
+    /* REMOVED (2026-08-25, user request): the old pe-weight-select
+       placeholder-color fix that used to live here is gone along with the
+       <select> it targeted — Name/Size/Weight in the Add Product modal
+       (American Pedestal Fan category) now all share the single
+       search-and-manage combo box (.pl-colour-*, see createSuggestCombo_)
+       already used everywhere else in the app, instead of a two-widget
+       "pick from a dropdown, or type into a separate box to add/remove"
+       pair. See the product-edit-modal markup and its JS below. */
     /* Removes the native up/down spinner control browsers add to
        <input type="number"> — every amount/qty field in the app uses this,
        and the little stepper arrows aren't wanted here (typing the number
@@ -2467,6 +2464,39 @@
         <div id="labourledger-table"></div>
       </div>
 
+      <!-- ADD (2026-08-25, user request): Scrap Ledger — one ledger per
+           scrap buyer (roster+entries, same shape as Raw Material/Paint
+           Ledger). A scrap buyer OWES the shop for scrap bought by weight
+           (Debit = weight × rate/kg, auto-computed) and pays it down
+           (Credit) — same Debit=Cost-owed/Credit=Payment direction as the
+           Customer/Custom Ledger, not Raw Material's supplier direction.
+           Deliberately lean: no receipt attachment, no bundle/gauge/size,
+           no stock-preview — just Description/Item Name/Type (each its own
+           saved-suggestion combo box), Weight, Rate per kg, and the
+           standard payment-method block every other ledger has. -->
+      <div id="view-scrapledger" style="display:none;">
+        <div class="view-header">
+          <div class="view-header-text">
+            <h2 data-i18n="scrapledger_title">Scrap Ledger</h2>
+            <p data-i18n="scrapledger_sub">Track scrap sold by weight (debit) and payments received (credit) per buyer.</p>
+          </div>
+          <div class="header-actions">
+            <div class="export-dropdown" data-export-dropdown>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <div class="export-dropdown-menu">
+                <button onclick="openExportFilterModal('scrapledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="openExportFilterModal('scrapledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
+                <button onclick="openExportFilterModal('scrapledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
+              </div>
+            </div>
+            <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openScrapExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
+          </div>
+        </div>
+        <div class="stat-grid" id="scrapledger-stats" style="margin-bottom:18px;"></div>
+        <div class="overdue-cheque-banner-slot"></div>
+        <div id="scrapledger-table"></div>
+      </div>
+
       <!-- ADD (2026-08-24, user request): Stock tab — a dedicated page to
            view every product's stock quantity across all categories and
            adjust it right here, since Stock Quantity was removed from the
@@ -2475,10 +2505,21 @@
            UPDATED same day: user asked for this page to be split into named
            portions — "Stock Ready (in Factory)" (confirmed factory orders
            awaiting their gate receipt) and "Raw Material Stock (in Factory)"
-           (deferred — "I'll improve the raw material later on", not built
-           yet). The original per-product on-hand list stays too, as its own
-           section below — it's what Low Stock Alerts/product-card badges
-           still read from, so nothing that already depends on it breaks. -->
+           (deferred — "I'll improve the raw material later on" at the time).
+           CORRECTION (2026-08-25): when Raw Material Stock was actually
+           built later, it took over this view's original `stock-table`/
+           `stock-stats`/`stock-search` DOM ids and renderStock() was fully
+           rewritten to render raw-material rows instead of per-product
+           on-hand rows — the comment above used to (wrongly) say the
+           original per-product list stayed as "its own section below", but
+           it didn't; that section was silently gone from this point on,
+           along with any way to set a product's Low Stock Alert Level once
+           it was pulled off the Add Product form on 2026-08-23. Re-added
+           below as its own section with its own DOM ids
+           (stockonhand-table/-stats/-search) and its own renderStockOnHand_()
+           — Low Stock Alerts/product-card badges read p.stock/p.reorderLevel
+           directly and never depended on this section existing, so nothing
+           else needed to change to bring it back. -->
       <div id="view-stock" style="display:none;">
         <div class="view-header">
           <div class="view-header-text">
@@ -2505,6 +2546,29 @@
         <div class="stat-grid" id="stock-stats" style="margin-bottom:18px;"></div>
         <input class="field-input" id="stock-search" data-i18n-placeholder="stock_search_placeholder" placeholder="Search by raw material name…" style="max-width:320px;">
         <div id="stock-table"></div>
+
+        <div class="view-header" style="margin-top:22px;">
+          <div class="view-header-text">
+            <h2 style="font-size:15px;" data-i18n="stock_product_title">Product Stock (On Hand)</h2>
+            <p data-i18n="stock_product_sub">Every product's stock quantity and Low Stock Alert Level in one place — set or adjust either here; leave blank to stop tracking that item.</p>
+          </div>
+        </div>
+        <div class="stat-grid" id="stockonhand-stats" style="margin-bottom:18px;"></div>
+        <input class="field-input" id="stockonhand-search" data-i18n-placeholder="stock_product_search_placeholder" placeholder="Search by product name…" style="max-width:320px;">
+        <div id="stockonhand-table"></div>
+
+        <!-- ADD (2026-08-25, user request): "weight and payment will be
+             recorded and shown on outside the ledger in two different
+             boxed with date" — a small rollup of the Scrap Ledger's totals
+             right here in Stock, alongside the other rollups, each showing
+             the date of its most recent entry. See renderScrapStockSummary_(). -->
+        <div class="view-header" style="margin-top:22px;">
+          <div class="view-header-text">
+            <h2 style="font-size:15px;" data-i18n="scrap_stock_title">Scrap Stock</h2>
+            <p data-i18n="scrap_stock_sub">Total scrap weight sold and payments received across every buyer, from the Scrap Ledger.</p>
+          </div>
+        </div>
+        <div class="stat-grid" id="scrapstock-stats" style="margin-bottom:18px;"></div>
       </div>
 
       <div id="view-backup" style="display:none;">
@@ -2753,6 +2817,12 @@
         <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="backup_desc">A full backup of your Google Sheet is emailed to you automatically every week. You can also send one right now, any time.</div>
         <button type="button" id="settings-backup-now-btn" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="backup_now_btn">Send Backup Now</button>
         <p id="settings-backup-status" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0; display:none;"></p>
+        <!-- ADD (2026-08-25, backup-freshness feature): persistent — unlike
+             settings-backup-status above, which is a one-shot "Sending…" /
+             "Sent" message tied to clicking the button, this always shows
+             whatever the last known backup email actually was, every time
+             Settings opens (see renderBackupStatusCard_). -->
+        <p id="settings-backup-lastsent" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0;"></p>
       </div>
 
       <!-- MOVED (2026-08-24, user request): Notification Alerts settings
@@ -3462,6 +3532,120 @@
   </div>
 </div>
 
+<!-- ================= ADD SCRAP BUYER MODAL ================= -->
+<div class="modal-overlay" id="scrapbuyer-add-modal">
+  <div class="modal-box">
+    <h3 data-i18n="add_scrap_buyer">Add Scrap Buyer</h3>
+    <label class="field-label" data-i18n="scrap_buyer_name">Buyer Name</label>
+    <input class="field-input" id="scrapbuyer-name-input" placeholder="e.g. Rafiq Scrap">
+    <div class="modal-actions">
+      <button class="btn-cancel" id="scrapbuyer-add-cancel" data-i18n="cancel">Cancel</button>
+      <button class="btn-confirm" id="scrapbuyer-add-save" data-i18n="add">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SCRAP LEDGER MODAL ================= -->
+<div class="modal-overlay" id="scrapledger-modal">
+  <div class="modal-box" style="max-width:560px;">
+    <h3 id="sl-title">Buyer</h3>
+    <div id="sl-balance-line" style="font-family:var(--mono); font-size:13px; margin:-8px 0 14px;"></div>
+    <div id="sl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
+    <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
+      <label class="field-label" data-i18n="scrap_description">Scrap Description</label>
+      <div class="pl-colour-wrap" id="sl-desc-wrap">
+        <div class="pl-colour-bar" id="sl-desc-bar">
+          <input class="pl-colour-search" id="sl-desc" placeholder="e.g. Iron Cutting / Steel Scrap" autocomplete="off">
+        </div>
+        <div class="pl-colour-dropdown" id="sl-desc-dropdown" style="display:none;"></div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="item_name">Item Name</label>
+          <div class="pl-colour-wrap" id="sl-itemname-wrap">
+            <div class="pl-colour-bar" id="sl-itemname-bar">
+              <input class="pl-colour-search" id="sl-itemname" placeholder="e.g. Fan Blade" autocomplete="off">
+            </div>
+            <div class="pl-colour-dropdown" id="sl-itemname-dropdown" style="display:none;"></div>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="type">Type</label>
+          <div class="pl-colour-wrap" id="sl-type-wrap">
+            <div class="pl-colour-bar" id="sl-type-bar">
+              <input class="pl-colour-search" id="sl-type" placeholder="e.g. Iron / Steel" autocomplete="off">
+            </div>
+            <div class="pl-colour-dropdown" id="sl-type-dropdown" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="scrap_weight_kg">Weight (kg)</label>
+          <input class="field-input" id="sl-weight" type="number" min="0" step="any" placeholder="0">
+        </div>
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="rate_per_kg">Rate per kg (Rs)</label>
+          <input class="field-input" id="sl-rate" type="number" min="0" step="any" placeholder="0">
+        </div>
+      </div>
+      <label class="field-label" data-i18n="entry_date">Date</label>
+      <input class="field-input" id="sl-date" type="date">
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="debit_owed">Debit — Owed (Rs)</label>
+          <input class="field-input" id="sl-debit" type="number" min="0" placeholder="0">
+        </div>
+        <div style="flex:1;">
+          <label class="field-label" data-i18n="credit_payment">Credit — Payment (Rs)</label>
+          <input class="field-input" id="sl-credit" type="number" min="0" placeholder="0">
+        </div>
+      </div>
+      <div id="sl-method-wrap" style="display:none;">
+        <label class="field-label" data-i18n="payment_method">Payment Method</label>
+        <select class="field-input" id="sl-method">
+          <option value="Cash" data-i18n="method_cash">Cash</option>
+          <option value="Online" data-i18n="method_online">Online</option>
+          <option value="Cheque" data-i18n="method_cheque">Cheque</option>
+          <option value="Item/Material" data-i18n="method_item_material">Item / Material</option>
+        </select>
+        <div id="sl-method-detail-wrap" style="display:none;">
+          <input class="field-input" id="sl-method-detail" data-i18n-placeholder="method_detail_placeholder" placeholder="e.g. account no. / Easypaisa number">
+        </div>
+        <div id="sl-cheque-date-wrap" style="display:none;">
+          <label class="field-label" data-i18n="cheque_date">Cheque Date (clearance due)</label>
+          <input class="field-input" id="sl-cheque-date" type="date">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1; min-width:0;">
+            <label class="field-label" data-i18n="received_by_optional">Received By (optional)</label>
+            <div class="pl-colour-wrap" id="sl-receivedby-wrap">
+              <div class="pl-colour-bar" id="sl-receivedby-bar">
+                <input class="pl-colour-search" id="sl-receivedby" data-i18n-placeholder="received_by_placeholder" placeholder="e.g. Umar" autocomplete="off">
+              </div>
+              <div class="pl-colour-dropdown" id="sl-receivedby-dropdown" style="display:none;"></div>
+            </div>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <label class="field-label" data-i18n="received_in_optional">Received In (optional)</label>
+            <div class="pl-colour-wrap" id="sl-receivedin-wrap">
+              <div class="pl-colour-bar" id="sl-receivedin-bar">
+                <input class="pl-colour-search" id="sl-receivedin" data-i18n-placeholder="received_in_placeholder" placeholder="e.g. Shop Cash Box" autocomplete="off">
+              </div>
+              <div class="pl-colour-dropdown" id="sl-receivedin-dropdown" style="display:none;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="scrapbuyer-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_scrap_buyer">Delete Buyer</button>
+        <button class="btn-confirm" id="sl-add-entry" data-i18n="add_entry">Add Entry</button>
+      </div>
+      <button class="btn-cancel" id="sl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= ADD SPECIFIC LEDGER MODAL ================= -->
 <div class="modal-overlay" id="customledger-add-modal">
   <div class="modal-box">
@@ -4122,53 +4306,46 @@
     <h3 id="product-edit-title">Edit Product</h3>
     <label class="field-label" data-i18n="product_name">Product Name</label>
     <input class="field-input" id="pe-name" placeholder="e.g. 18&quot; Pedestal Fan Guard">
-    <!-- UPDATED (2026-08-23): this used to be a fixed, hardcoded <option>
-         list with no way to add/remove entries. Options are now rendered
-         from the productNames list (renderPeNameSelect_ below) so new
-         names can be added here permanently, same "type it, Add it, ✕ to
-         remove" pattern already used for Weight further down. "Custom…"
-         stays as the last option, unaffected by add/remove, since that's
-         what reveals the one-off free-text pe-name-custom input below. -->
-    <select class="field-input" id="pe-name-select" style="display:none;"></select>
-    <div id="pe-name-add-wrap" class="weight-add-row" style="display:none;">
-      <input class="field-input" id="pe-name-new" placeholder="Add a new saved name…">
-      <button type="button" class="weight-add-btn" id="pe-name-add" title="Remember this name">Add</button>
-      <button type="button" class="weight-remove-btn" id="pe-name-remove" title="Remove selected name from saved list" disabled>✕</button>
+    <!-- UPDATED (2026-08-25, user request): "double window box for add and
+         remove isn't good — single box manage option." Replaced the old
+         <select> (pick) + separate "Add a new saved…"/Add/✕ row (type-to-
+         add, pick-to-remove) with the SAME single search-and-manage combo
+         box already used for ~15 other fields across the app (Item Size/
+         Type/Factory, Received By/In, Work Type, Raw Material fields,
+         Custom Ledger fields, etc.) — see createSuggestCombo_ further
+         below. One box: type to filter/pick a saved name, tap "+ Add" in
+         the dropdown to remember a new one, tap ✕ next to any saved entry
+         to forget it — no more separate free-text "Custom…" input either,
+         since typing anything not yet saved just works directly (only
+         formally "adding" it — Enter, or tapping "+ Add" — makes it show
+         up as a suggestion next time). Still only shown for the American
+         Pedestal Fan category; the plain pe-name input above still handles
+         every other category exactly as before. -->
+    <div class="pl-colour-wrap" id="pe-name-combo-wrap" style="display:none;">
+      <div class="pl-colour-bar" id="pe-name-combo-bar">
+        <input class="pl-colour-search" id="pe-name-combo" placeholder="e.g. American-Plain-Tikka-Tala" autocomplete="off">
+      </div>
+      <div class="pl-colour-dropdown" id="pe-name-combo-dropdown" style="display:none;"></div>
     </div>
-    <input class="field-input" id="pe-name-custom" data-i18n-placeholder="enter_custom_name" placeholder="Enter custom product name" style="display:none;">
     <label class="field-label" id="pe-size-label" data-i18n="size" style="display:none;">Size</label>
-    <!-- UPDATED (2026-08-23): same change as pe-name-select above, backed
-         by productSizes instead. -->
-    <select class="field-input" id="pe-size-select" style="display:none;"></select>
-    <div id="pe-size-add-wrap" class="weight-add-row" style="display:none;">
-      <input class="field-input" id="pe-size-new" placeholder="Add a new saved size…">
-      <button type="button" class="weight-add-btn" id="pe-size-add" title="Remember this size">Add</button>
-      <button type="button" class="weight-remove-btn" id="pe-size-remove" title="Remove selected size from saved list" disabled>✕</button>
+    <!-- Same change as pe-name-combo-wrap above, backed by productSizes. -->
+    <div class="pl-colour-wrap" id="pe-size-combo-wrap" style="display:none;">
+      <div class="pl-colour-bar" id="pe-size-combo-bar">
+        <input class="pl-colour-search" id="pe-size-combo" placeholder="e.g. 18 inch" autocomplete="off">
+      </div>
+      <div class="pl-colour-dropdown" id="pe-size-combo-dropdown" style="display:none;"></div>
     </div>
-    <input class="field-input" id="pe-size-custom" data-i18n-placeholder="enter_custom_size" placeholder="Enter custom size" style="display:none;">
 
     <label class="field-label" id="pe-weight-label" data-i18n="weight" style="display:none;">Weight</label>
-    <!-- REORDERED (2026-08-24, user request): "big drop... needs to look like
-         other boxes" — Name/Size show their dropdown-styled box FIRST, then
-         the "add a new saved..." row below it. Weight had this backwards
-         (free-text input + Add row first, "Saved weights…" dropdown row
-         second), which both looked inconsistent with Name/Size and created
-         extra visual gap. Swapped to select-row first, add-row second — pure
-         DOM reorder, no behavior change: pe-weight (the free-text input,
-         still the actual value read at save time, see pe-save below) and
-         pe-weight-select (the convenience picker that fills it) keep every
-         existing event listener, just in the other visual order. -->
-    <div id="pe-weight-wrap" style="display:none;">
-      <div class="weight-select-row">
-        <select class="field-input" id="pe-weight-select">
-          <option value="">Saved weights…</option>
-        </select>
-        <button type="button" class="weight-remove-btn" id="pe-weight-remove" title="Remove selected weight" disabled>✕</button>
+    <!-- Same change as pe-name-combo-wrap above, backed by productWeights.
+         pe-weight-combo is now both the picker AND the actual value read
+         at save time (see pe-save below) — one box, not a select+input
+         pair. -->
+    <div class="pl-colour-wrap" id="pe-weight-combo-wrap" style="display:none;">
+      <div class="pl-colour-bar" id="pe-weight-combo-bar">
+        <input class="pl-colour-search" id="pe-weight-combo" placeholder="e.g. 1.2 kg" autocomplete="off">
       </div>
-      <div class="weight-add-row">
-        <input class="field-input" id="pe-weight" placeholder="e.g. 1.2 kg">
-        <button type="button" class="weight-add-btn" id="pe-weight-add" title="Remember this weight">Add</button>
-      </div>
+      <div class="pl-colour-dropdown" id="pe-weight-combo-dropdown" style="display:none;"></div>
     </div>
     <label class="field-label" data-i18n="price_rs">Price (Rs)</label>
     <input class="field-input" id="pe-price" type="number" min="0" placeholder="0">
@@ -4615,6 +4792,7 @@
           transactionsLog, customerPayments, inventory, factories,
           expenses, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
           rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawLedgerDescriptions, rawMaterialResetAt,
+          scrapDescriptions, scrapItemNames, scrapTypes,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
@@ -4663,6 +4841,9 @@
       if(snap.rawMaterialReorderLevels && typeof snap.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = snap.rawMaterialReorderLevels;
       if(Array.isArray(snap.rawLedgerDescriptions) && snap.rawLedgerDescriptions.length) rawLedgerDescriptions = snap.rawLedgerDescriptions;
       if(snap.rawMaterialResetAt && typeof snap.rawMaterialResetAt === 'object') rawMaterialResetAt = snap.rawMaterialResetAt;
+      if(Array.isArray(snap.scrapDescriptions) && snap.scrapDescriptions.length) scrapDescriptions = snap.scrapDescriptions;
+      if(Array.isArray(snap.scrapItemNames) && snap.scrapItemNames.length) scrapItemNames = snap.scrapItemNames;
+      if(Array.isArray(snap.scrapTypes) && snap.scrapTypes.length) scrapTypes = snap.scrapTypes;
       if(Array.isArray(snap.paintItemSizes) && snap.paintItemSizes.length) paintItemSizes = snap.paintItemSizes;
       if(Array.isArray(snap.paintItemTypes) && snap.paintItemTypes.length) paintItemTypes = snap.paintItemTypes;
       if(Array.isArray(snap.paintFactoryNames) && snap.paintFactoryNames.length) paintFactoryNames = snap.paintFactoryNames;
@@ -5186,6 +5367,15 @@
     function refreshOverviewIfActive_(){
       if(currentView === 'overview') renderOverview();
     }
+    // Same pattern as refreshOverviewIfActive_ above — restocking a
+    // deleted order's products (restockProductsForOrder_) changes p.stock
+    // in memory immediately either way, but the Products grid and the
+    // Stock tab's Product Stock (On Hand) table only need to actually
+    // repaint if a person happens to be looking at either right now.
+    function refreshProductStockViewsIfActive_(){
+      if(currentView === 'products') renderProducts();
+      if(currentView === 'stock') renderStockOnHand_();
+    }
     // FIX: this used to wait 800ms before actually sending anything, to
     // avoid spamming the sheet on rapid edits. In practice every call site
     // in the app (ledgers, order book, expenses, everything) fires after a
@@ -5359,6 +5549,12 @@
           if(Array.isArray(s.entries)) s.entries = s.entries.filter(e => !isDeleted_('rawledgerEntries', e && e.id));
         });
       }
+      if(inventory.scrapledger){
+        inventory.scrapledger = inventory.scrapledger.filter(s => !isDeleted_('scrapledgerRoster', s && s.name));
+        inventory.scrapledger.forEach(s=>{
+          if(Array.isArray(s.entries)) s.entries = s.entries.filter(e => !isDeleted_('scrapledgerEntries', e && e.id));
+        });
+      }
       if(inventory.labourledger){
         inventory.labourledger = inventory.labourledger.filter(w => !isDeleted_('labourledgerRoster', w && w.name));
         inventory.labourledger.forEach(w=>{
@@ -5372,6 +5568,23 @@
       }
     }
 
+    // Plain case-insensitive de-duplicated union of two string arrays,
+    // preserving the LOCAL array's values (and casing) first, then
+    // appending any remote-only value not already present — same merge
+    // style as Code.gs's own unionArrays_ (used server-side for
+    // rawLedgerDescriptions), used here for the small saved-suggestion
+    // lists (see SUGGESTION_LISTS_ below).
+    function unionStrArrays_(local, remote){
+      const out = Array.isArray(local) ? local.slice() : [];
+      const seen = {};
+      out.forEach(v => { seen[String(v).toLowerCase()] = true; });
+      (Array.isArray(remote) ? remote : []).forEach(v=>{
+        if(v === undefined || v === null || v === '') return;
+        const k = String(v).toLowerCase();
+        if(!seen[k]){ seen[k] = true; out.push(v); }
+      });
+      return out;
+    }
     function mergeById_(localArr, remoteArr, bucket){
       if(!Array.isArray(remoteArr) || !remoteArr.length) return Array.isArray(localArr) ? localArr : [];
       const local = Array.isArray(localArr) ? localArr.slice() : [];
@@ -5439,7 +5652,7 @@
     // — used right after by computeConfirmedEmptyLedgers_ to tell a genuine
     // "I deleted everyone" from a stale/unloaded local copy. See there for
     // why this can't just be inferred from the (already-merged) inventory.
-    let lastRemoteRosters_ = { paint: [], rawledger: [], labourledger: [], customerledger: [] };
+    let lastRemoteRosters_ = { paint: [], rawledger: [], labourledger: [], customerledger: [], scrapledger: [] };
     // Same idea as lastRemoteRosters_ above, but for Transactions — a flat,
     // id-keyed list rather than a name-keyed roster, so it gets its own
     // variable and its own (near-identical) confirmed-empty check below
@@ -5475,6 +5688,97 @@
     // the WHOLE saveAll_ call) stuck on the sheet no matter how many times
     // the app retried. See computeConfirmedEmptyFactories_ below.
     let lastRemoteFactories_ = [];
+    // FIX (2026-08-25, user request): these ~20 small saved-suggestion
+    // lists (dropdown options for ledger/form fields — item colours,
+    // weights, sizes, expense categories, "Received By"/"Received In",
+    // etc.) were flagged in the 2026-08-21 whole-app sync audit as the one
+    // remaining gap: every other bucket (transactions, rosters, custom
+    // ledgers, txnNumber, rawMaterialReorderLevels...) already gets merged
+    // pre-save, but these were sent straight from local memory with no
+    // merge step at all. A device that's behind on sync could silently
+    // overwrite another device's newly-added suggestion the next time IT
+    // saved — purely cosmetic (a dropdown option briefly missing), but easy
+    // to close the same way every other list here already is. `key` is the
+    // matching field name on the loadAll response (`d` below); get/set
+    // close over each list's own `let` variable, same pattern
+    // MANAGEABLE_LISTS uses elsewhere for the subset of these it manages.
+    const SUGGESTION_LISTS_ = [
+      { key: 'expenseCategories', get: () => expenseCategories, set: v => { expenseCategories = v; } },
+      { key: 'workTypes', get: () => workTypes, set: v => { workTypes = v; } },
+      { key: 'guardSizes', get: () => guardSizes, set: v => { guardSizes = v; } },
+      { key: 'guardWeights', get: () => guardWeights, set: v => { guardWeights = v; } },
+      { key: 'stickCounts', get: () => stickCounts, set: v => { stickCounts = v; } },
+      { key: 'productWeights', get: () => productWeights, set: v => { productWeights = v; } },
+      { key: 'productNames', get: () => productNames, set: v => { productNames = v; } },
+      { key: 'productSizes', get: () => productSizes, set: v => { productSizes = v; } },
+      { key: 'rawItemNames', get: () => rawItemNames, set: v => { rawItemNames = v; } },
+      { key: 'rawLedgerDescriptions', get: () => rawLedgerDescriptions, set: v => { rawLedgerDescriptions = v; } },
+      { key: 'rawWeights', get: () => rawWeights, set: v => { rawWeights = v; } },
+      { key: 'rawBundleCounts', get: () => rawBundleCounts, set: v => { rawBundleCounts = v; } },
+      { key: 'rawGaugeCounts', get: () => rawGaugeCounts, set: v => { rawGaugeCounts = v; } },
+      { key: 'rawSizeCounts', get: () => rawSizeCounts, set: v => { rawSizeCounts = v; } },
+      { key: 'scrapDescriptions', get: () => scrapDescriptions, set: v => { scrapDescriptions = v; } },
+      { key: 'scrapItemNames', get: () => scrapItemNames, set: v => { scrapItemNames = v; } },
+      { key: 'scrapTypes', get: () => scrapTypes, set: v => { scrapTypes = v; } },
+      { key: 'paintItemSizes', get: () => paintItemSizes, set: v => { paintItemSizes = v; } },
+      { key: 'paintItemTypes', get: () => paintItemTypes, set: v => { paintItemTypes = v; } },
+      { key: 'paintFactoryNames', get: () => paintFactoryNames, set: v => { paintFactoryNames = v; } },
+      { key: 'paymentReceivedByList', get: () => paymentReceivedByList, set: v => { paymentReceivedByList = v; } },
+      { key: 'paymentReceivedInList', get: () => paymentReceivedInList, set: v => { paymentReceivedInList = v; } },
+      { key: 'customItemColours', get: () => customItemColours, set: v => { customItemColours = v; } },
+      { key: 'customDescriptions', get: () => customDescriptions, set: v => { customDescriptions = v; } },
+      { key: 'customWeightPerItems', get: () => customWeightPerItems, set: v => { customWeightPerItems = v; } },
+      { key: 'customWeightPerScraps', get: () => customWeightPerScraps, set: v => { customWeightPerScraps = v; } },
+      { key: 'customItemSizes', get: () => customItemSizes, set: v => { customItemSizes = v; } }
+    ];
+    // Picks the next order number not already used by ANY order this device
+    // knows about — its own local list, plus whatever the freshest sheet
+    // fetch just returned — starting from the higher of this device's own
+    // counter and every id actually in use. Doesn't guarantee zero
+    // collision against a THIRD device saving in the same instant (nothing
+    // short of a locking round-trip to the sheet could), but that's an
+    // explicitly accepted tradeoff of resolving this locally/offline rather
+    // than requiring a network call at order-creation time — see
+    // renumberCollidedOrder_ below for what happens if it still collides.
+    function nextFreeTxnId_(remoteById){
+      const used = new Set();
+      transactionsLog.forEach(x=>{ if(x && x.id) used.add(String(x.id)); });
+      Object.keys(remoteById || {}).forEach(id => used.add(String(id)));
+      let n = Math.max(txnNumber, 1);
+      let id = String(n).padStart(4,'0');
+      while(used.has(id)){ n++; id = String(n).padStart(4,'0'); }
+      return { id, n };
+    }
+    // Gives a locally-created order that just collided with a different
+    // device's order (see the call site in mergeLatestRemoteBeforeSave_
+    // for the detection logic) a fresh, currently-unused id, and updates
+    // every place that references the OLD id so nothing is left orphaned:
+    // its own customerPayments rows, and its auto-debit entry (if the
+    // factory's ledger was already reconciled locally before the collision
+    // was caught) in that factory's on-screen ledger. Deliberately leaves
+    // that ledger entry's own `id` field (its independent primary key,
+    // 'order-'+oldId) untouched — only the fields that actually link it to
+    // the order (`txnId`, and the desc text a person reads) — changing the
+    // entry's own id risks orphaning a copy already sitting on the sheet
+    // under the old id with no clean rename path, which would trade one
+    // rare bug for a different one.
+    function renumberCollidedOrder_(t, remoteById){
+      const oldId = t.id;
+      const { id: newId, n } = nextFreeTxnId_(remoteById);
+      t.id = newId;
+      txnNumber = n + 1;
+      customerPayments.forEach(p=>{ if(p && p.txnId === oldId) p.txnId = newId; });
+      (inventory.customerledger || []).forEach(c=>{
+        (c.entries || []).forEach(e=>{
+          if(e && e.txnId === oldId){
+            e.txnId = newId;
+            e.desc = buildOrderLedgerDesc_(t);
+          }
+        });
+      });
+      dataDirty = true;
+      console.warn('[order-id-collision] Order ' + oldId + ' collided with another device\'s order — renumbered this device\'s copy to ' + newId + '.');
+    }
     async function mergeLatestRemoteBeforeSave_(){
       if(!sheetConfigured()) return;
       try{
@@ -5519,6 +5823,50 @@
         // backend guard in Code.gs's saveAll_ protects the Meta-tab write
         // itself, for any device/build, not just ones with this fix).
         if(typeof d.txnNumber === 'number' && d.txnNumber > txnNumber) txnNumber = d.txnNumber;
+        // FIX (2026-08-25, user request): the txnNumber max-merge just above
+        // closes the gap BETWEEN saves, but not the exact moment of
+        // creation — two devices, both offline/behind, can still each mint
+        // an order using the same number before either has synced. When
+        // that happens, mergeById_ above already "resolved" the list merge
+        // by keeping this device's own local order under that id (it just
+        // skips a remote item whose id it already has) — but left alone,
+        // THIS device's own next save would then push its local order over
+        // whatever the OTHER device already got onto the sheet first under
+        // that same id, silently destroying a real order with no error
+        // shown anywhere (flagged, left unfixed, in the 2026-08-21 whole-app
+        // sync audit). Detect and resolve it here: renumber whichever
+        // colliding order is a fresh LOCAL creation, before it gets a
+        // chance to overwrite the other device's already-real one.
+        //
+        // Scoped tightly to avoid misfiring on the much more common "this
+        // order was simply edited on the device that owns it" case (which
+        // mergeById_ already handles the same as always — remote edits to
+        // an order this device already knows about are left alone, exactly
+        // as before this fix): only ever renumbers an order THIS device
+        // itself just created (t.device === DEVICE_NAME) when the
+        // freshly-fetched sheet copy under the same id was stamped by a
+        // DIFFERENT, non-blank device name — never touches an order this
+        // device didn't originate, and never treats two saves from the
+        // SAME device (an edit still in flight) as a collision. This also
+        // means it needs "This Phone's Name" (Settings) set on both
+        // devices to actually engage — left blank on either side, both
+        // compare equal ("" === "") and this safety net simply won't fire,
+        // same as before this fix (never worse, just not extended).
+        const remoteTxnById_ = {};
+        (d.transactionsLog || []).forEach(r=>{ if(r && r.id) remoteTxnById_[r.id] = r; });
+        transactionsLog.forEach(t=>{
+          if(!t || !t.id || !t.device || t.device !== DEVICE_NAME) return;
+          const r = remoteTxnById_[t.id];
+          if(!r || !r.device || r.device === t.device) return;
+          // Extra sanity check that this is genuinely a different order and
+          // not a byte-identical coincidence (harmless to renumber either
+          // way, but keeps the "collision" label honest about what's
+          // actually happening).
+          const looksDifferent = (t.date !== r.date) || (t.time !== r.time) ||
+            (t.total !== r.total) || (t.itemsSummary !== r.itemsSummary);
+          if(!looksDifferent) return;
+          renumberCollidedOrder_(t, remoteTxnById_);
+        });
         // ADD (2026-08-24): rawMaterialReorderLevels is a small flat settings
         // map (materialName -> threshold), not an id/name-keyed array, so it
         // doesn't fit mergeById_/mergeByName_ — a plain per-key union instead:
@@ -5553,18 +5901,26 @@
           });
           rawMaterialResetAt = mergedResetAt;
         }
+        // Run the union merge for every small saved-suggestion list — see
+        // SUGGESTION_LISTS_ above for why/what.
+        SUGGESTION_LISTS_.forEach(({key, get, set})=>{
+          const remote = d[key];
+          if(Array.isArray(remote) && remote.length) set(unionStrArrays_(get(), remote));
+        });
         if(Array.isArray(d.customLedgers)) customLedgers = mergeCustomLedgersWithEntries_(customLedgers, d.customLedgers);
         if(d.inventory){
           lastRemoteRosters_ = {
             paint: Array.isArray(d.inventory.paint) ? d.inventory.paint : [],
             rawledger: Array.isArray(d.inventory.rawledger) ? d.inventory.rawledger : [],
             labourledger: Array.isArray(d.inventory.labourledger) ? d.inventory.labourledger : [],
-            customerledger: Array.isArray(d.inventory.customerledger) ? d.inventory.customerledger : []
+            customerledger: Array.isArray(d.inventory.customerledger) ? d.inventory.customerledger : [],
+            scrapledger: Array.isArray(d.inventory.scrapledger) ? d.inventory.scrapledger : []
           };
           inventory.paint = mergeRosterWithEntries_(inventory.paint, d.inventory.paint, 'paint');
           inventory.rawledger = mergeRosterWithEntries_(inventory.rawledger, d.inventory.rawledger, 'rawledger');
           inventory.labourledger = mergeRosterWithEntries_(inventory.labourledger, d.inventory.labourledger, 'labourledger');
           inventory.customerledger = mergeRosterWithEntries_(inventory.customerledger, d.inventory.customerledger, 'customerledger');
+          inventory.scrapledger = mergeRosterWithEntries_(inventory.scrapledger, d.inventory.scrapledger, 'scrapledger');
         }
       } catch(err){
         // Couldn't reach the sheet to merge first (offline/timeout) — proceed
@@ -5605,7 +5961,7 @@
     // still gets refused exactly as before.
     function computeConfirmedEmptyLedgers_(){
       const out = {};
-      ['paint','rawledger','labourledger','customerledger'].forEach(bucket=>{
+      ['paint','rawledger','labourledger','customerledger','scrapledger'].forEach(bucket=>{
         const localList = inventory[bucket] || [];
         const remoteList = lastRemoteRosters_[bucket] || [];
         if(localList.length === 0 && remoteList.length > 0 &&
@@ -5983,6 +6339,7 @@
       if(computeConfirmedEmptyLedgerEntries_('paint', 'paintEntries')) confirmedEmpty.paint = true;
       if(computeConfirmedEmptyLedgerEntries_('rawledger', 'rawledgerEntries')) confirmedEmpty.rawledger = true;
       if(computeConfirmedEmptyLedgerEntries_('labourledger', 'labourledgerEntries')) confirmedEmpty.labourledger = true;
+      if(computeConfirmedEmptyLedgerEntries_('scrapledger', 'scrapledgerEntries')) confirmedEmpty.scrapledger = true;
       const payload = {
         action: 'saveAll',
         token: SHEET_API_TOKEN,
@@ -5991,6 +6348,7 @@
           confirmedEmpty,
           expenses: expensesForSync, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
           rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawLedgerDescriptions, rawMaterialResetAt,
+          scrapDescriptions, scrapItemNames, scrapTypes,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers: customLedgersForSync, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
@@ -6355,6 +6713,8 @@
           confirmed: ()=> allTombstoned_(factories, 'factories', f => f && f.name) },
         { label: 'raw material ledger', local: entryCount(inventory.rawledger), incoming: d.inventory ? entryCount(d.inventory.rawledger) : 0,
           confirmed: ()=> rosterEntriesTombstoned_(inventory.rawledger, 'rawledgerEntries') },
+        { label: 'scrap ledger', local: entryCount(inventory.scrapledger), incoming: d.inventory ? entryCount(d.inventory.scrapledger) : 0,
+          confirmed: ()=> rosterEntriesTombstoned_(inventory.scrapledger, 'scrapledgerEntries') },
         { label: 'paint ledger', local: entryCount(inventory.paint), incoming: d.inventory ? entryCount(d.inventory.paint) : 0,
           confirmed: ()=> rosterEntriesTombstoned_(inventory.paint, 'paintEntries') },
         { label: 'labour ledger', local: entryCount(inventory.labourledger), incoming: d.inventory ? entryCount(d.inventory.labourledger) : 0,
@@ -6478,6 +6838,14 @@
                   entries: Array.isArray(c.entries) ? c.entries : []
                 }))
               : [];
+            // ADD (2026-08-25, Scrap Ledger feature): same roster-of-
+            // {name,entries[]} normalization as rawledger above.
+            inventory.scrapledger = Array.isArray(inventory.scrapledger)
+              ? inventory.scrapledger.map(s => ({
+                  name: s.name,
+                  entries: Array.isArray(s.entries) ? s.entries : []
+                }))
+              : [];
           }
           if(Array.isArray(d.products) && d.products.length > 0) PRODUCTS = d.products;
           if(Array.isArray(d.factories)) factories = d.factories;
@@ -6498,6 +6866,10 @@
           if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = d.rawMaterialReorderLevels;
           if(Array.isArray(d.rawLedgerDescriptions) && d.rawLedgerDescriptions.length > 0) rawLedgerDescriptions = d.rawLedgerDescriptions;
           if(d.rawMaterialResetAt && typeof d.rawMaterialResetAt === 'object') rawMaterialResetAt = d.rawMaterialResetAt;
+          if(typeof d.lastBackupEmailAt === 'string' && d.lastBackupEmailAt) lastBackupEmailAt = d.lastBackupEmailAt;
+          if(Array.isArray(d.scrapDescriptions) && d.scrapDescriptions.length > 0) scrapDescriptions = d.scrapDescriptions;
+          if(Array.isArray(d.scrapItemNames) && d.scrapItemNames.length > 0) scrapItemNames = d.scrapItemNames;
+          if(Array.isArray(d.scrapTypes) && d.scrapTypes.length > 0) scrapTypes = d.scrapTypes;
           if(Array.isArray(d.paintItemSizes) && d.paintItemSizes.length > 0) paintItemSizes = d.paintItemSizes;
           if(Array.isArray(d.paintItemTypes) && d.paintItemTypes.length > 0) paintItemTypes = d.paintItemTypes;
           if(Array.isArray(d.paintFactoryNames) && d.paintFactoryNames.length > 0) paintFactoryNames = d.paintFactoryNames;
@@ -6731,6 +7103,47 @@
       }
     }
 
+    // ADD (2026-08-25, backup-freshness feature): the weekly Gmail backup
+    // (Code.gs's setupBackupEmailTrigger/sendBackupEmail_) already runs on
+    // its own — this doesn't change when or whether it fires. It just
+    // surfaces what's already known (lastBackupEmailAt, from Meta via
+    // loadAll) so nobody has to trust that the trigger is still alive
+    // purely because a reminder-to-check-Gmail never crossed their mind.
+    // Considered "overdue" past 10 days — a few days' grace past the 7-day
+    // trigger interval for whatever time the trigger actually fires at,
+    // not a hard SLA — or if no backup email has ever gone out at all.
+    // Silent (returns []) until the sheet sync itself is configured, since
+    // there's nothing for the trigger to back up before then.
+    function getBackupOverdueAlert_(){
+      if(!sheetConfigured()) return [];
+      if(!lastBackupEmailAt) return [{ never: true, days: null }];
+      const last = new Date(lastBackupEmailAt);
+      if(isNaN(last.getTime())) return [{ never: true, days: null }];
+      const days = Math.floor((Date.now() - last.getTime()) / (24*60*60*1000));
+      return days > 10 ? [{ never: false, days }] : [];
+    }
+    // Human-readable "when" for the Settings card — "Never sent yet",
+    // "Today (17-Aug-2026)", "Yesterday (...)", or "N days ago (...)".
+    function formatBackupLastSent_(){
+      if(!lastBackupEmailAt) return tr('backup_never_sent');
+      const d = new Date(lastBackupEmailAt);
+      if(isNaN(d.getTime())) return tr('backup_never_sent');
+      const days = Math.floor((Date.now() - d.getTime()) / (24*60*60*1000));
+      const dateStr = d.toLocaleDateString('en-GB');
+      if(days <= 0) return tr('backup_sent_today').replace('{date}', dateStr);
+      if(days === 1) return tr('backup_sent_yesterday').replace('{date}', dateStr);
+      return tr('backup_sent_days_ago').replace('{n}', days).replace('{date}', dateStr);
+    }
+    // Repopulates the persistent "Last backup email: ..." line in Settings
+    // — called whenever Settings opens (renderSettingsView_) and again
+    // right after a manual "Send Backup Now" succeeds, so it never shows a
+    // stale value while the page is sitting open.
+    function renderBackupStatusCard_(){
+      const el = document.getElementById('settings-backup-lastsent');
+      if(!el) return;
+      el.textContent = tr('backup_last_sent_label') + ' ' + formatBackupLastSent_();
+      el.style.color = getBackupOverdueAlert_().length > 0 ? 'var(--red)' : 'var(--text-dim)';
+    }
     // Settings > "Send Backup Now" — an on-demand email backup, calling
     // Code.gs's sendBackupNow action (see Code.gs's GMAIL BACKUP section).
     // Purely a backend call: no native plugin needed, works on any build,
@@ -6748,6 +7161,15 @@
       try{
         const json = await jsonpRequest(SHEET_API_URL + '?action=sendBackupNow', 30000);
         if(json && json.error) throw new Error(json.error);
+        // ADD (2026-08-25): Code.gs's sendBackupNow now hands back the ISO
+        // timestamp it just wrote to Meta — apply it immediately instead of
+        // waiting for the next full sync to notice, so the freshness line
+        // and any overdue alert clear right away.
+        if(json && json.lastBackupEmailAt){
+          lastBackupEmailAt = json.lastBackupEmailAt;
+          renderBackupStatusCard_();
+          updateNotificationsBadge_();
+        }
         if(statusEl){ statusEl.style.color = 'var(--green)'; statusEl.textContent = 'Backup sent — check your Gmail inbox.'; }
         showToast_('Backup emailed.');
       }catch(err){
@@ -7025,7 +7447,7 @@
         low_stock_alerts: "Low Stock Alerts", no_low_stock: "Nothing low on stock right now.", depleted: "Depleted", stock_depleted_sub: "Had {weight}kg — none remaining",
         low_stock: "Low Stock", low_stock_product_sub: "{stock} left in stock — reorder level is {level}",
         stock_qty: "Stock Quantity", stock_qty_optional_hint: "— optional, leave blank to not track stock for this item",
-        reorder_level: "Low Stock Alert Level", reorder_level_hint: "— get notified at/below this quantity (default 5)",
+        reorder_level: "Low Stock Alert Level", reorder_level_hint: "— get notified at/below this quantity (default 5)", reorder_level_placeholder: "Default (5)",
         stock_title: "Stock", stock_sub: "Every product's stock quantity in one place — set or adjust it here; leave blank to stop tracking stock for that item.",
         stock_search_placeholder: "Search by raw material name…", stock_total_products: "Total Products", stock_tracked: "Stock Tracked", not_tracked: "Not tracked",
         category: "Category", no_products_to_show: "No products yet — add one from a category first.",
@@ -7033,6 +7455,10 @@
         stockready_orders: "Orders Ready", stockready_value: "Stock Ready Value", no_stock_ready: "Nothing ready at a factory right now.",
         attach_gate_receipt: "Attach Gate Receipt", stockready_factory: "Factory", stockready_date: "Date", stockready_items: "Items", stockready_total: "Total",
         stock_onhand_title: "Raw Material Stock", stock_onhand_sub: "Computed automatically — raw material received minus what's been used by every order booked, by material name.",
+        // ADD (2026-08-25): Product Stock (On Hand) — re-added, see the
+        // HTML comment above #view-stock for why this went missing.
+        stock_product_title: "Product Stock (On Hand)", stock_product_sub: "Every product's stock quantity and Low Stock Alert Level in one place — set or adjust either here; leave blank to stop tracking that item.",
+        stock_product_search_placeholder: "Search by product name…",
         // ADD (2026-08-24, user request): Raw Material Stock table + forms
         rawmat_total_materials: "Materials Tracked", rawmat_low_count: "Low Stock",
         rawmat_name: "Raw Material", rawmat_weight_in: "Weight In (kg)", rawmat_weight_used: "Weight Used (kg)", rawmat_weight_remaining: "Weight Remaining (kg)",
@@ -7167,6 +7593,16 @@
         backup_title: "Gmail Backup",
         backup_desc: "A full backup of your Google Sheet is emailed to you automatically every week. You can also send one right now, any time.",
         backup_now_btn: "Send Backup Now",
+        backup_last_sent_label: "Last backup email:",
+        backup_never_sent: "Never sent yet",
+        backup_sent_today: "Today ({date})",
+        backup_sent_yesterday: "Yesterday ({date})",
+        backup_sent_days_ago: "{n} days ago ({date})",
+        backup_alerts: "Backup Status",
+        backup_overdue_title: "Backup overdue",
+        backup_overdue_sub: "It's been {days} days since the last Gmail backup email — you may want to send one now (Settings > Gmail Backup).",
+        backup_never_sent_sub: "No Gmail backup email has been sent yet — you may want to send one now (Settings > Gmail Backup).",
+        backup_up_to_date: "Backup is up to date",
         payment_history: "Payment History", payment_recorded: "Payment recorded", amount_rs: "Amount (Rs)",
         completed_sales_appear: "Completed sales will appear here", no_x_transactions: "No {x} transactions",
         try_different_filter: "Try a different filter",
@@ -7210,6 +7646,17 @@
         no_suppliers_yet: "No suppliers yet", delete_supplier: "Delete Supplier",
         confirm_delete_supplier: "Delete {name} and their whole ledger?",
         overall_balance: "Overall Balance (Till)",
+        // ADD (2026-08-25, user request): Scrap Ledger.
+        nav_scrapledger: "Scrap Ledger",
+        scrapledger_title: "Scrap Ledger", scrapledger_sub: "Track scrap sold by weight (debit) and payments received (credit) per buyer.",
+        add_scrap_buyer: "Add Scrap Buyer", scrap_buyer: "Scrap Buyer", scrap_buyer_name: "Buyer Name",
+        no_scrap_buyers_yet: "No scrap buyers yet", delete_scrap_buyer: "Delete Buyer",
+        confirm_delete_scrap_buyer: "Delete {name} and their whole ledger?",
+        total_owed_debit: "Total Owed (Debit)",
+        scrap_description: "Scrap Description", scrap_weight_kg: "Weight (kg)", type: "Type",
+        rate_per_kg: "Rate per kg (Rs)", debit_owed: "Debit — Owed (Rs)", credit_payment: "Credit — Payment (Rs)",
+        scrap_stock_title: "Scrap Stock", scrap_stock_sub: "Total scrap weight sold and payments received across every buyer, from the Scrap Ledger.",
+        scrap_weight_total: "Total Weight Sold", scrap_payment_total: "Total Payment Received", as_of: "as of",
         nav_labourledger: "Labour Ledger",
         labourledger_title: "Labour Ledger", labourledger_sub: "Attendance, wages, payments and dues — daily, weekly, monthly or yearly.",
         mark_attendance: "Mark Attendance", add_worker: "Add Worker", rate_type: "Rate Type",
@@ -7359,7 +7806,7 @@
         low_stock_alerts: "کم اسٹاک الرٹس", no_low_stock: "فی الحال کوئی اسٹاک کم نہیں ہے۔", depleted: "ختم", stock_depleted_sub: "{weight} کلوگرام تھا — اب کچھ باقی نہیں",
         low_stock: "کم اسٹاک", low_stock_product_sub: "اسٹاک میں {stock} باقی — دوبارہ آرڈر لیول {level} ہے",
         stock_qty: "اسٹاک مقدار", stock_qty_optional_hint: "— اختیاری، اس آئٹم کا اسٹاک ٹریک نہ کرنے کے لیے خالی چھوڑ دیں",
-        reorder_level: "کم اسٹاک الرٹ لیول", reorder_level_hint: "— اس مقدار پر یا اس سے کم ہونے پر مطلع کریں (ڈیفالٹ 5)",
+        reorder_level: "کم اسٹاک الرٹ لیول", reorder_level_hint: "— اس مقدار پر یا اس سے کم ہونے پر مطلع کریں (ڈیفالٹ 5)", reorder_level_placeholder: "ڈیفالٹ (5)",
         stock_title: "اسٹاک", stock_sub: "ہر پروڈکٹ کی اسٹاک مقدار ایک ہی جگہ — یہاں سے سیٹ یا ایڈجسٹ کریں؛ اس آئٹم کا اسٹاک ٹریک نہ کرنے کے لیے خالی چھوڑ دیں۔",
         stock_search_placeholder: "خام مال کے نام سے تلاش کریں…", stock_total_products: "کل پروڈکٹس", stock_tracked: "اسٹاک ٹریک شدہ", not_tracked: "ٹریک نہیں ہو رہا",
         category: "کیٹیگری", no_products_to_show: "ابھی تک کوئی پروڈکٹ نہیں — پہلے کسی کیٹیگری سے ایک شامل کریں۔",
@@ -7367,6 +7814,8 @@
         stockready_orders: "تیار آرڈرز", stockready_value: "اسٹاک تیار ویلیو", no_stock_ready: "فی الحال فیکٹری میں کچھ تیار نہیں۔",
         attach_gate_receipt: "گیٹ رسید لگائیں", stockready_factory: "فیکٹری", stockready_date: "تاریخ", stockready_items: "آئٹمز", stockready_total: "کل",
         stock_onhand_title: "خام مال اسٹاک", stock_onhand_sub: "خودکار حساب — موصول ہونے والا خام مال منفی ہر بک شدہ آرڈر میں استعمال ہونے والی مقدار، خام مال کے نام کے مطابق۔",
+        stock_product_title: "پروڈکٹ اسٹاک (موجودہ)", stock_product_sub: "ہر پروڈکٹ کی اسٹاک مقدار اور کم اسٹاک الرٹ لیول ایک ہی جگہ — یہاں سے سیٹ یا ایڈجسٹ کریں؛ اس آئٹم کو ٹریک نہ کرنے کے لیے خالی چھوڑ دیں۔",
+        stock_product_search_placeholder: "پروڈکٹ کے نام سے تلاش کریں…",
         rawmat_total_materials: "ٹریک شدہ خام مال", rawmat_low_count: "کم اسٹاک",
         rawmat_name: "خام مال", rawmat_weight_in: "وزن آیا (کلوگرام)", rawmat_weight_used: "وزن استعمال ہوا (کلوگرام)", rawmat_weight_remaining: "باقی وزن (کلوگرام)",
         rawmat_items_in: "آئٹمز آئے (عدد)", rawmat_items_used: "آئٹمز استعمال ہوئے (عدد)", rawmat_items_remaining: "باقی آئٹمز (عدد)",
@@ -7498,6 +7947,16 @@
         backup_title: "جی میل بیک اپ",
         backup_desc: "آپ کی گوگل شیٹ کا مکمل بیک اپ ہر ہفتے خودکار طور پر آپ کو ای میل کیا جاتا ہے۔ آپ کبھی بھی ابھی ایک بھیج سکتے ہیں۔",
         backup_now_btn: "ابھی بیک اپ بھیجیں",
+        backup_last_sent_label: "آخری بیک اپ ای میل:",
+        backup_never_sent: "ابھی تک نہیں بھیجا گیا",
+        backup_sent_today: "آج ({date})",
+        backup_sent_yesterday: "کل ({date})",
+        backup_sent_days_ago: "{n} دن پہلے ({date})",
+        backup_alerts: "بیک اپ کی صورتحال",
+        backup_overdue_title: "بیک اپ میں تاخیر",
+        backup_overdue_sub: "آخری جی میل بیک اپ ای میل کو {days} دن ہو چکے ہیں — اب ایک بھیجنا مناسب ہوگا (ترتیبات > جی میل بیک اپ)۔",
+        backup_never_sent_sub: "ابھی تک کوئی جی میل بیک اپ ای میل نہیں بھیجا گیا — اب ایک بھیجنا مناسب ہوگا (ترتیبات > جی میل بیک اپ)۔",
+        backup_up_to_date: "بیک اپ تازہ ترین ہے",
         payment_history: "ادائیگی کی تاریخ", payment_recorded: "ادائیگی درج ہو گئی", amount_rs: "رقم (روپے)",
         completed_sales_appear: "مکمل سیلز یہاں ظاہر ہوں گی", no_x_transactions: "کوئی {x} ٹرانزیکشن نہیں",
         try_different_filter: "مختلف فلٹر آزمائیں",
@@ -7541,6 +8000,17 @@
         no_suppliers_yet: "ابھی تک کوئی سپلائر نہیں", delete_supplier: "سپلائر حذف کریں",
         confirm_delete_supplier: "{name} اور ان کا پورا لیجر حذف کریں؟",
         overall_balance: "مجموعی بیلنس (ٹِل)",
+        // ADD (2026-08-25, user request): Scrap Ledger.
+        nav_scrapledger: "سکریپ لیجر",
+        scrapledger_title: "سکریپ لیجر", scrapledger_sub: "وزن کے حساب سے فروخت ہونے والا سکریپ (ڈیبٹ) اور ہر خریدار سے موصول ہونے والی ادائیگیاں (کریڈٹ) کا ریکارڈ رکھیں۔",
+        add_scrap_buyer: "سکریپ خریدار شامل کریں", scrap_buyer: "سکریپ خریدار", scrap_buyer_name: "خریدار کا نام",
+        no_scrap_buyers_yet: "ابھی تک کوئی سکریپ خریدار نہیں", delete_scrap_buyer: "خریدار حذف کریں",
+        confirm_delete_scrap_buyer: "{name} اور ان کا پورا لیجر حذف کریں؟",
+        total_owed_debit: "کل واجب الادا (ڈیبٹ)",
+        scrap_description: "سکریپ کی تفصیل", scrap_weight_kg: "وزن (کلوگرام)", type: "قسم",
+        rate_per_kg: "ریٹ فی کلوگرام (روپے)", debit_owed: "ڈیبٹ — واجب الادا (روپے)", credit_payment: "کریڈٹ — ادائیگی (روپے)",
+        scrap_stock_title: "سکریپ اسٹاک", scrap_stock_sub: "سکریپ لیجر سے، ہر خریدار میں فروخت شدہ سکریپ کا کل وزن اور موصول شدہ کل ادائیگیاں۔",
+        scrap_weight_total: "کل فروخت شدہ وزن", scrap_payment_total: "کل موصول شدہ ادائیگی", as_of: "بمطابق",
         nav_labourledger: "لیبر لیجر",
         labourledger_title: "لیبر لیجر", labourledger_sub: "حاضری، اجرت، ادائیگیاں اور واجبات — روزانہ، ہفتہ وار، ماہانہ یا سالانہ۔",
         mark_attendance: "حاضری لگائیں", add_worker: "مزدور شامل کریں", rate_type: "ریٹ کی قسم",
@@ -7990,6 +8460,7 @@
       rawledger: [],
       labourledger: [],
       customerledger: [],
+      scrapledger: [],
     };
     function isoDate(offsetDays){
       const d = new Date();
@@ -8038,13 +8509,14 @@
     // the app. Synced/persisted the same way as the other suggestion lists.
     let productWeights = [];
     // ADDED (2026-08-23): the Product Editor's Name and Size fields used to
-    // be a fixed, hardcoded <option> list baked directly into the HTML
-    // (see the old <select id="pe-name-select"> / <select id="pe-size-select">
-    // markup) — no way to add or remove entries without editing code. Now
-    // backed by these two lists exactly like productWeights above, seeded
-    // with that same original hardcoded set so nothing already in use
-    // disappears, and from here on manageable with the same "type to add,
-    // pick from saved, ✕ to delete" pattern.
+    // be a fixed, hardcoded <option> list baked directly into the HTML —
+    // no way to add or remove entries without editing code. Now backed by
+    // these two lists exactly like productWeights above, seeded with that
+    // same original hardcoded set so nothing already in use disappears,
+    // and from here on manageable with the same "type to add, pick from
+    // saved, ✕ to delete" pattern (originally a <select> + separate add/
+    // remove row per field; simplified 2026-08-25 to the single combo box
+    // — see peNameCombo/peSizeCombo/peWeightCombo above).
     let productNames = ["American-Plain-Tikka-Tala","American-Plain-Mono-Tala","American-Kingri-Tikka-Tala","American-Kingri-Tikka-Mono","American-Plain-Tikka-F.Karri","American-Plain-Mono-F.Karri","American-Kingri-Tikka-F.Karri","American-Kingri-Mono-F.Karri","American-Plain-Tikka-Un Tala","American-Kingri-Tikka-Un Tala"];
     let productSizes = ["P/4\"","P/6\"","P/8\"","P/10\"","P/12\"","P/14\"","P/16\"","P/18\"","P/20\"","P/22\"","P/24\"","P/26\"","P/28\"","P/30\"","P/32\"","P/34\"","P/36\""];
     // Saved suggestion lists for the Raw Material Ledger entry form — Item
@@ -8069,6 +8541,13 @@
     let rawBundleCounts = [];
     let rawGaugeCounts = [];
     let rawSizeCounts = [];
+    // ADD (2026-08-25, user request): Scrap Ledger suggestion lists — same
+    // "type to add, click to reuse, ✕ to delete" combo pattern as the Raw
+    // Material Ledger's fields above, but for the new Scrap Ledger's
+    // Description/Item Name/Type fields.
+    let scrapDescriptions = [];
+    let scrapItemNames = [];
+    let scrapTypes = [];
     // ADD (2026-08-24, user request): "Raw Material Stock" — per-material-name
     // low-stock threshold, keyed by the same name used in a Raw Material
     // Ledger entry's stockName / a product's recipe[].material (see
@@ -8090,6 +8569,13 @@
     // same end result as Custom Ledger's Reset Weight without needing a
     // separate counter to keep in sync with the real entries.
     let rawMaterialResetAt = {}; // { [materialName]: { weight:{date,time}, items:{date,time} } }
+    // ADD (2026-08-25, backup-freshness feature): ISO timestamp of the last
+    // Gmail backup email that actually went out — written server-side by
+    // Code.gs's sendBackupEmail_(), read back here via loadAll's
+    // ...readMeta_() spread (or immediately from sendBackupNow_'s own
+    // response). Blank means "never sent" — see getBackupOverdueAlert_/
+    // formatBackupLastSent_ below for how this is surfaced.
+    let lastBackupEmailAt = '';
     // The standard product-name/size chart for the "American Pedestal Fan"
     // category (used to populate the Product edit modal's dropdowns below)
     // — moved up here so the Paint Ledger's Item Type suggestions (right
@@ -8728,6 +9214,7 @@
       if(autoLockSel) autoLockSel.value = String(autoLockMinutes_);
       renderGoogleAccountSettingsCard_();
       renderSyncSettingsCard_();
+      renderBackupStatusCard_();
     }
     document.getElementById('settings-pin-save').addEventListener('click', ()=>{
       const errorEl = document.getElementById('settings-pin-error');
@@ -8923,7 +9410,7 @@
       "Pedestal Fan": "nav_pedestal_fan", "Exhaust Fan": "nav_exhaust_fan", "Universal Fan": "nav_universal_fan",
       "Factories": "nav_factories", "Sales": "nav_sales", "Transactions": "nav_transactions", "Expenses": "nav_expenses",
       "Raw Material": "nav_rawmaterial", "Labour": "nav_labour", "Paint": "nav_paint", "Labour Ledger": "nav_labourledger",
-      "Stock": "stock_title"
+      "Scrap Ledger": "nav_scrapledger", "Stock": "stock_title"
     };
     function i18nSpan_(label){
       const key = NAV_LABEL_KEYS[label];
@@ -9061,6 +9548,10 @@
       "Labour": '<circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/>',
       "Paint": '<path d="M19 3H9a2 2 0 0 0-2 2v3l-3.5 5.5A3 3 0 0 0 6 18h8a3 3 0 0 0 2.5-4.5L13 8V5h6Z"/><line x1="9" y1="11" x2="16" y2="11"/>',
       "Labour Ledger": '<rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M8 2v4"/><path d="M16 2v4"/><path d="M7.5 13.5l2 2 4-4.5"/>',
+      // ADD (2026-08-25, user request): a recycling/scrap-ish icon (two
+      // curved arrows) for the new Scrap Ledger nav item, distinct from the
+      // other inventory icons.
+      "Scrap Ledger": '<path d="M7 7h9l-2-2"/><path d="M17 12l1.5 4.5H10"/><path d="M6 17.5L4 13l4-3"/><path d="M13 17.5H8l2 2"/><path d="M11 12L9.5 7.5H16"/><path d="M18 6.5L20 11l-4 3"/>',
       // ADD (2026-08-24, user request): a box/package icon for the new
       // top-level Stock tab, distinct from the other inventory icons.
       "Stock": '<path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/><path d="M7.5 4.5l9 5.2"/>'
@@ -9070,10 +9561,15 @@
     const INVENTORY_VIEWS = [
       { key: "paint", label: "Paint" },
       { key: "labourledger", label: "Labour Ledger" },
+      // ADD (2026-08-25, user request): "I want a scrap tab under stock
+      // tab" — placed as its own nav page here (same as every other
+      // ledger) plus a rollup summary inside the Stock tab itself (see
+      // "Scrap Stock" section in view-stock) — both, per the confirmed plan.
+      { key: "scrapledger", label: "Scrap Ledger" },
       { key: "stock", label: "Stock" }
     ];
     const inventoryNav = document.getElementById('side-inventory-nav');
-    const ALL_VIEW_KEYS = ["overview","notifications","factories","sales","transactions","expenses","rawmaterial","paint","labourledger","stock","backup","settings"];
+    const ALL_VIEW_KEYS = ["overview","notifications","factories","sales","transactions","expenses","rawmaterial","paint","labourledger","scrapledger","stock","backup","settings"];
     let currentView = 'products';
 
     function setView(v){
@@ -9108,7 +9604,8 @@
       if(v==='rawmaterial') renderRawLedger();
       if(v==='paint') renderPaintLedger();
       if(v==='labourledger') renderLabourLedgerTable_();
-      if(v==='stock'){ renderStockReady(); renderStock(); }
+      if(v==='scrapledger') renderScrapLedger();
+      if(v==='stock'){ renderStockReady(); renderStock(); renderStockOnHand_(); renderScrapStockSummary_(); }
       if(v==='backup') renderBackupView_();
       if(v==='settings') renderSettingsView_();
       // Mobile dropdown menu: collapse it and reflect the newly active
@@ -9629,6 +10126,112 @@
       });
     }
 
+    // ADD (2026-08-25): Product Stock (On Hand) — re-added after being
+    // silently dropped when Raw Material Stock took over this view's
+    // original DOM ids (see the HTML comment above #view-stock). Reuses
+    // p.stock/p.reorderLevel exactly as before — this is only a UI to set
+    // fields that decrementProductStock_()/getLowStockProductAlerts_()/the
+    // product-card badge already read; no data-model change.
+    let stockOnHandSearchTerm_ = '';
+    function renderStockOnHand_(){
+      const wrap = document.getElementById('stockonhand-table');
+      const statsWrap = document.getElementById('stockonhand-stats');
+      if(!wrap || !statsWrap) return;
+      const term = stockOnHandSearchTerm_;
+      const list = PRODUCTS.filter(p => !term || p.name.toLowerCase().includes(term))
+        .slice().sort((a,b)=> a.name.localeCompare(b.name));
+
+      const trackedCount = PRODUCTS.filter(p => p.stock !== undefined).length;
+      const lowCount = getLowStockProductAlerts_().length;
+      statsWrap.innerHTML = `
+        <div class="stat-card"><div class="stat-label">${tr('stock_total_products')}</div><div class="stat-val">${PRODUCTS.length}</div></div>
+        <div class="stat-card"><div class="stat-label">${tr('stock_tracked')}</div><div class="stat-val">${trackedCount}</div></div>
+        <div class="stat-card"><div class="stat-label">${tr('low_stock_alerts')}</div><div class="stat-val" style="${lowCount>0?'color:var(--red);':''}">${lowCount}</div></div>
+      `;
+
+      if(list.length === 0){
+        wrap.innerHTML = '<div class="empty-state">' + tr('no_products_to_show') + '</div>';
+        return;
+      }
+
+      const rows = list.map(p=>{
+        const level = (p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : DEFAULT_REORDER_LEVEL_;
+        const isLow = p.stock !== undefined && p.stock <= level;
+        const lowStyle = isLow ? 'color:var(--red); font-weight:600;' : '';
+        return `
+          <tr>
+            <td class="inv-name">${escHtml_(p.name)}</td>
+            <td>${escHtml_(p.cat || '')}</td>
+            <td class="num" style="${lowStyle}">
+              <input type="number" class="field-input stockonhand-qty-input" data-id="${p.id}" min="0" step="1"
+                value="${p.stock !== undefined ? p.stock : ''}" placeholder="${tr('not_tracked')}"
+                style="width:100px; text-align:right; margin-bottom:0;">
+            </td>
+            <td class="num">
+              <input type="number" class="field-input stockonhand-reorder-input" data-id="${p.id}" min="0" step="1"
+                value="${p.reorderLevel !== undefined ? p.reorderLevel : ''}" placeholder="${tr('reorder_level_placeholder')}"
+                style="width:100px; text-align:right; margin-bottom:0;">
+            </td>
+            <td>${isLow ? `<span style="color:var(--red); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('low_stock')}</span>` : (p.stock === undefined ? `<span style="color:var(--text-dim); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('not_tracked')}</span>` : '')}</td>
+          </tr>`;
+      }).join('');
+
+      wrap.innerHTML = `
+        <div class="table-scroll"><table class="inv-table">
+          <thead>
+            <tr>
+              <th>${tr('name')}</th>
+              <th>${tr('category')}</th>
+              <th class="num">${tr('stock_qty')}</th>
+              <th class="num">${tr('reorder_level')}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      `;
+
+      wrap.querySelectorAll('.stockonhand-qty-input').forEach(inp=>{
+        inp.addEventListener('change', ()=>{
+          const p = PRODUCTS.find(x=> String(x.id) === inp.dataset.id);
+          if(!p) return;
+          const raw = inp.value.trim();
+          if(raw === ''){
+            delete p.stock;
+          } else {
+            const n = parseInt(raw, 10);
+            if(!(n >= 0)){ inp.value = (p.stock !== undefined ? p.stock : ''); return; }
+            p.stock = n;
+          }
+          queueSync();
+          renderStockOnHand_();
+        });
+      });
+      wrap.querySelectorAll('.stockonhand-reorder-input').forEach(inp=>{
+        inp.addEventListener('change', ()=>{
+          const p = PRODUCTS.find(x=> String(x.id) === inp.dataset.id);
+          if(!p) return;
+          const raw = inp.value.trim();
+          if(raw === ''){
+            delete p.reorderLevel;
+          } else {
+            const n = parseInt(raw, 10);
+            if(!(n >= 0)){ inp.value = (p.reorderLevel !== undefined ? p.reorderLevel : ''); return; }
+            p.reorderLevel = n;
+          }
+          queueSync();
+          renderStockOnHand_();
+        });
+      });
+    }
+    const stockOnHandSearchInput = document.getElementById('stockonhand-search');
+    if(stockOnHandSearchInput){
+      stockOnHandSearchInput.addEventListener('input', (e)=>{
+        stockOnHandSearchTerm_ = e.target.value.trim().toLowerCase();
+        renderStockOnHand_();
+      });
+    }
+
     // ---------------- CART ----------------
     const cartItemsEl = document.getElementById('cart-items');
     function lineDetail_(l){
@@ -9768,8 +10371,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.24.11";
-    const APP_VERSION_NOTE = "Raw Material Ledger upgrades (user request): Description and Raw Material Name now each have their own \"Manage\" add/remove list (previously they secretly shared one list). Typing/picking a Raw Material Name now shows that material's live Remaining Weight/Remaining Items right on the entry form. A new Rate (per Weight or per Item) auto-fills Credit as Rate × Weight/Items Received (still editable by hand). New \"+ Add Weight\"/\"+ Add Items\" quick boxes top up a material's Remaining without needing a full dated entry. New \"Reset Weight\"/\"Reset Items\" buttons (PIN-protected) re-base a material's Remaining to 0 going forward without touching any past ledger entry. Requires an Apps Script redeploy (new RawLedger columns + new Meta settings) as well as the app rebuild.";
+    const APP_VERSION = "2026.08.25.7";
+    const APP_VERSION_NOTE = "New: Scrap Ledger — a dedicated ledger per scrap buyer (Stock tab area / its own sidebar page) tracking scrap sold by weight: Scrap Description, Item Name, Type, Weight and Rate per kg (auto-multiplies into Debit — Owed), Credit — Payment, plus the same Cash/Online/Cheque/Item-Material payment-method options every other ledger has. Stock tab now also shows a \"Scrap Stock\" rollup (total weight sold, total payment received, each with its own last-updated date). Export (PDF/JPG/CSV) is available from the Scrap Ledger page same as other ledgers. Deliberately left out: receipt-photo attachment and bundle/gauge/size-style stock tracking — none of those were asked for. Requires the updated Code.gs (new ScrapBuyers/ScrapLedger sheet tabs + Meta columns) redeployed alongside this index.html.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -9780,136 +10383,34 @@
     // ---------------- EDIT / ADD / DELETE PRODUCT ----------------
     const productEditModal = document.getElementById('product-edit-modal');
     const peName = document.getElementById('pe-name');
-    const peNameSelect = document.getElementById('pe-name-select');
-    const peNameCustom = document.getElementById('pe-name-custom');
     const peSizeLabel = document.getElementById('pe-size-label');
-    const peSizeSelect = document.getElementById('pe-size-select');
-    const peSizeCustom = document.getElementById('pe-size-custom');
     const peWeightLabel = document.getElementById('pe-weight-label');
-    const peWeightWrap = document.getElementById('pe-weight-wrap');
-    const peWeight = document.getElementById('pe-weight');
-    const peWeightAddBtn = document.getElementById('pe-weight-add');
-    const peWeightSelect = document.getElementById('pe-weight-select');
-    const peWeightRemoveBtn = document.getElementById('pe-weight-remove');
-    // Remembered-weight list for the Product Editor's Weight field: typing a
-    // value and clicking Add saves it into productWeights (persisted like
-    // the app's other suggestion lists), so next time it's one click away
-    // in the dropdown instead of retyping it. The ✕ button removes whatever
-    // is currently selected in the dropdown from that saved list.
-    function renderPeWeightSelect_(){
-      const current = peWeightSelect.value;
-      peWeightSelect.innerHTML = '<option value="">Saved weights…</option>' +
-        productWeights.map(v => `<option value="${v}">${v}</option>`).join('');
-      peWeightSelect.value = productWeights.includes(current) ? current : '';
-      peWeightRemoveBtn.disabled = !peWeightSelect.value;
-    }
-    peWeightAddBtn.addEventListener('click', ()=>{
-      const val = peWeight.value.trim();
-      if(!val) return;
-      if(!productWeights.some(v => v.toLowerCase() === val.toLowerCase())){
-        productWeights.push(val);
-        queueSync();
-      }
-      renderPeWeightSelect_();
-      peWeightSelect.value = val;
-      peWeightRemoveBtn.disabled = false;
-    });
-    peWeightSelect.addEventListener('change', ()=>{
-      if(peWeightSelect.value) peWeight.value = peWeightSelect.value;
-      peWeightRemoveBtn.disabled = !peWeightSelect.value;
-    });
-    peWeightRemoveBtn.addEventListener('click', ()=>{
-      const val = peWeightSelect.value;
-      if(!val) return;
-      productWeights = productWeights.filter(v => v !== val);
-      queueSync();
-      renderPeWeightSelect_();
-    });
-    // ADDED (2026-08-23): same "type it, Add it, ✕ to remove" pattern as
-    // Weight above, now for Name and Size — these used to be a fixed
-    // <option> list with no way to add/remove entries (see productNames/
-    // productSizes declaration for the full story). Structured slightly
-    // differently from Weight because the select here IS the primary
-    // field (choosing an option sets the product's name/size directly,
-    // rather than just being a shortcut into a separate text input) —
-    // Add/Remove work off a small dedicated input instead of reusing the
-    // main field, so typing a new option to save doesn't fight with
-    // picking an existing one.
-    const peNameNew = document.getElementById('pe-name-new');
-    const peNameAddBtn = document.getElementById('pe-name-add');
-    const peNameRemoveBtn = document.getElementById('pe-name-remove');
-    function renderPeNameSelect_(){
-      const current = peNameSelect.value;
-      peNameSelect.innerHTML = productNames.map(v => `<option value="${v}">${v}</option>`).join('')
-        + '<option value="Custom">Custom…</option>';
-      peNameSelect.value = (current && (productNames.includes(current) || current === 'Custom')) ? current : (productNames[0] || 'Custom');
-      peNameRemoveBtn.disabled = !productNames.includes(peNameSelect.value);
-      peNameCustom.style.display = (peNameSelect.value === 'Custom') ? '' : 'none';
-    }
-    peNameAddBtn.addEventListener('click', ()=>{
-      const val = peNameNew.value.trim();
-      if(!val) return;
-      if(!productNames.some(v => v.toLowerCase() === val.toLowerCase())){
-        productNames.push(val);
-        queueSync();
-      }
-      peNameNew.value = '';
-      renderPeNameSelect_();
-      peNameSelect.value = val;
-      peNameCustom.style.display = 'none';
-      peNameRemoveBtn.disabled = false;
-    });
-    peNameSelect.addEventListener('change', ()=>{
-      peNameCustom.style.display = (peNameSelect.value === 'Custom') ? '' : 'none';
-      peNameRemoveBtn.disabled = !productNames.includes(peNameSelect.value);
-    });
-    peNameRemoveBtn.addEventListener('click', ()=>{
-      const val = peNameSelect.value;
-      if(!val || val === 'Custom') return;
-      // Deliberately allowed even if a saved product currently uses this
-      // name — removing it from the SAVED LIST only affects future
-      // Add/Edit dropdowns, it never touches any product that already
-      // has this name (that's just a plain string on the product record,
-      // not a reference to this list).
-      productNames = productNames.filter(v => v !== val);
-      queueSync();
-      renderPeNameSelect_();
-    });
-    const peSizeNew = document.getElementById('pe-size-new');
-    const peSizeAddBtn = document.getElementById('pe-size-add');
-    const peSizeRemoveBtn = document.getElementById('pe-size-remove');
-    function renderPeSizeSelect_(){
-      const current = peSizeSelect.value;
-      peSizeSelect.innerHTML = productSizes.map(v => `<option value="${v}">${v}</option>`).join('')
-        + '<option value="Custom">Custom…</option>';
-      peSizeSelect.value = (current && (productSizes.includes(current) || current === 'Custom')) ? current : (productSizes[0] || 'Custom');
-      peSizeRemoveBtn.disabled = !productSizes.includes(peSizeSelect.value);
-      peSizeCustom.style.display = (peSizeSelect.value === 'Custom') ? '' : 'none';
-    }
-    peSizeAddBtn.addEventListener('click', ()=>{
-      const val = peSizeNew.value.trim();
-      if(!val) return;
-      if(!productSizes.some(v => v.toLowerCase() === val.toLowerCase())){
-        productSizes.push(val);
-        queueSync();
-      }
-      peSizeNew.value = '';
-      renderPeSizeSelect_();
-      peSizeSelect.value = val;
-      peSizeCustom.style.display = 'none';
-      peSizeRemoveBtn.disabled = false;
-    });
-    peSizeSelect.addEventListener('change', ()=>{
-      peSizeCustom.style.display = (peSizeSelect.value === 'Custom') ? '' : 'none';
-      peSizeRemoveBtn.disabled = !productSizes.includes(peSizeSelect.value);
-    });
-    peSizeRemoveBtn.addEventListener('click', ()=>{
-      const val = peSizeSelect.value;
-      if(!val || val === 'Custom') return;
-      productSizes = productSizes.filter(v => v !== val);
-      queueSync();
-      renderPeSizeSelect_();
-    });
+    // UPDATED (2026-08-25, user request): Name/Size/Weight (American
+    // Pedestal Fan category only) each used to be a <select> PLUS a
+    // separate "type a new one, tap Add, tap ✕ to remove" row — two boxes
+    // to manage one field, and the odd one out compared to every other
+    // saved-suggestion field in the app, all of which already use a single
+    // search-and-manage combo box (createSuggestCombo_, defined further
+    // below — function declarations hoist, so calling it here before its
+    // textual definition is fine). Down to one box each now: the search
+    // input IS the field's actual value (read directly at save time
+    // below), typing filters/offers to add, and each saved option in the
+    // dropdown carries its own ✕ to forget it. No more separate "Custom…"
+    // option or free-text fallback input needed — typing anything not yet
+    // saved just works as the value directly, same as it always could via
+    // "Custom…" before, just without the extra box.
+    const peNameCombo = document.getElementById('pe-name-combo');
+    const peNameComboWrap = document.getElementById('pe-name-combo-wrap');
+    const peSizeCombo = document.getElementById('pe-size-combo');
+    const peSizeComboWrap = document.getElementById('pe-size-combo-wrap');
+    const peWeightCombo = document.getElementById('pe-weight-combo');
+    const peWeightComboWrap = document.getElementById('pe-weight-combo-wrap');
+    createSuggestCombo_(peNameCombo, document.getElementById('pe-name-combo-dropdown'), peNameComboWrap,
+      () => productNames, v => { productNames = v; });
+    createSuggestCombo_(peSizeCombo, document.getElementById('pe-size-combo-dropdown'), peSizeComboWrap,
+      () => productSizes, v => { productSizes = v; });
+    createSuggestCombo_(peWeightCombo, document.getElementById('pe-weight-combo-dropdown'), peWeightComboWrap,
+      () => productWeights, v => { productWeights = v; });
     const pePrice = document.getElementById('pe-price');
     const peCost = document.getElementById('pe-cost');
     const peColor = document.getElementById('pe-color');
@@ -9959,17 +10460,60 @@
     // BLOCKS a sale — a checkout can't be allowed to fail just because
     // stock bookkeeping says zero; short-shipped/back-ordered items still
     // need to be sellable. NOTE: this only runs at the moment of sale
-    // (live cart lines carry the real product id) — there is deliberately
-    // no symmetric "add stock back" on order delete/edit, since a saved
-    // transaction only keeps item NAMES (itemsSummary), not product ids,
-    // and matching back to a product by name alone would be one rename or
-    // one deleted product away from silently restocking the wrong item.
+    // (live cart lines carry the real product id) — see
+    // restockProductsForOrder_ below for the matching reversal on delete,
+    // added 2026-08-25 once orders started carrying real product ids
+    // (itemProductIds) instead of only names.
     function decrementProductStock_(cartSnapshot){
       (cartSnapshot || []).forEach(l=>{
         const p = PRODUCTS.find(x=>x.id===l.id);
         if(p && (p.stock || p.stock === 0)){
           p.stock = p.stock - (l.qty || 0);
         }
+      });
+    }
+    // FIX (2026-08-25, user request): deleting an order used to never put
+    // its stock back — a known, deliberate gap, since until now a saved
+    // order only kept item NAMES (itemsSummary), not product ids, and
+    // matching back to a product by name alone would be one rename or one
+    // deleted-and-recreated product away from silently restocking the
+    // wrong item. Orders now carry a real itemProductIds line-for-line
+    // alongside itemsSummary/itemCounts (see completeSale/addUnpaidOrder),
+    // so this can restock precisely by id instead of guessing by name.
+    //
+    // Deliberately narrow in scope, matching decrementProductStock_'s own
+    // rules exactly (so a delete always undoes precisely what the sale
+    // did, nothing more): only ever touches a product that's still
+    // stock-tracked (p.stock !== undefined) — a product deleted since the
+    // sale, or one that was never stock-tracked to begin with, is silently
+    // skipped, never recreated or backfilled. Doesn't clamp at any ceiling
+    // either, for the same reason decrementProductStock_ doesn't clamp at
+    // zero — a real re-add is a real re-add.
+    //
+    // NOT called from order EDIT: today's "Edit Transaction" modal only
+    // ever rewrites the itemsSummary DISPLAY TEXT, date/time/total/factory
+    // — it never touches itemCounts/itemProductIds (the structured data
+    // that actually drove the original stock decrement), so there is
+    // nothing for an edit to safely restock/re-decrement against. A real
+    // "restock on edit" would need the edit form itself to become a
+    // structured line-item editor first — a separate, bigger feature.
+    //
+    // An order placed before this existed (or imported via CSV, which
+    // never sets itemProductIds either) simply has nothing to restock —
+    // same graceful "blank means no data, not zero" degradation already
+    // used for itemCosts/itemRates on old orders.
+    function restockProductsForOrder_(t){
+      if(!t || !t.itemProductIds) return;
+      const ids = String(t.itemProductIds).split('\n');
+      const counts = String(t.itemCounts || '').split('\n');
+      if(ids.length !== counts.length) return; // shape mismatch — don't guess
+      ids.forEach((idStr, i)=>{
+        const id = Number(idStr);
+        if(!(id > 0)) return; // blank/custom-line (negative) — nothing to restock
+        const qty = parseFloat(counts[i]) || 0;
+        if(qty <= 0) return;
+        const p = PRODUCTS.find(x=>x.id===id);
+        if(p && (p.stock || p.stock === 0)) p.stock = p.stock + qty;
       });
     }
     const DEFAULT_REORDER_LEVEL_ = 5;
@@ -10045,30 +10589,17 @@
       refreshRawMaterialDatalist_();
       const isAmericanPedestal = activeCat === AMERICAN_PEDESTAL_CAT;
       peName.style.display = isAmericanPedestal ? 'none' : '';
-      peNameSelect.style.display = isAmericanPedestal ? '' : 'none';
-      document.getElementById('pe-name-add-wrap').style.display = isAmericanPedestal ? '' : 'none';
+      peNameComboWrap.style.display = isAmericanPedestal ? '' : 'none';
       peSizeLabel.style.display = isAmericanPedestal ? '' : 'none';
-      peSizeSelect.style.display = isAmericanPedestal ? '' : 'none';
-      document.getElementById('pe-size-add-wrap').style.display = isAmericanPedestal ? '' : 'none';
+      peSizeComboWrap.style.display = isAmericanPedestal ? '' : 'none';
       peWeightLabel.style.display = isAmericanPedestal ? '' : 'none';
-      peWeightWrap.style.display = isAmericanPedestal ? '' : 'none';
-      if(isAmericanPedestal){
-        renderPeWeightSelect_();
-        renderPeNameSelect_();
-        renderPeSizeSelect_();
-      }
+      peWeightComboWrap.style.display = isAmericanPedestal ? '' : 'none';
       if(id === null){
         document.getElementById('product-edit-title').textContent = 'Add Product';
         peName.value = '';
-        peNameSelect.value = productNames[0] || 'Custom';
-        peNameCustom.style.display = 'none';
-        peNameCustom.value = '';
-        peSizeSelect.value = productSizes[0] || 'Custom';
-        peSizeCustom.style.display = 'none';
-        peSizeCustom.value = '';
-        peWeight.value = '';
-        peWeightSelect.value = '';
-        peWeightRemoveBtn.disabled = true;
+        peNameCombo.value = '';
+        peSizeCombo.value = '';
+        peWeightCombo.value = '';
         pePrice.value = '';
         peCost.value = '';
         peColor.value = 'Black';
@@ -10081,31 +10612,9 @@
         if(!p) return;
         document.getElementById('product-edit-title').textContent = 'Edit Product';
         if(isAmericanPedestal){
-          if(productNames.includes(p.name)){
-            peNameSelect.value = p.name;
-            peNameCustom.style.display = 'none';
-            peNameCustom.value = '';
-          } else {
-            peNameSelect.value = 'Custom';
-            peNameCustom.style.display = '';
-            peNameCustom.value = p.name;
-          }
-          if(p.size && productSizes.includes(p.size)){
-            peSizeSelect.value = p.size;
-            peSizeCustom.style.display = 'none';
-            peSizeCustom.value = '';
-          } else if(p.size){
-            peSizeSelect.value = 'Custom';
-            peSizeCustom.style.display = '';
-            peSizeCustom.value = p.size;
-          } else {
-            peSizeSelect.value = productSizes[0] || 'Custom';
-            peSizeCustom.style.display = 'none';
-            peSizeCustom.value = '';
-          }
-          peWeight.value = p.weight || '';
-          peWeightSelect.value = productWeights.includes(p.weight || '') ? p.weight : '';
-          peWeightRemoveBtn.disabled = !peWeightSelect.value;
+          peNameCombo.value = p.name || '';
+          peSizeCombo.value = p.size || '';
+          peWeightCombo.value = p.weight || '';
         } else {
           peName.value = p.name;
         }
@@ -10132,13 +10641,9 @@
 
     document.getElementById('pe-save').addEventListener('click', ()=>{
       const isAmericanPedestal = activeCat === AMERICAN_PEDESTAL_CAT;
-      const name = isAmericanPedestal
-        ? (peNameSelect.value === 'Custom' ? peNameCustom.value.trim() : peNameSelect.value)
-        : peName.value.trim();
-      const size = isAmericanPedestal
-        ? (peSizeSelect.value === 'Custom' ? peSizeCustom.value.trim() : peSizeSelect.value)
-        : '';
-      const weight = isAmericanPedestal ? peWeight.value.trim() : '';
+      const name = isAmericanPedestal ? peNameCombo.value.trim() : peName.value.trim();
+      const size = isAmericanPedestal ? peSizeCombo.value.trim() : '';
+      const weight = isAmericanPedestal ? peWeightCombo.value.trim() : '';
       const price = parseFloat(pePrice.value);
       // Cost is deliberately optional (left blank = "unknown", not "free")
       // — an empty/invalid cost field stores as undefined rather than 0,
@@ -10273,6 +10778,13 @@
         // stored the already-multiplied sum, so there was no way to show a
         // real rate for a multi-item order at a different price per item.
         itemRates: cartSnapshot.map(l=> (l.price !== undefined ? String(l.price) : '')).join('\n'),
+        // ADD (2026-08-25, user request): one real product id per line,
+        // same one-per-line/blank-not-dropped shape as itemCosts/itemRates
+        // above — this is what makes restockProductsForOrder_() safe on
+        // delete. A custom (non-catalog) cart line's id is negative (see
+        // isCustom in renderCart) and simply won't match any real product
+        // when restocking, same as if it were blank.
+        itemProductIds: cartSnapshot.map(l=> String(l.id)).join('\n'),
         total: due,
         factory: factoryName || null,
         confirmed: factoryName ? false : true,
@@ -10355,6 +10867,13 @@
         // stored the already-multiplied sum, so there was no way to show a
         // real rate for a multi-item order at a different price per item.
         itemRates: cartSnapshot.map(l=> (l.price !== undefined ? String(l.price) : '')).join('\n'),
+        // ADD (2026-08-25, user request): one real product id per line,
+        // same one-per-line/blank-not-dropped shape as itemCosts/itemRates
+        // above — this is what makes restockProductsForOrder_() safe on
+        // delete. A custom (non-catalog) cart line's id is negative (see
+        // isCustom in renderCart) and simply won't match any real product
+        // when restocking, same as if it were blank.
+        itemProductIds: cartSnapshot.map(l=> String(l.id)).join('\n'),
         total: due,
         factory: factoryName || null,
         confirmed: factoryName ? false : true,
@@ -10725,7 +11244,7 @@
       // side-menu one — same count, same show/hide, computed once here.
       const headerBadge = document.getElementById('header-notifications-badge');
       if(!badge && !headerBadge) return;
-      const total = getPendingInquiries_().length + getPendingCheques_().length + getPendingSlips_().length + getLowStockAlerts_().length + getPendingOrderReceipts_().length;
+      const total = getPendingInquiries_().length + getPendingCheques_().length + getPendingSlips_().length + getLowStockAlerts_().length + getPendingOrderReceipts_().length + getBackupOverdueAlert_().length;
       const text = total > 99 ? '99+' : String(total);
       const show = total > 0;
       if(badge){ badge.textContent = text; badge.style.display = show ? '' : 'none'; }
@@ -10782,6 +11301,8 @@
         if(idx > -1) openCustomLedgerModal(idx);
       } else if(kind === 'expense'){
         setView('expenses');
+      } else if(kind === 'backup'){
+        setView('settings');
       } else {
         // 'transaction' (a payment with no slip) and 'inquiry' (an
         // unconfirmed order) both live in the Transactions list — no
@@ -10797,6 +11318,7 @@
       const slips = getPendingSlips_();
       const lowStock = getLowStockAlerts_();
       const gateReceipts = getPendingOrderReceipts_();
+      const backupAlerts = getBackupOverdueAlert_();
       updateNotificationsBadge_();
       const statsWrap = document.getElementById('notifications-stats');
       if(statsWrap){
@@ -10805,7 +11327,8 @@
           <div class="stat-card"><div class="stat-label">${tr('pending_cheque_clearances')}</div><div class="stat-val">${cheques.length}</div></div>
           <div class="stat-card"><div class="stat-label">${tr('pending_slips')}</div><div class="stat-val">${slips.length}</div></div>
           <div class="stat-card"><div class="stat-label">${tr('pending_gate_receipts')}</div><div class="stat-val">${gateReceipts.length}</div></div>
-          <div class="stat-card"><div class="stat-label">${tr('low_stock_alerts')}</div><div class="stat-val">${lowStock.length}</div></div>`;
+          <div class="stat-card"><div class="stat-label">${tr('low_stock_alerts')}</div><div class="stat-val">${lowStock.length}</div></div>
+          <div class="stat-card"><div class="stat-label">${tr('backup_alerts')}</div><div class="stat-val">${backupAlerts.length}</div></div>`;
       }
       const body = document.getElementById('notifications-body');
       if(!body) return;
@@ -10855,6 +11378,14 @@
         ),
         { kind: s.kind, name: s.name, id: (s.id !== undefined ? s.id : '') }
       ));
+      const backupRows = backupAlerts.map(a => wrapClickable(
+        notificationRowHtml_(
+          tr('backup_overdue_title'),
+          a.never ? tr('backup_never_sent_sub') : tr('backup_overdue_sub').replace('{days}', a.days),
+          tr('overdue'), 'notif-tag-overdue', true
+        ),
+        { kind: 'backup', name: '' }
+      ));
       // "order number/factory name — receipt is missing" per order, clickable
       // straight into the Add Receipt modal with that order pre-selected.
       const gateReceiptRows = gateReceipts.map(t => {
@@ -10870,7 +11401,8 @@
         notificationSectionHtml_('pending_cheque_clearances', chequeRows, 'no_pending_cheques') +
         notificationSectionHtml_('pending_slips', slipRows, 'no_pending_slips') +
         notificationSectionHtml_('pending_gate_receipts', gateReceiptRows, 'no_pending_gate_receipts') +
-        notificationSectionHtml_('low_stock_alerts', lowStockRows, 'no_low_stock');
+        notificationSectionHtml_('low_stock_alerts', lowStockRows, 'no_low_stock') +
+        notificationSectionHtml_('backup_alerts', backupRows, 'backup_up_to_date');
       body.querySelectorAll('.notif-row-clickable').forEach(el=>{
         el.addEventListener('click', ()=>{
           if(el.dataset.orderId){
@@ -13500,6 +14032,495 @@
       exportAsJPG_('Raw Material Ledger', f.headers, f.rows, exportFilename_('Raw-Material-Ledger', name, 'jpg'), true, undefined, undefined, 'Raw-Material-Ledger');
     }
 
+    // ---------------- SCRAP LEDGER (one roster+entries ledger per scrap buyer) ----------------
+    // ADD (2026-08-25, user request): "I want a scrap tab under stock tab
+    // which will have scrap item data, there will be scrap ledger, where
+    // the boxes will be Scrap Description, Weight box, item name, type and
+    // rate per kg which will be multiply by weight and will be added in
+    // debit autogenrated" + "ledger will have same payment methods for
+    // just like other ledgers have". A scrap buyer OWES the shop for scrap
+    // sold by weight — Debit=Cost owed (weight × rate/kg, auto-filled),
+    // Credit=Payment received — same direction as customerLedgerBalance_/
+    // Custom Ledger, NOT Raw Material's supplier direction (see the
+    // Code.gs comment on the ScrapBuyers balance write for the same note).
+    // Deliberately lean: no receipt attachment, no bundle/gauge/size, no
+    // stock-preview, no CSV/PDF/JPG export — none of those were asked for.
+    function scrapBuyerBalance_(b){
+      return (b.entries || []).reduce((sum,e)=> e.chequeStatus === 'bounced' ? sum : sum + (e.debit||0) - (e.credit||0), 0);
+    }
+    function scrapBuyerTotals_(b){
+      const entries = b.entries || [];
+      return {
+        debit: entries.reduce((sum,e)=> sum + (e.debit||0), 0),
+        credit: entries.reduce((sum,e)=> sum + (e.credit||0), 0)
+      };
+    }
+    function renderScrapLedger(){
+      const wrap = document.getElementById('scrapledger-table');
+      if(!wrap) return;
+      const buyers = inventory.scrapledger || [];
+
+      const statsGrid = document.getElementById('scrapledger-stats');
+      if(statsGrid){
+        const grandDebit = buyers.reduce((s,b)=> s + scrapBuyerTotals_(b).debit, 0);
+        const grandCredit = buyers.reduce((s,b)=> s + scrapBuyerTotals_(b).credit, 0);
+        const grandBal = grandDebit - grandCredit;
+        const grandBl = balanceLabel_(grandBal);
+        statsGrid.innerHTML = `
+          <div class="stat-card"><div class="stat-label">${tr('total_owed_debit')}</div><div class="stat-val">${fmt(grandDebit)}</div></div>
+          <div class="stat-card"><div class="stat-label">${tr('total_received_credit')}</div><div class="stat-val">${fmt(grandCredit)}</div></div>
+          <div class="stat-card"><div class="stat-label">${tr('overall_balance')}</div><div class="stat-val"><span class="${grandBl.cls}">${grandBl.text}</span></div></div>
+        `;
+      }
+
+      if(buyers.length === 0){
+        wrap.innerHTML = '<div class="empty-state">' + tr('no_scrap_buyers_yet') + '<br>' + tr('add_one_below') + '</div>';
+      } else {
+        let rows = '';
+        buyers.forEach((b, idx)=>{
+          const totals = scrapBuyerTotals_(b);
+          const bal = scrapBuyerBalance_(b);
+          const bl = balanceLabel_(bal);
+          rows += `
+            <tr>
+              <td class="inv-name">${b.name}</td>
+              <td class="num">${fmt(totals.debit)}</td>
+              <td class="num">${fmt(totals.credit)}</td>
+              <td class="num"><span class="${bl.cls}">${bl.text}</span></td>
+              <td class="inv-actions-cell">
+                <div class="inv-row-actions">
+                  <button class="inv-row-edit" data-idx="${idx}" title="${tr('view_ledger')}">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </button>
+                  <button class="inv-row-delete" data-idx="${idx}" title="${tr('delete_scrap_buyer')}">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>`;
+        });
+        wrap.innerHTML = `
+          <div class="table-scroll"><table class="inv-table">
+            <thead>
+              <tr>
+                <th>${tr('scrap_buyer')}</th>
+                <th class="num">${tr('total_owed_debit')}</th>
+                <th class="num">${tr('total_received_credit')}</th>
+                <th class="num">${tr('balance')}</th>
+                <th class="inv-actions-th"></th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table></div>
+        `;
+        wrap.querySelectorAll('.inv-row-edit').forEach(btn=>{
+          btn.addEventListener('click', ()=> openScrapLedgerModal(parseInt(btn.dataset.idx,10)));
+        });
+        wrap.querySelectorAll('.inv-row-delete').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const idx = parseInt(btn.dataset.idx,10);
+            if(!confirm(tr('confirm_delete_scrap_buyer').replace('{name}', buyers[idx].name))) return;
+            requirePinReverify_(()=>{
+              if(buyers[idx] && buyers[idx].name) markDeleted_('scrapledgerRoster', buyers[idx].name);
+              inventory.scrapledger.splice(idx,1);
+              renderScrapLedger();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
+          });
+        });
+      }
+      const addRow = document.createElement('button');
+      addRow.className = 'inv-add-row';
+      addRow.innerHTML = `<span style="font-size:16px;">+</span><span>${tr('add_scrap_buyer')}</span>`;
+      addRow.addEventListener('click', openAddScrapBuyerModal);
+      wrap.appendChild(addRow);
+      renderOverdueChequeBanner_();
+    }
+
+    const scrapBuyerAddModal = document.getElementById('scrapbuyer-add-modal');
+    function openAddScrapBuyerModal(){
+      document.getElementById('scrapbuyer-name-input').value = '';
+      scrapBuyerAddModal.classList.add('active');
+    }
+    document.getElementById('scrapbuyer-add-cancel').addEventListener('click', ()=> scrapBuyerAddModal.classList.remove('active'));
+    document.getElementById('scrapbuyer-add-save').addEventListener('click', ()=>{
+      const name = document.getElementById('scrapbuyer-name-input').value.trim();
+      if(!name) return;
+      inventory.scrapledger.push({ name, entries: [] });
+      scrapBuyerAddModal.classList.remove('active');
+      renderScrapLedger();
+      queueSync();
+    });
+
+    const scrapLedgerModal = document.getElementById('scrapledger-modal');
+    let currentScrapBuyerIdx = null;
+    // Mirrors editingRlEntryIdx/editingClEntryIdx above.
+    let editingSlEntryIdx = null;
+    function openScrapLedgerModal(idx){
+      currentScrapBuyerIdx = idx;
+      editingSlEntryIdx = null;
+      slDebitWasAutoFilled = false;
+      document.getElementById('sl-add-entry').textContent = tr('add_entry');
+      document.getElementById('sl-desc').value = '';
+      document.getElementById('sl-itemname').value = '';
+      document.getElementById('sl-type').value = '';
+      document.getElementById('sl-weight').value = '';
+      document.getElementById('sl-rate').value = '';
+      document.getElementById('sl-date').value = todayISO_();
+      document.getElementById('sl-debit').value = '';
+      document.getElementById('sl-credit').value = '';
+      document.getElementById('sl-method-wrap').style.display = 'none';
+      document.getElementById('sl-method-detail-wrap').style.display = 'none';
+      document.getElementById('sl-method-detail').value = '';
+      document.getElementById('sl-cheque-date-wrap').style.display = 'none';
+      document.getElementById('sl-cheque-date').value = '';
+      document.getElementById('sl-receivedby').value = '';
+      document.getElementById('sl-receivedin').value = '';
+      renderScrapLedgerModalContent_();
+      scrapLedgerModal.classList.add('active');
+    }
+    function renderScrapLedgerModalContent_(){
+      const b = (inventory.scrapledger || [])[currentScrapBuyerIdx];
+      if(!b){ scrapLedgerModal.classList.remove('active'); return; }
+      document.getElementById('sl-title').textContent = b.name;
+      const bal = scrapBuyerBalance_(b);
+      const bl = balanceLabel_(bal);
+      document.getElementById('sl-balance-line').innerHTML = tr('balance') + ': <span class="' + bl.cls + '">' + bl.text + '</span>';
+      const entriesWrap = document.getElementById('sl-entries-wrap');
+      const entries = b.entries || [];
+      if(entries.length === 0){
+        entriesWrap.innerHTML = '<div class="empty-state" style="padding:20px 10px;">' + tr('no_entries_yet') + '</div>';
+      } else {
+        let running = 0;
+        let blocks = [];
+        entries.forEach((e, eIdx)=>{
+          if(e.chequeStatus !== 'bounced') running += (e.debit||0) - (e.credit||0);
+          const chequeCls = chequeRowClass_(e);
+          const isPendingCheque = e.method === 'Cheque' && e.chequeStatus === 'pending';
+          const methodBadge = e.method ? `<span class="cheque-badge method">${e.method}${e.detail ? ' (' + e.detail + ')' : ''}</span>` : '';
+          const receivedBadge = (e.receivedBy || e.receivedIn) ? `<span class="cheque-badge method">${[e.receivedBy, e.receivedIn].filter(Boolean).join(' · ')}</span>` : '';
+          // Item Name/Type/Weight/Rate only show up when at least one was
+          // set on this entry — same "only show what's actually there"
+          // convention as the Raw Material Ledger's specLine.
+          const specParts = [];
+          if(e.itemName) specParts.push(tr('item_name') + ': ' + e.itemName);
+          if(e.type) specParts.push(tr('type') + ': ' + e.type);
+          if(e.weight !== undefined && e.weight !== '') specParts.push(tr('weight') + ': ' + e.weight + 'kg');
+          if(e.rate !== undefined && e.rate !== '') specParts.push(tr('rate_per_kg') + ': ' + fmt(e.rate));
+          const specLine = specParts.length ? `<div class="ledger-entry-spec-row">${specParts.join(' · ')}</div>` : '';
+          blocks.push(`
+            <div class="ledger-entry-block ${chequeCls}">
+            <div class="ledger-entry-row">
+              <div class="ledger-entry-when">${e.date}</div>
+              <div class="ledger-entry-desc">${e.desc || ''}</div>
+              <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
+              <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
+              <div class="ledger-entry-bal">${fmt(running)}</div>
+              <button class="ledger-entry-del sl-entry-edit" data-idx="${eIdx}" title="${tr('edit_entry')}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+              <button class="ledger-entry-del" data-idx="${eIdx}" title="Delete entry">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              </button>
+            </div>
+            ${specLine}
+            ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
+            </div>`);
+        });
+        entriesWrap.innerHTML = joinLedgerBlocks_(blocks, 'scrap');
+        entriesWrap.querySelectorAll('.sl-entry-edit').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const eIdx = parseInt(btn.dataset.idx,10);
+            const e = b.entries[eIdx];
+            if(!e) return;
+            editingSlEntryIdx = eIdx;
+            document.getElementById('sl-desc').value = e.desc || '';
+            document.getElementById('sl-itemname').value = e.itemName || '';
+            document.getElementById('sl-type').value = e.type || '';
+            document.getElementById('sl-weight').value = (e.weight !== undefined) ? e.weight : '';
+            document.getElementById('sl-rate').value = (e.rate !== undefined) ? e.rate : '';
+            slDebitWasAutoFilled = false; // editing an existing entry — never clobber its stored Debit on open
+            document.getElementById('sl-date').value = dmyToISO_(e.date) || todayISO_();
+            document.getElementById('sl-debit').value = e.debit || '';
+            document.getElementById('sl-credit').value = e.credit || '';
+            const showMethod = (e.debit > 0 || e.credit > 0);
+            document.getElementById('sl-method-wrap').style.display = showMethod ? '' : 'none';
+            document.getElementById('sl-method').value = e.method || 'Cash';
+            document.getElementById('sl-method-detail-wrap').style.display = (e.method && e.method !== 'Cash') ? '' : 'none';
+            document.getElementById('sl-method-detail').value = e.detail || '';
+            document.getElementById('sl-method-detail').placeholder = e.method === 'Cheque' ? tr('cheque_number_placeholder') : tr('method_detail_placeholder');
+            document.getElementById('sl-cheque-date-wrap').style.display = e.method === 'Cheque' ? '' : 'none';
+            document.getElementById('sl-cheque-date').value = dmyToISO_(e.chequeDate) || '';
+            document.getElementById('sl-receivedby').value = e.receivedBy || '';
+            document.getElementById('sl-receivedin').value = e.receivedIn || '';
+            document.getElementById('sl-add-entry').textContent = tr('update_entry');
+            document.getElementById('sl-desc').scrollIntoView({ behavior:'smooth', block:'center' });
+          });
+        });
+        entriesWrap.querySelectorAll('.ledger-entry-del:not(.sl-entry-edit)').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            if(!confirm(tr('confirm_delete_entry'))) return;
+            requirePinReverify_(()=>{
+              const eIdx = parseInt(btn.dataset.idx,10);
+              const removed = b.entries[eIdx];
+              if(removed && removed.id) markDeleted_('scrapledgerEntries', removed.id);
+              b.entries.splice(eIdx,1);
+              if(editingSlEntryIdx === eIdx){
+                editingSlEntryIdx = null;
+                document.getElementById('sl-add-entry').textContent = tr('add_entry');
+              }
+              renderScrapLedgerModalContent_();
+              renderScrapLedger();
+              renderOverdueChequeBanner_();
+              queueSync();
+            }, tr('confirm_pin_delete_hint'));
+          });
+        });
+        entriesWrap.querySelectorAll('.cheque-action-btn').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const eIdx = parseInt(btn.dataset.idx,10);
+            b.entries[eIdx].chequeStatus = btn.dataset.action;
+            renderScrapLedgerModalContent_();
+            renderScrapLedger();
+            renderOverdueChequeBanner_();
+            queueSync();
+            showToast_(btn.dataset.action === 'cleared' ? tr('cheque_cleared') : tr('mark_bounced'));
+          });
+        });
+      }
+    }
+    document.getElementById('sl-close').addEventListener('click', ()=> scrapLedgerModal.classList.remove('active'));
+    document.getElementById('scrapbuyer-delete').addEventListener('click', ()=>{
+      if(currentScrapBuyerIdx === null) return;
+      const b = inventory.scrapledger[currentScrapBuyerIdx];
+      if(!confirm(tr('confirm_delete_scrap_buyer').replace('{name}', b.name))) return;
+      requirePinReverify_(()=>{
+        (b.entries || []).forEach(e=>{ if(e.id) markDeleted_('scrapledgerEntries', e.id); });
+        if(b.name) markDeleted_('scrapledgerRoster', b.name);
+        inventory.scrapledger.splice(currentScrapBuyerIdx,1);
+        scrapLedgerModal.classList.remove('active');
+        renderScrapLedger();
+        queueSync();
+      }, tr('confirm_pin_delete_hint'));
+    });
+    // Weight × Rate per kg auto-fills Debit — Owed, same "keep
+    // recalculating live until the person edits Debit directly, then stop
+    // touching it" pattern as plRecalcCreditFromRate_/rlRecalcCreditFromRate_
+    // above, just targeting Debit instead of Credit since a scrap buyer's
+    // Debit is what THEY owe (the value of the scrap), not what was paid.
+    let slDebitWasAutoFilled = false;
+    // Debit AND Credit both get the same Cash/Online/Cheque/Item-Material
+    // options — same reasoning as cl-debit/cl-credit above: a Debit entry
+    // here is normally the auto-computed scrap value, but Credit (payment
+    // actually received) is just as often what needs a method attached.
+    // Shared by both the direct Debit/Credit input listeners below AND
+    // slRecalcDebitFromRate_ — a JS-set `.value` (from Weight × Rate)
+    // never fires an 'input' event on its own, so relying only on
+    // sl-debit's own input listener would leave the method block hidden
+    // whenever Debit was filled purely via the Weight/Rate auto-calc.
+    function slUpdateMethodWrapVisibility_(){
+      const show = parseFloat(document.getElementById('sl-debit').value) > 0 || parseFloat(document.getElementById('sl-credit').value) > 0;
+      document.getElementById('sl-method-wrap').style.display = show ? '' : 'none';
+    }
+    function slRecalcDebitFromRate_(){
+      const weight = parseFloat(document.getElementById('sl-weight').value) || 0;
+      const rate = parseFloat(document.getElementById('sl-rate').value) || 0;
+      const debitEl = document.getElementById('sl-debit');
+      const debitIsEmpty = (parseFloat(debitEl.value) || 0) === 0;
+      if(weight > 0 && rate > 0 && (debitIsEmpty || slDebitWasAutoFilled)){
+        debitEl.value = weight * rate;
+        slDebitWasAutoFilled = true;
+        slUpdateMethodWrapVisibility_();
+      }
+    }
+    document.getElementById('sl-weight').addEventListener('input', slRecalcDebitFromRate_);
+    document.getElementById('sl-rate').addEventListener('input', slRecalcDebitFromRate_);
+    document.getElementById('sl-debit').addEventListener('input', function(){
+      slDebitWasAutoFilled = false;
+      slUpdateMethodWrapVisibility_();
+    });
+    document.getElementById('sl-credit').addEventListener('input', slUpdateMethodWrapVisibility_);
+    function slMethodChangeHandler_(){
+      const val = document.getElementById('sl-method').value;
+      document.getElementById('sl-method-detail-wrap').style.display = val === 'Cash' ? 'none' : '';
+      document.getElementById('sl-cheque-date-wrap').style.display = val === 'Cheque' ? '' : 'none';
+      document.getElementById('sl-method-detail').placeholder = val === 'Cheque' ? tr('cheque_number_placeholder') : tr('method_detail_placeholder');
+    }
+    document.getElementById('sl-method').addEventListener('change', slMethodChangeHandler_);
+    document.getElementById('sl-method').addEventListener('input', slMethodChangeHandler_);
+    document.getElementById('sl-add-entry').addEventListener('click', ()=>{
+      if(currentScrapBuyerIdx === null) return;
+      const desc = document.getElementById('sl-desc').value.trim();
+      const itemName = document.getElementById('sl-itemname').value.trim();
+      const type = document.getElementById('sl-type').value.trim();
+      const weightRaw = document.getElementById('sl-weight').value.trim();
+      const rateRaw = document.getElementById('sl-rate').value.trim();
+      const weight = (weightRaw !== '' && parseFloat(weightRaw) >= 0) ? parseFloat(weightRaw) : undefined;
+      const rate = (rateRaw !== '' && parseFloat(rateRaw) >= 0) ? parseFloat(rateRaw) : undefined;
+      const debit = parseFloat(document.getElementById('sl-debit').value) || 0;
+      const credit = parseFloat(document.getElementById('sl-credit').value) || 0;
+      if(debit <= 0 && credit <= 0){ alert('Enter a Debit or Credit amount.'); return; }
+      const hasAmount = debit > 0 || credit > 0;
+      const method = hasAmount ? document.getElementById('sl-method').value : '';
+      const detail = hasAmount ? document.getElementById('sl-method-detail').value.trim() : '';
+      const chequeDate = (hasAmount && method === 'Cheque') ? isoToDMY_(document.getElementById('sl-cheque-date').value) : '';
+      const receivedBy = hasAmount ? document.getElementById('sl-receivedby').value.trim() : '';
+      const receivedIn = hasAmount ? document.getElementById('sl-receivedin').value.trim() : '';
+      const chosenDate = isoToDMY_(document.getElementById('sl-date').value) || new Date().toLocaleDateString('en-GB');
+      const b = inventory.scrapledger[currentScrapBuyerIdx];
+      b.entries = b.entries || [];
+      const wasEditingSlEntry_ = editingSlEntryIdx !== null;
+      function commitSlEntrySave_(){
+        if(editingSlEntryIdx !== null){
+          const existing = b.entries[editingSlEntryIdx];
+          if(existing){
+            existing.desc = desc;
+            if(itemName) existing.itemName = itemName; else delete existing.itemName;
+            if(type) existing.type = type; else delete existing.type;
+            if(weight !== undefined) existing.weight = weight; else delete existing.weight;
+            if(rate !== undefined) existing.rate = rate; else delete existing.rate;
+            existing.date = chosenDate;
+            existing.debit = debit;
+            existing.credit = credit;
+            existing.method = method;
+            existing.detail = detail;
+            existing.receivedBy = receivedBy;
+            existing.receivedIn = receivedIn;
+            if(hasAmount && method === 'Cheque'){
+              existing.chequeDate = chequeDate;
+              if(!existing.chequeStatus) existing.chequeStatus = 'pending';
+            } else {
+              existing.chequeDate = '';
+              existing.chequeStatus = '';
+            }
+          }
+          editingSlEntryIdx = null;
+          document.getElementById('sl-add-entry').textContent = tr('add_entry');
+        } else {
+          const now = new Date();
+          const newEntry = {
+            id: 'sl' + Date.now(),
+            date: chosenDate,
+            time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
+            desc, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (hasAmount && method === 'Cheque') ? 'pending' : '',
+            device: DEVICE_NAME
+          };
+          if(itemName) newEntry.itemName = itemName;
+          if(type) newEntry.type = type;
+          if(weight !== undefined) newEntry.weight = weight;
+          if(rate !== undefined) newEntry.rate = rate;
+          b.entries.push(newEntry);
+        }
+        document.getElementById('sl-desc').value = '';
+        document.getElementById('sl-itemname').value = '';
+        document.getElementById('sl-type').value = '';
+        document.getElementById('sl-weight').value = '';
+        document.getElementById('sl-rate').value = '';
+        slDebitWasAutoFilled = false;
+        document.getElementById('sl-date').value = todayISO_();
+        document.getElementById('sl-debit').value = '';
+        document.getElementById('sl-credit').value = '';
+        document.getElementById('sl-method-wrap').style.display = 'none';
+        document.getElementById('sl-method-detail-wrap').style.display = 'none';
+        document.getElementById('sl-method-detail').value = '';
+        document.getElementById('sl-cheque-date-wrap').style.display = 'none';
+        document.getElementById('sl-cheque-date').value = '';
+        document.getElementById('sl-receivedby').value = '';
+        document.getElementById('sl-receivedin').value = '';
+        renderScrapLedgerModalContent_();
+        renderScrapLedger();
+        renderOverdueChequeBanner_();
+        renderScrapStockSummary_();
+        queueSync();
+        showToast_(
+          sheetConfigured()
+            ? `Entry added to ${b.name}'s scrap ledger — syncing to sheet`
+            : `Entry added to ${b.name}'s scrap ledger`
+        );
+      }
+      if(wasEditingSlEntry_){
+        requirePinReverify_(commitSlEntrySave_, tr('confirm_pin_edit_hint'));
+      } else {
+        commitSlEntrySave_();
+      }
+    });
+
+    // ADD (2026-08-25, user request): "weight and payment will be recorded
+    // and shown on outside the ledger in two different boxed with date" —
+    // a Stock-tab rollup of the Scrap Ledger's totals across every buyer.
+    // Weight box = total kg across every entry that has a weight; Payment
+    // box = total Credit (actual payments received from buyers) — each
+    // shows the date of its own most recent contributing entry, not
+    // "today", so it reads as "as of when this was last updated".
+    function renderScrapStockSummary_(){
+      const statsGrid = document.getElementById('scrapstock-stats');
+      if(!statsGrid) return;
+      let totalWeight = 0, weightDate = null;
+      let totalPayment = 0, paymentDate = null;
+      (inventory.scrapledger || []).forEach(b=>{
+        (b.entries || []).forEach(e=>{
+          const d = parseDMY_(e.date);
+          if(e.weight){
+            totalWeight += e.weight;
+            if(d && (!weightDate || d > weightDate)) weightDate = d;
+          }
+          if(e.credit){
+            totalPayment += e.credit;
+            if(d && (!paymentDate || d > paymentDate)) paymentDate = d;
+          }
+        });
+      });
+      const fmtDate_ = d => d ? isoToDMY_(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`) : tr('no_entries_yet');
+      statsGrid.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-label">${tr('scrap_weight_total')}</div>
+          <div class="stat-val">${totalWeight ? (totalWeight + 'kg') : '0kg'}</div>
+          <div style="font-size:10.5px; color:var(--text-dim); margin-top:4px;">${tr('as_of')} ${fmtDate_(weightDate)}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">${tr('scrap_payment_total')}</div>
+          <div class="stat-val">${fmt(totalPayment)}</div>
+          <div style="font-size:10.5px; color:var(--text-dim); margin-top:4px;">${tr('as_of')} ${fmtDate_(paymentDate)}</div>
+        </div>
+      `;
+    }
+
+    // ADD (2026-08-25, user request: "should have export options on right
+    // top of scrap page as well") — same CSV/PDF/JPG export pipeline every
+    // other ledger has, wired into the generic openExportFilterModal/
+    // filterExportColumns_/openLedgerExportSettings_ machinery below (see
+    // the 'scrapledger' branches added there). Column widths are left to
+    // auto-size (undefined) rather than hand-tuned like Raw Material's,
+    // since there's no real export screenshot yet to measure against.
+    function scrapLedgerRows_(dateFrom, dateTo, buyerName){
+      const rows = [];
+      (inventory.scrapledger || []).forEach(b=>{
+        if(buyerName && b.name !== buyerName) return;
+        let running = 0;
+        (b.entries || []).forEach(e=>{
+          if(e.chequeStatus !== 'bounced') running += (e.debit||0) - (e.credit||0);
+          const d = parseDMY_(e.date);
+          const inRange = (!dateFrom || !d || d >= dateFrom) && (!dateTo || !d || d <= dateTo);
+          if(inRange) rows.push([b.name, e.date, e.time, e.desc || '', e.itemName || '', e.type || '', (e.weight !== undefined ? e.weight : ''), (e.rate !== undefined ? e.rate : ''), e.debit || 0, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
+        });
+      });
+      return rows;
+    }
+    const SCRAP_LEDGER_HEADERS = ['Buyer','Date','Time','Description','Item Name','Type','Weight','Rate per kg','Debit','Credit','Balance','Received By','Received In'];
+    function exportScrapLedgerCSVRows_(rows, name){
+      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows);
+      const csv = toCSV_(f.headers, f.rows);
+      downloadCSV_(exportFilename_('Scrap-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Scrap-Ledger');
+    }
+    function exportScrapLedgerPDFRows_(rows, name){
+      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows);
+      exportPDF_('Scrap Ledger', f.headers, f.rows, exportFilename_('Scrap-Ledger', name, 'pdf'), 'l', null, undefined, 'Scrap-Ledger');
+    }
+    function exportScrapLedgerJPGRows_(rows, name){
+      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows);
+      exportAsJPG_('Scrap Ledger', f.headers, f.rows, exportFilename_('Scrap-Ledger', name, 'jpg'), true, undefined, undefined, 'Scrap-Ledger');
+    }
+
     // ---------------- CUSTOM LEDGERS (separate per-supplier ledgers) ----------------
     function customLedgerBalance_(cl){
       // Debit = Cost (owed), Credit = Payment — opposite direction from the
@@ -15189,6 +16210,13 @@
       () => rawGaugeCounts, v => { rawGaugeCounts = v; });
     createSuggestCombo_(document.getElementById('rl-size'), document.getElementById('rl-size-dropdown'), document.getElementById('rl-size-wrap'),
       () => rawSizeCounts, v => { rawSizeCounts = v; });
+    // Scrap Ledger entry form — Scrap Description / Item Name / Type.
+    createSuggestCombo_(document.getElementById('sl-desc'), document.getElementById('sl-desc-dropdown'), document.getElementById('sl-desc-wrap'),
+      () => scrapDescriptions, v => { scrapDescriptions = v; });
+    createSuggestCombo_(document.getElementById('sl-itemname'), document.getElementById('sl-itemname-dropdown'), document.getElementById('sl-itemname-wrap'),
+      () => scrapItemNames, v => { scrapItemNames = v; });
+    createSuggestCombo_(document.getElementById('sl-type'), document.getElementById('sl-type-dropdown'), document.getElementById('sl-type-wrap'),
+      () => scrapTypes, v => { scrapTypes = v; });
     // Paint Ledger entry form — Item Size / Item Type / Factory Name.
     createSuggestCombo_(document.getElementById('pl-itemsize'), document.getElementById('pl-itemsize-dropdown'), document.getElementById('pl-itemsize-wrap'),
       () => paintItemSizes, v => { paintItemSizes = v; });
@@ -15210,6 +16238,7 @@
       ['cul-receivedby','cul-receivedby-dropdown','cul-receivedby-wrap'],
       ['wl-receivedby','wl-receivedby-dropdown','wl-receivedby-wrap'],
       ['cl-receivedby','cl-receivedby-dropdown','cl-receivedby-wrap'],
+      ['sl-receivedby','sl-receivedby-dropdown','sl-receivedby-wrap'],
     ].forEach(([inputId, ddId, wrapId])=>{
       createSuggestCombo_(document.getElementById(inputId), document.getElementById(ddId), document.getElementById(wrapId),
         () => paymentReceivedByList, v => { paymentReceivedByList = v; });
@@ -15221,6 +16250,7 @@
       ['cul-receivedin','cul-receivedin-dropdown','cul-receivedin-wrap'],
       ['wl-receivedin','wl-receivedin-dropdown','wl-receivedin-wrap'],
       ['cl-receivedin','cl-receivedin-dropdown','cl-receivedin-wrap'],
+      ['sl-receivedin','sl-receivedin-dropdown','sl-receivedin-wrap'],
     ].forEach(([inputId, ddId, wrapId])=>{
       createSuggestCombo_(document.getElementById(inputId), document.getElementById(ddId), document.getElementById(wrapId),
         () => paymentReceivedInList, v => { paymentReceivedInList = v; });
@@ -18033,6 +19063,13 @@
         }
       }
       if(t.id) markDeleted_('transactionsLog', t.id);
+      // FIX (2026-08-25, user request): put back whatever this order took
+      // out of finished-goods stock — see restockProductsForOrder_ for the
+      // exact rules (id-matched, tracked products only, no guessing by
+      // name). Runs while `t` still has its itemProductIds/itemCounts, so
+      // must stay before the splice below.
+      restockProductsForOrder_(t);
+      refreshProductStockViewsIfActive_();
       transactionsLog.splice(idx,1);
     }
 
@@ -18939,17 +19976,18 @@
       const isFactoryLedger = section === 'factoryledger';
       const isPainterLedger = section === 'painterledger';
       const isCustomLedger = section === 'customledger';
+      const isScrapLedger = section === 'scrapledger';
       const currentPainterName = (isPainterLedger && currentPainterIdx !== null && inventory.paint[currentPainterIdx]) ? inventory.paint[currentPainterIdx].name : '';
       const currentCustomLedgerName = (isCustomLedger && currentCustomLedgerIdx !== null && customLedgers[currentCustomLedgerIdx]) ? customLedgers[currentCustomLedgerIdx].name : '';
-      const title = isTxn ? 'Export Transactions' : (isRawLedger ? 'Export Raw Material Ledger' : (isLabourLedger ? 'Export Labour Ledger' : (isFactoryLedger ? 'Export ' + (currentCustomerName || '') : (isPainterLedger ? 'Export ' + currentPainterName : (isCustomLedger ? 'Export ' + currentCustomLedgerName : 'Export Paint Ledger')))));
+      const title = isTxn ? 'Export Transactions' : (isRawLedger ? 'Export Raw Material Ledger' : (isLabourLedger ? 'Export Labour Ledger' : (isFactoryLedger ? 'Export ' + (currentCustomerName || '') : (isPainterLedger ? 'Export ' + currentPainterName : (isCustomLedger ? 'Export ' + currentCustomLedgerName : (isScrapLedger ? 'Export Scrap Ledger' : 'Export Paint Ledger'))))));
       document.getElementById('ef-title').textContent = title + ' — ' + format.toUpperCase();
       // A factory/painter/custom ledger export is already scoped to one
       // customer/painter/ledger (the one you have open) — no Name dropdown
       // needed, just dates (plus Order # for factory ledger).
       document.getElementById('ef-name-label').style.display = (isFactoryLedger || isPainterLedger || isCustomLedger) ? 'none' : '';
       document.getElementById('ef-name').style.display = (isFactoryLedger || isPainterLedger || isCustomLedger) ? 'none' : '';
-      document.getElementById('ef-name-label').textContent = isTxn ? 'Factory / Workshop' : (isRawLedger ? tr('supplier') : (isLabourLedger ? tr('labour_name') : tr('painter')));
-      const names = isTxn ? factories.map(f=>f.name) : (isRawLedger ? (inventory.rawledger||[]).map(s=>s.name) : (isLabourLedger ? (inventory.labourledger||[]).map(w=>w.name) : (inventory.paint||[]).map(p=>p.name)));
+      document.getElementById('ef-name-label').textContent = isTxn ? 'Factory / Workshop' : (isRawLedger ? tr('supplier') : (isLabourLedger ? tr('labour_name') : (isScrapLedger ? tr('scrap_buyer') : tr('painter'))));
+      const names = isTxn ? factories.map(f=>f.name) : (isRawLedger ? (inventory.rawledger||[]).map(s=>s.name) : (isLabourLedger ? (inventory.labourledger||[]).map(w=>w.name) : (isScrapLedger ? (inventory.scrapledger||[]).map(s=>s.name) : (inventory.paint||[]).map(p=>p.name))));
       document.getElementById('ef-name').innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
       document.getElementById('ef-order-label').style.display = (isTxn || isFactoryLedger) ? '' : 'none';
       document.getElementById('ef-order-number').style.display = (isTxn || isFactoryLedger) ? '' : 'none';
@@ -18961,7 +19999,7 @@
       // From/To and unchecks "All Dates", but the user can still freely
       // change or clear it here same as always, this only changes what the
       // modal opens showing.
-      const exportRangeLedgerKey = isRawLedger ? 'raw' : (isLabourLedger ? 'labour' : (isFactoryLedger ? 'customerledger' : (isPainterLedger ? 'paint' : (isCustomLedger ? 'custom' : section))));
+      const exportRangeLedgerKey = isRawLedger ? 'raw' : (isLabourLedger ? 'labour' : (isFactoryLedger ? 'customerledger' : (isPainterLedger ? 'paint' : (isCustomLedger ? 'custom' : (isScrapLedger ? 'scrap' : section)))));
       const defaultRange = computeDefaultExportRange_(exportRangeLedgerKey);
       document.getElementById('ef-date-from').value = defaultRange.from;
       document.getElementById('ef-date-to').value = defaultRange.to;
@@ -19037,6 +20075,12 @@
         if(format === 'csv') exportLabourLedgerCSVRows_(rows, name);
         if(format === 'pdf') exportLabourLedgerPDFRows_(rows, name);
         if(format === 'jpg') exportLabourLedgerJPGRows_(rows, name);
+      } else if(section === 'scrapledger'){
+        const rows = scrapLedgerRows_(dateFrom, dateTo, name);
+        if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
+        if(format === 'csv') exportScrapLedgerCSVRows_(rows, name);
+        if(format === 'pdf') exportScrapLedgerPDFRows_(rows, name);
+        if(format === 'jpg') exportScrapLedgerJPGRows_(rows, name);
       } else {
         const rows = paintLedgerRows_(dateFrom, dateTo, name);
         if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
@@ -19847,12 +20891,14 @@
       labour: ['worker','date','time','type','size','units','note','payment','advance','loan','credit','balance','receivedBy','receivedIn'],
       transactions: ['id','date','time','items','itemCount','rate','size','colour','total','factory','status','debit','credit','balance','paymentMode'],
       customerledger: ['factory','date','desc','items','size','colour','qty','debit','credit','balance','method','paymentNum','chequeStatus'],
-      expenses: ['date','desc','category','amount']
+      expenses: ['date','desc','category','amount'],
+      scrap: ['buyer','date','time','desc','itemName','type','weight','rate','debit','credit','balance','receivedBy','receivedIn']
     };
     const EXPORT_LEDGER_TITLES_ = {
       paint: 'Paint Ledger', raw: 'Raw Material Ledger', custom: 'Custom Ledgers',
       labour: 'Labour Ledger', transactions: 'Transactions',
-      customerledger: 'Customer / Factory Ledger', expenses: 'Expenses'
+      customerledger: 'Customer / Factory Ledger', expenses: 'Expenses',
+      scrap: 'Scrap Ledger'
     };
     // Same column-label text the exports themselves use for each ledger —
     // reused as-is for the Export Settings checkbox labels below, so a
@@ -19862,7 +20908,8 @@
     const EXPORT_LEDGER_HEADERS_ = {
       paint: PAINT_LEDGER_HEADERS, raw: RAW_LEDGER_HEADERS, custom: CUSTOM_LEDGER_HEADERS,
       labour: LABOUR_LEDGER_HEADERS, transactions: TXN_EXPORT_HEADERS,
-      customerledger: CUSTOMER_LEDGER_HEADERS, expenses: ['Date','Description','Category','Amount']
+      customerledger: CUSTOMER_LEDGER_HEADERS, expenses: ['Date','Description','Category','Amount'],
+      scrap: SCRAP_LEDGER_HEADERS
     };
     const OVERVIEW_MODULE_DEFS_ = [
       { key:'summary', labelKey:'module_summary' },
@@ -20010,6 +21057,10 @@
     window.openPaintLedgerSettings_ = () => openLedgerSettings_('paint', tr('paint_title'));
     window.openLabourLedgerExportSettings_ = () => openLedgerExportSettings_('labour', tr('labourledger_title'));
     window.openLabourLedgerSettings_ = () => openLedgerSettings_('labour', tr('labourledger_title'));
+    // ADD (2026-08-25, user request): export options for the Scrap Ledger
+    // page — same Export dropdown (PDF/JPG/CSV) + column-picker settings
+    // icon every other ledger's page has, top-right of the header.
+    window.openScrapExportSettings_ = () => openLedgerExportSettings_('scrap', tr('scrapledger_title'));
     window.openPainterModalExportSettings_ = () => {
       const p = inventory.paint[currentPainterIdx];
       openLedgerExportSettings_('paint', p ? p.name : tr('paint_title'));
