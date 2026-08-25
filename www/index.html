@@ -6980,7 +6980,18 @@
           const suspiciousArea = looksLikeDataLoss_(d);
           if(suspiciousArea){
             console.error('[sheet-sync] refused to apply load — would have zeroed out: ' + suspiciousArea, d);
-            setSyncStatus('error', 'Sheet data looked incomplete — kept local data');
+            // FIX (2026-08-26, user report "both devices stopped syncing"
+            // turned out to be this exact guard tripping with no way to
+            // tell WHICH category triggered it — the banner just said
+            // "incomplete" with no detail, so diagnosing it meant guessing
+            // from screenshots back and forth. looksLikeDataLoss_ already
+            // knew the answer (it returns the category label); just surface
+            // it, the same way a real save failure's error message already
+            // does via lastSyncErrorDetail_ (see Settings > Sync, and the
+            // 2026-08-23 comment on renderSyncSettingsCard_ — the tooltip
+            // this also sets doesn't work on a touchscreen, Settings does).
+            lastSyncErrorDetail_ = 'Protecting local "' + suspiciousArea + '" — the sheet came back with none, but this device still has real ' + suspiciousArea + ' data that isn\'t confirmed deleted (see Settings > Sync).';
+            setSyncStatus('error', 'Sheet data looked incomplete — kept local data', lastSyncErrorDetail_);
             return false;
           }
           if(Array.isArray(d.transactionsLog)) transactionsLog = d.transactionsLog.map(migrateTxnPayment_);
@@ -10659,8 +10670,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.25.11";
-    const APP_VERSION_NOTE = "Fixed (multi-device delete sync): reported as \"everything auto-deletes on restart\" / \"deletes don't sync between devices while adds work fine.\" Root cause: the backend only lets a category (Factories, Transactions, a ledger, etc.) shrink to zero if this device can PROVE every item still on the sheet was deliberately deleted by it — that proof depends on this device having just checked the real sheet. Saves had a speed shortcut that could skip re-checking the sheet if it looked recently synced, which is harmless for adding something but meant a delete could be judged against a slightly stale picture of the sheet and get wrongly refused (\"Refused to overwrite\" / stuck \"Retrying\") — exactly the pattern seen today across two devices. Every deletion now forces a guaranteed-fresh sheet check immediately before the next save, bypassing that shortcut, so the guard's proof is always based on the truest possible data. Also includes the earlier same-day Code.gs fix (one guarded tab's refusal no longer blocks every other tab's save in the same pass) and the Raw Material Stock fixes below — see status docs for full history.";
+    const APP_VERSION = "2026.08.26.2";
+    const APP_VERSION_NOTE = "Fixed: the \"Sheet data looked incomplete — kept local data\" banner used to give no clue WHICH category triggered it, so tracking down a stuck device meant guessing from screenshots. It now records exactly which category (Factories, Transactions, a specific ledger, etc.) is being protected and why — check Settings > Sync for the detail after seeing this banner. Also includes: real push notifications (the @capacitor/push-notifications native plugin, wired to your Firebase google-services.json — the app-side piece that was still missing after the 2026-08-24 backend/FCM setup; tap \"Enable\" under Notification Alerts once per device after installing this build) and the 2026.08.25.11 multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;

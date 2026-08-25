@@ -38,6 +38,11 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Push notifications (@capacitor/push-notifications, added 2026-08-26):
+         required on Android 13+ (API 33+, and this app targets API 36) for the
+         runtime permission prompt to even appear - without this declared here,
+         PushNotifications.requestPermissions() silently does nothing. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Needed for fingerprint quick-unlock (@capgo/capacitor-native-biometric) -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- FIX (2026-08-23, Galaxy Tab A / Android 8 report): exported files
