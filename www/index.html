@@ -2066,6 +2066,15 @@
            behaviour of that side-nav entry (see updateNotificationsBadge_
            below, which now updates both). The side-menu entry is left in
            place too — this only adds a faster way in, nothing is removed. -->
+      <!-- ADD (2026-08-25, user request: "add notifications settings on top
+           right left next to notifications in ⚙️") — one-tap shortcut to
+           the Notification Alerts card (push toggle + frequency/reminder
+           settings), which otherwise means opening Notifications and
+           scrolling all the way past every alert section to reach it. Sits
+           immediately left of the bell it configures. -->
+      <button type="button" class="theme-toggle" id="header-notif-settings-btn" title="Notification Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
       <button type="button" class="theme-toggle header-notif-btn" id="header-notifications-btn" title="Notifications">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="header-notif-badge" id="header-notifications-badge" style="display:none;"></span>
@@ -2284,7 +2293,7 @@
              markup lives) — see renderNotifications() below for where the
              per-view-open repopulation moved to (was in
              renderSettingsView_()). -->
-        <div class="settings-card" style="margin-top:22px;">
+        <div class="settings-card" id="notif-alerts-settings-card" style="margin-top:22px;">
           <div class="settings-card-header" style="--settings-icon-color:var(--orange);">
             <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
             <div class="settings-card-title" data-i18n="notif_settings_title">Notification Alerts</div>
@@ -4466,16 +4475,18 @@
     </div>
     <label class="field-label" data-i18n="price_rs">Price (Rs)</label>
     <input class="field-input" id="pe-price" type="number" min="0" placeholder="0">
-    <!-- ADD (2026-08-20): cost is what YOU pay to make/stock this item;
-         price is what you charge for it. Without a cost on record, "Net
-         Profit" anywhere in this app can only ever mean Sales − Expenses
-         in aggregate — never which products actually make money vs. which
-         ones are just high-revenue. Optional/blank-safe on purpose (an
-         existing install has no cost data yet) — see profitMargin_() /
-         productMarginBadge_() below, both treat a missing cost as
-         "unknown", never as zero. -->
-    <label class="field-label" data-i18n="cost_rs">Cost (Rs) <span style="font-weight:400; color:var(--text-dim); text-transform:none;" data-i18n="cost_rs_optional_hint">— optional, what this item costs you</span></label>
-    <input class="field-input" id="pe-cost" type="number" min="0" placeholder="0">
+    <!-- REMOVED (2026-08-25, user request): "Cost (Rs)" — used to sit here,
+         optionally capturing what an item costs to make/stock so orders
+         could show a Gross Margin figure alongside Net Profit. User asked
+         to remove it from both the cart-side capture (addToCart no longer
+         reads/passes a cost) and the Overview widgets that surfaced it —
+         see the removed computeGrossMargin_() and its two "Gross Margin"/
+         "Orders With Cost Data" metric rows in renderOverview(). Left
+         wholly out rather than hidden: no field, no cart capture, no
+         itemCosts written on new orders (Code.gs's Transactions 'itemCosts'
+         column is untouched/still exists — it just stays blank on every
+         order from here on, same append-only-safe pattern as any other
+         optional column going unused). -->
     <!-- REMOVED (2026-08-24, user request): "Stock Quantity" used to be
          editable per-product right here — user asked for it to come out of
          this form too ("yeah I'll decide later about stock"), same as the
@@ -7407,6 +7418,22 @@
     // the backend worth updating yet.
     let PUSH_TOKEN_ = '';
     try{ const savedPushToken = localStorage.getItem('pos-push-token'); if(savedPushToken) PUSH_TOKEN_ = savedPushToken; }catch(e){}
+    // FIX (2026-08-25, user report: "with previous update notifications
+    // got off not working" — screenshot showed Android's own app-level
+    // "Allow notifications" toggle switched OFF). PUSH_TOKEN_ above only
+    // ever proves this phone successfully registered for push AT SOME
+    // POINT IN THE PAST — it says nothing about whether Android is still
+    // actually willing to deliver notifications RIGHT NOW. A fresh APK
+    // install (very common with a sideloaded custom build — a new version
+    // that Android treats as a different app, or a manual uninstall before
+    // installing the new one) resets this OS-level permission to OFF on
+    // Android 13+ even though the cached token/localStorage value survives
+    // untouched, so the app kept confidently showing "Enabled" while
+    // Android was silently dropping everything. This tracks the actual
+    // LIVE result of the most recent plugin.checkPermissions() call (see
+    // wirePushListeners_/renderNotifications below) so the status shown
+    // can say "blocked by Android" instead of trusting the stale token.
+    let pushPermissionState_ = null;
     function syncPushPrefsToBackend_(){
       if(!PUSH_TOKEN_) return; // nothing registered on this phone yet — nothing to update
       postToBackend_('savePushToken', { fcmToken: PUSH_TOKEN_, deviceName: DEVICE_NAME, mutePrefs: notifPushPrefs_ });
@@ -7486,9 +7513,36 @@
       });
       // Silently re-register if this phone already granted permission on
       // an earlier visit — avoids making someone tap "Enable" again on
-      // every single app open once they've already said yes once.
-      plugin.checkPermissions().then(status=>{
-        if(status && status.receive === 'granted') plugin.register();
+      // every single app open once they've already said yes once. FIX
+      // (2026-08-25): now also records the LIVE result either way (not
+      // just when granted) and re-renders the status card so a permission
+      // Android quietly revoked — a fresh install, the user flipping the
+      // OS-level toggle off — shows up immediately as genuinely blocked
+      // instead of the stale "Enabled" the cached token used to imply.
+      recheckPushPermission_();
+    }
+    function recheckPushPermission_(){
+      const plugin = pushNotificationsPlugin_();
+      if(!plugin) return Promise.resolve();
+      return plugin.checkPermissions().then(status=>{
+        pushPermissionState_ = status && status.receive;
+        if(pushPermissionState_ === 'granted'){
+          plugin.register();
+        } else {
+          // FIX (2026-08-25): used to do nothing at all here unless
+          // granted — so a permission Android silently revoked (a fresh
+          // APK install resets it, or the user flipped the OS-level
+          // toggle off — see the screenshot report "notifications got off
+          // not working") left the status card showing whatever it last
+          // showed, which after a cached PUSH_TOKEN_ from before was
+          // almost always the false "Enabled" message. Explicitly forcing
+          // 'denied' here (Capacitor's PushNotifications reports 'prompt'/
+          // 'prompt-with-rationale' before ever being asked, and 'denied'
+          // once refused/revoked) makes sure a genuinely blocked phone
+          // shows the real "enable it in your phone's Settings" guidance
+          // instead of a stale token making it look fine.
+          renderNotifPushStatus_(pushPermissionState_ === 'denied' ? 'denied' : 'not-enabled');
+        }
       }).catch(()=>{});
     }
     async function enablePushNotifications_(){
@@ -7500,6 +7554,7 @@
       renderNotifPushStatus_('requesting');
       try{
         const perm = await plugin.requestPermissions();
+        pushPermissionState_ = perm && perm.receive;
         if(!perm || perm.receive !== 'granted'){
           renderNotifPushStatus_('denied');
           return;
@@ -7521,7 +7576,20 @@
       if(!statusEl) return;
       const plugin = pushNotificationsPlugin_();
       let state = forceState;
-      if(!state) state = !plugin ? 'unavailable' : (PUSH_TOKEN_ ? 'enabled' : 'not-enabled');
+      // FIX (2026-08-25): used to derive "enabled" purely from PUSH_TOKEN_
+      // ever having been set — a cached value that survives even after
+      // Android silently revokes the actual OS-level permission (fresh
+      // install, user toggled it off). The live pushPermissionState_ (see
+      // recheckPushPermission_, refreshed on every app open and every time
+      // the Notifications tab is opened) is authoritative when we actually
+      // have it; only fall back to the token-based guess before that first
+      // live check has ever completed.
+      if(!state){
+        if(!plugin) state = 'unavailable';
+        else if(pushPermissionState_ === 'denied') state = 'denied';
+        else if(pushPermissionState_ === 'granted') state = PUSH_TOKEN_ ? 'enabled' : 'not-enabled';
+        else state = PUSH_TOKEN_ ? 'enabled' : 'not-enabled';
+      }
       const MESSAGES = {
         unavailable: tr('notif_push_unavailable'),
         'not-enabled': tr('notif_push_not_enabled'),
@@ -7632,7 +7700,7 @@
         rl_items_reset_msg: "Remaining Items reset to 0 for this material — past entries are untouched.",
         confirm_pin_reset_rawstock_hint: "Enter your PIN to reset this material's Remaining — this can't be undone.",
         recipe_title: "Raw Material Used (per unit)", recipe_sub: "Optional — set once and every order of this product automatically deducts from Raw Material Stock.", recipe_add_row: "+ Add Material",
-        recipe_material_placeholder: "Material name", recipe_weight_placeholder: "Weight/unit (kg)", recipe_items_placeholder: "Items/unit",
+        recipe_material_placeholder: "Material name", recipe_weight_placeholder: "Weight/unit", recipe_items_placeholder: "Items/unit",
         notif_settings_title: "Notification Alerts", notif_settings_desc: "Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.",
         notif_settings_pending_note: "Outside-app delivery isn't switched on yet — these preferences will start applying automatically as soon as it is.",
         notif_settings_frequency_label: "Check For New Alerts Every", notif_freq_5: "5 minutes", notif_freq_15: "15 minutes", notif_freq_30: "30 minutes", notif_freq_60: "1 hour",
@@ -7665,7 +7733,6 @@
         m_average_sale: "Average Sale", m_labour_value: "Total Labour Rate",
         m_labour_items: "Labour Items", m_total_expenses: "Total Expenses",
         m_net_profit: "Net Profit / Loss", m_expense_entries: "Expense Entries", m_painters: "Painters",
-        m_gross_margin: "Gross Margin (Costed Orders)", m_margin_coverage: "Orders With Cost Data",
         module_summary: "Business Summary Report", summary_receivables: "Total Receivables", summary_payables: "Total Payables", summary_net_position: "Net Position",
         delta_new: "New", delta_vs_prev: "vs prev.",
         global_search_title: "Search Everything", global_search_sub: "Search by name or order number across every ledger and order — no need to open each tab separately.",
@@ -7864,7 +7931,7 @@
         // Modals — common
         cancel: "Cancel", save: "Save", add: "Add", delete: "Delete", close: "Close", confirm: "Confirm",
         edit: "Edit", view: "View", export_csv: "CSV", export_pdf: "PDF", export_jpg: "JPG",
-        item_name: "Item Name", price_rs: "Price (Rs)", cost_rs: "Cost (Rs)", cost_rs_optional_hint: "— optional, what this item costs you", colour: "Colour", entry_date: "Date", other: "Other",
+        item_name: "Item Name", price_rs: "Price (Rs)", colour: "Colour", entry_date: "Date", other: "Other",
         product_name: "Product Name", enter_custom_name: "Enter custom product name", weight: "Weight",
         bundle_count: "Bundle Count", gauge_count: "Gauge", size_count: "Size",
         item_size: "Item Size", item_type: "Item Type", factory_name: "Factory Name",
@@ -7996,7 +8063,7 @@
         rl_items_reset_msg: "اس خام مال کے لیے باقی آئٹمز 0 پر ری سیٹ ہو گئے — پرانی انٹریز محفوظ ہیں۔",
         confirm_pin_reset_rawstock_hint: "اس خام مال کی باقی مقدار ری سیٹ کرنے کے لیے اپنا پن درج کریں — یہ واپس نہیں ہو سکتا۔",
         recipe_title: "استعمال شدہ خام مال (فی یونٹ)", recipe_sub: "اختیاری — ایک بار سیٹ کریں اور اس پروڈکٹ کا ہر آرڈر خودکار طور پر خام مال اسٹاک سے منہا ہو جائے گا۔", recipe_add_row: "+ خام مال شامل کریں",
-        recipe_material_placeholder: "خام مال کا نام", recipe_weight_placeholder: "وزن/یونٹ (کلوگرام)", recipe_items_placeholder: "آئٹمز/یونٹ",
+        recipe_material_placeholder: "خام مال کا نام", recipe_weight_placeholder: "وزن/یونٹ", recipe_items_placeholder: "آئٹمز/یونٹ",
         notif_settings_title: "نوٹیفیکیشن الرٹس", notif_settings_desc: "منتخب کریں کہ اطلاعات ٹیب کے کون سے الرٹس ایپ سے باہر بھی دکھائے جائیں (نوٹیفیکیشن ٹرے / لاک اسکرین)، اور ایپ کتنی دیر بعد نئے الرٹس چیک کرے۔",
         notif_settings_pending_note: "ایپ سے باہر بھیجنا ابھی فعال نہیں ہوا — یہ ترجیحات فعال ہوتے ہی خود بخود لاگو ہو جائیں گی۔",
         notif_settings_frequency_label: "نئے الرٹس چیک کریں ہر", notif_freq_5: "5 منٹ", notif_freq_15: "15 منٹ", notif_freq_30: "30 منٹ", notif_freq_60: "1 گھنٹہ",
@@ -8029,7 +8096,6 @@
         m_average_sale: "اوسط سیل", m_labour_value: "کل مزدوری ریٹ",
         m_labour_items: "مزدوری آئٹمز", m_total_expenses: "کل اخراجات",
         m_net_profit: "خالص منافع / نقصان", m_expense_entries: "اخراجات کے اندراجات", m_painters: "پینٹرز",
-        m_gross_margin: "مجموعی منافع (لاگت والے آرڈرز)", m_margin_coverage: "لاگت ڈیٹا والے آرڈرز",
         module_summary: "کاروباری خلاصہ رپورٹ", summary_receivables: "کل وصولیاں", summary_payables: "کل واجبات", summary_net_position: "خالص پوزیشن",
         delta_new: "نیا", delta_vs_prev: "پچھلے سے",
         global_search_title: "ہر چیز تلاش کریں", global_search_sub: "نام یا آرڈر نمبر سے ہر لیجر اور آرڈر میں تلاش کریں — ہر ٹیب الگ کھولنے کی ضرورت نہیں۔",
@@ -8225,7 +8291,7 @@
         total_stock_value: "کل اسٹاک ویلیو", add_item: "آئٹم شامل کریں",
         cancel: "منسوخ کریں", save: "محفوظ کریں", add: "شامل کریں", delete: "حذف کریں", close: "بند کریں", confirm: "تصدیق کریں",
         edit: "ترمیم", view: "دیکھیں", export_csv: "CSV", export_pdf: "PDF", export_jpg: "JPG",
-        item_name: "آئٹم کا نام", price_rs: "قیمت (روپے)", cost_rs: "لاگت (روپے)", cost_rs_optional_hint: "— اختیاری، اس آئٹم کی آپ کو لاگت", colour: "رنگ", entry_date: "تاریخ", other: "دیگر",
+        item_name: "آئٹم کا نام", price_rs: "قیمت (روپے)", colour: "رنگ", entry_date: "تاریخ", other: "دیگر",
         product_name: "پروڈکٹ کا نام", enter_custom_name: "مخصوص پروڈکٹ کا نام درج کریں", weight: "وزن",
         bundle_count: "بنڈل تعداد", gauge_count: "گیج", size_count: "سائز",
         item_size: "آئٹم سائز", item_type: "آئٹم قسم", factory_name: "فیکٹری کا نام",
@@ -8699,11 +8765,23 @@
     // existed (see the comment above rawItemNames). That meant managing one
     // ("Manage" link) silently managed the other too, and a Description like
     // "Advance Payment" would show up as a raw-material-name suggestion and
-    // vice versa. Split into its own list, seeded with the same starting
-    // values so existing suggestions don't just disappear, but now
-    // independently add/removable via its own "Manage" link (list key
-    // 'rawdesc') — see MANAGEABLE_LISTS.
-    let rawLedgerDescriptions = ["Steel Taar","Steel Patri","Kirrik Karri Patri","Chutki","Tala","Mono"];
+    // vice versa. Split into its own list.
+    // FIX (2026-08-25, user report: "raw material description and raw
+    // material name for tracking are mixing up in cart when data entry for
+    // tracking"): the split above still carried over the SAME six material
+    // names as this list's starting suggestions — so the Description combo
+    // itself kept offering "Tala"/"Mono"/"Chutki" etc. as if they were
+    // descriptions, and picking one filled Description with a material
+    // name while leaving "Raw Material Name (for stock tracking)" blank —
+    // which means that entry's Weight/Items Received silently never counts
+    // toward Raw Material Stock (computeRawMaterialStock_ requires
+    // e.stockName to be set at all). Reseeded with actual description-
+    // shaped text instead of material names — this only changes what a
+    // BRAND NEW device starts with (existing synced lists already have
+    // whatever's on the sheet and aren't retroactively changed by this;
+    // see the delivered status doc for how to clean up an existing list
+    // via the Description field's own "Manage" link).
+    let rawLedgerDescriptions = ["Advance Payment","Balance Payment","Purchase"];
     let rawWeights = [];
     let rawBundleCounts = [];
     let rawGaugeCounts = [];
@@ -10031,7 +10109,7 @@
           <div class="product-price">${fmt(p.price)}</div>
           ${p.stock !== undefined ? `<div class="product-stock${p.stock <= ((p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : DEFAULT_REORDER_LEVEL_) ? ' low' : ''}">${tr('stock_qty')}: ${p.stock}</div>` : ''}
         `;
-        card.addEventListener('click', ()=> addToCart(p.id, p.name, p.price, 1, p.color, p.size, p.cost));
+        card.addEventListener('click', ()=> addToCart(p.id, p.name, p.price, 1, p.color, p.size));
         card.querySelector('[data-act="edit"]').addEventListener('click', (e)=>{
           e.stopPropagation();
           openProductEditModal(p.id);
@@ -10431,18 +10509,11 @@
       if(l.size) parts.push(l.size);
       return parts.length ? ' (' + parts.join(', ') + ')' : '';
     }
-    function addToCart(id, name, price, qty, color, size, cost){
+    function addToCart(id, name, price, qty, color, size){
       qty = qty || 1;
       const existing = cart.find(l=>l.id===id && l.color===color && l.size===size);
-      // ADD (2026-08-20): cost captured from the PRODUCT record at the
-      // moment it's added, not looked up again later — see the comment on
-      // itemCosts in Code.gs's saveAll_ for why (price/cost can change or
-      // the product can be deleted after this sale; the receipt/report for
-      // THIS order must keep showing what it actually cost at the time).
-      // undefined (not 0) when the product has no cost on record yet —
-      // profitMargin_() below treats that as "unknown", never as free.
-      if(existing){ existing.qty += qty; if(existing.cost === undefined && cost !== undefined) existing.cost = cost; }
-      else cart.push({id, name, price, qty, color: color || null, size: size || null, cost});
+      if(existing){ existing.qty += qty; }
+      else cart.push({id, name, price, qty, color: color || null, size: size || null});
       renderCart();
       // FIX: on mobile the invoice/cart sits stacked BELOW the product grid
       // instead of beside it (see .cart-panel's mobile media query), so
@@ -10562,8 +10633,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.25.8";
-    const APP_VERSION_NOTE = "New: Withdrawal Ledger — a new sidebar tab (under Scrap Ledger) for money withdrawn from the business. A flat log (NOT debit/credit like the other ledgers): Description, Date, Amount, the same Cash/Online/Cheque/Item-Material payment-method options every other ledger has, plus Withdrawal By / Withdrawal In (own saved-suggestion combos). Withdrawals now reduce \"Total Collected\" cash-on-hand in the Overview Accounts module exactly like Expenses do, but are deliberately NOT counted in Net Profit (Sales − Expenses) — an owner's withdrawal isn't a business expense. The Withdrawal Ledger page shows Total Withdrawn + Entries Logged in stat boxes, has PDF/JPG/CSV export with its own Export Settings column picker, and a new Overview widget (toggleable in Settings > Overview Modules) shows the same totals. Requires the updated Code.gs (new Withdrawal sheet tab + Meta columns) redeployed alongside this index.html.";
+    const APP_VERSION = "2026.08.25.10";
+    const APP_VERSION_NOTE = "Fixed (Raw Material Stock): the Raw Material Ledger's Description suggestion list was seeded with the same six material names as the Raw Material Name field (Steel Taar, Steel Patri, Kirrik Karri Patri, Chutki, Tala, Mono) — picking one filled Description with a material name while leaving Raw Material Name blank, silently excluding that entry's Weight/Items Received from Raw Material Stock. Reseeded Description with real payment-context text (Advance Payment, Balance Payment, Purchase) — new devices only; an existing synced Description list needs its old material-look entries removed via that field's own Manage link. Added: a kg/g unit selector next to each product recipe's Weight/unit field — recipe weight is still always stored in kg (nothing downstream changed), but a per-unit weight of a few grams (pin, ribit, paint...) can now be typed directly in grams instead of an easy-to-mistype kg decimal; switching the unit converts the number shown so the actual quantity never silently changes. Confirmed (no bug found): weight-based and item-based raw material tracking already stay in fully separate columns end to end (Weight In/Used/Remaining vs. Items In/Used/Remaining) — a material with both set never has one figure bleed into the other.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -10603,7 +10674,6 @@
     createSuggestCombo_(peWeightCombo, document.getElementById('pe-weight-combo-dropdown'), peWeightComboWrap,
       () => productWeights, v => { productWeights = v; });
     const pePrice = document.getElementById('pe-price');
-    const peCost = document.getElementById('pe-cost');
     const peColor = document.getElementById('pe-color');
     const peColorOther = document.getElementById('pe-color-other');
     const peDeleteBtn = document.getElementById('pe-delete');
@@ -10732,10 +10802,28 @@
       const wrap = document.getElementById('pe-recipe-rows');
       if(!wrap) return;
       const list = Array.isArray(rows) && rows.length ? rows : [{ material:'', weightPerUnit:'', itemsPerUnit:'' }];
+      // FIX (2026-08-25, user report: "weight will be grams and converted
+      // in kg too then its should be detected") — weightPerUnit is always
+      // STORED in kg (unchanged — every other reader of recipe data,
+      // computeRawMaterialStock_ included, keeps working exactly as
+      // before), but a per-unit weight this small (a few grams of pin/
+      // ribit/paint per fan) is genuinely awkward to type as a kg decimal
+      // (0.001, 0.035...) and easy to get a decimal place wrong on. This
+      // adds a kg/g selector next to the field — always defaults to "kg"
+      // on render since the stored number IS the kg value already; typing
+      // in "g" mode is just a data-entry convenience, converted to kg the
+      // moment it's read (see readPeRecipeRowsRaw_) or the unit is
+      // switched (see the change listener below, which keeps the actual
+      // quantity constant across a unit switch instead of reinterpreting
+      // the same digits as a different amount).
       wrap.innerHTML = list.map((r,i)=> `
         <div class="pe-recipe-row" style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
           <input class="field-input pe-recipe-material" list="dl-rawmaterial" data-i18n-placeholder="recipe_material_placeholder" placeholder="Material name" style="flex:2; margin-bottom:0;" value="${escHtml_(r.material || '')}">
-          <input class="field-input pe-recipe-weight" type="number" min="0" step="any" data-i18n-placeholder="recipe_weight_placeholder" placeholder="Weight/unit (kg)" style="flex:1; margin-bottom:0;" value="${(r.weightPerUnit || r.weightPerUnit === 0) ? r.weightPerUnit : ''}">
+          <input class="field-input pe-recipe-weight" type="number" min="0" step="any" data-i18n-placeholder="recipe_weight_placeholder" placeholder="Weight/unit" style="flex:1; margin-bottom:0;" value="${(r.weightPerUnit || r.weightPerUnit === 0) ? r.weightPerUnit : ''}">
+          <select class="field-input pe-recipe-weight-unit" style="flex:0 0 62px; margin-bottom:0; padding-left:6px; padding-right:6px;" title="Unit this weight is typed in — always converted to/stored as kg">
+            <option value="kg" selected>kg</option>
+            <option value="g">g</option>
+          </select>
           <input class="field-input pe-recipe-items" type="number" min="0" step="1" data-i18n-placeholder="recipe_items_placeholder" placeholder="Items/unit" style="flex:1; margin-bottom:0;" value="${(r.itemsPerUnit || r.itemsPerUnit === 0) ? r.itemsPerUnit : ''}">
           <button type="button" class="weight-remove-btn pe-recipe-remove" data-idx="${i}" title="Remove">✕</button>
         </div>`).join('');
@@ -10744,6 +10832,27 @@
           const rowsNow = readPeRecipeRowsRaw_();
           rowsNow.splice(parseInt(btn.dataset.idx,10), 1);
           renderPeRecipeRows_(rowsNow);
+        });
+      });
+      // Switching the unit keeps the represented QUANTITY constant —
+      // 35 g becomes 0.035 kg on switch, not "0.035" reinterpreted as
+      // 0.035 g — so toggling never silently changes what's actually
+      // being recorded, only how it's typed.
+      wrap.querySelectorAll('.pe-recipe-weight-unit').forEach(sel=>{
+        let prevUnit = sel.value;
+        sel.addEventListener('change', ()=>{
+          const input = sel.closest('.pe-recipe-row').querySelector('.pe-recipe-weight');
+          const n = parseFloat(input.value);
+          if(!isNaN(n)){
+            const converted = (sel.value === 'g' && prevUnit === 'kg') ? n * 1000
+              : (sel.value === 'kg' && prevUnit === 'g') ? n / 1000
+              : n;
+            // Trim to a sane number of decimals so switching back and
+            // forth doesn't accumulate binary-float noise like
+            // 0.034999999999999996.
+            input.value = String(Math.round(converted * 1e6) / 1e6);
+          }
+          prevUnit = sel.value;
         });
       });
     }
@@ -10756,9 +10865,21 @@
         const material = row.querySelector('.pe-recipe-material').value.trim();
         const wRaw = row.querySelector('.pe-recipe-weight').value.trim();
         const iRaw = row.querySelector('.pe-recipe-items').value.trim();
+        // FIX (2026-08-25): the unit selector next to the weight field
+        // (see renderPeRecipeRows_) is purely a typing convenience —
+        // weightPerUnit is ALWAYS stored/read here in kg, same as every
+        // reader of recipe data has always expected, so nothing downstream
+        // (computeRawMaterialStock_, low-stock thresholds, etc.) needed to
+        // change. A row typed in "g" mode just gets divided by 1000 here.
+        const unitSel = row.querySelector('.pe-recipe-weight-unit');
+        const isGrams = unitSel && unitSel.value === 'g';
+        let weightPerUnit;
+        if(wRaw !== '' && parseFloat(wRaw) >= 0){
+          weightPerUnit = isGrams ? parseFloat(wRaw) / 1000 : parseFloat(wRaw);
+        }
         return {
           material,
-          weightPerUnit: (wRaw !== '' && parseFloat(wRaw) >= 0) ? parseFloat(wRaw) : undefined,
+          weightPerUnit,
           itemsPerUnit: (iRaw !== '' && parseFloat(iRaw) >= 0) ? parseFloat(iRaw) : undefined
         };
       });
@@ -10792,7 +10913,6 @@
         peSizeCombo.value = '';
         peWeightCombo.value = '';
         pePrice.value = '';
-        peCost.value = '';
         peColor.value = 'Black';
         peColorOther.style.display = 'none';
         peColorOther.value = '';
@@ -10810,7 +10930,6 @@
           peName.value = p.name;
         }
         pePrice.value = p.price;
-        peCost.value = (p.cost || p.cost === 0) ? p.cost : '';
         // p.stock is deliberately not shown/edited here (2026-08-24: Stock
         // Quantity removed from this form) — see the HTML comment above.
         const color = p.color || 'Black';
@@ -10836,15 +10955,6 @@
       const size = isAmericanPedestal ? peSizeCombo.value.trim() : '';
       const weight = isAmericanPedestal ? peWeightCombo.value.trim() : '';
       const price = parseFloat(pePrice.value);
-      // Cost is deliberately optional (left blank = "unknown", not "free")
-      // — an empty/invalid cost field stores as undefined rather than 0,
-      // which matters because profitMargin_() below treats "no cost on
-      // record" and "this genuinely costs Rs 0" as two different things;
-      // silently defaulting a blank field to 0 would make every
-      // not-yet-priced-in product look like 100% pure profit instead of
-      // just showing "—" until someone fills it in.
-      const costRaw = parseFloat(peCost.value);
-      const cost = (peCost.value.trim() !== '' && costRaw >= 0) ? costRaw : undefined;
       const color = (peColor.value === 'Other') ? peColorOther.value.trim() || 'Other' : peColor.value;
       // ADD (2026-08-24, user request): "Raw Material Used" rows — read once
       // here (before any PIN-reverify delay on the edit path) since the
@@ -10858,7 +10968,6 @@
           // DEFAULT_REORDER_LEVEL_ wherever low-stock is computed, and simply
           // reads as "not stock-tracked" (p.stock undefined), same as before.
           const product = { id: nextProductId(), name, price, cat: activeCat, color, device: DEVICE_NAME };
-          if(cost !== undefined) product.cost = cost;
           if(isAmericanPedestal){ product.weight = weight; product.size = size; }
           if(recipe.length) product.recipe = recipe;
           PRODUCTS.push(product);
@@ -10870,7 +10979,12 @@
             // so whatever a product already had (or didn't) stays exactly
             // as it was.
             p.name = name; p.price = price; p.color = color;
-            if(cost !== undefined) p.cost = cost; else delete p.cost;
+            // REMOVED (2026-08-25, user request): cost used to be read/set
+            // here too — any p.cost a product already carries from before
+            // this removal is simply left as inert, unused data (nothing
+            // reads it any more) rather than actively stripped, matching
+            // the same "leave it, stop touching it" approach used for the
+            // now-unpopulated Code.gs 'itemCosts' column.
             if(isAmericanPedestal){ p.weight = weight; p.size = size; } else { delete p.weight; delete p.size; }
             if(recipe.length) p.recipe = recipe; else delete p.recipe;
           }
@@ -10955,22 +11069,18 @@
         // — used by the Item Count export column so a multi-product order
         // shows each product's own qty instead of just the combined total.
         itemCounts: cartSnapshot.map(l=>String(l.qty)).join('\n'),
-        // One cost-at-sale-time per line, same "no filter, blank-not-dropped"
-        // rule as itemsSummary/itemCounts above (NOT sizes/colors' .filter
-        // (Boolean), which would break the line-for-line pairing this needs
-        // — a missing cost is a blank segment, not a skipped one).
-        itemCosts: cartSnapshot.map(l=> (l.cost !== undefined ? String(l.cost) : '')).join('\n'),
-        // ADD (2026-08-23, user report: "not showing rate per item column
-        // even on sheets/exports/and in order book") — same one-per-line,
-        // blank-not-dropped shape as itemCosts just above, but this is the
-        // actual SELLING price per unit at time of sale (l.price, what the
-        // customer paid), not l.cost (wholesale cost, a different figure).
-        // Nothing captured this anywhere before now — Total only ever
-        // stored the already-multiplied sum, so there was no way to show a
-        // real rate for a multi-item order at a different price per item.
+        // REMOVED (2026-08-25, user request): itemCosts (per-line cost at
+        // sale time) used to be captured right here — removed along with
+        // the Cost (Rs) field on Add/Edit Product and the Gross Margin
+        // Overview widgets that consumed it. Code.gs's Transactions
+        // 'itemCosts' column is untouched; it just goes unpopulated on
+        // every order from here on.
+        // itemRates (SELLING price per unit at time of sale, l.price — a
+        // different figure from the removed cost) is unaffected and still
+        // captured below, same one-per-line, blank-not-dropped shape.
         itemRates: cartSnapshot.map(l=> (l.price !== undefined ? String(l.price) : '')).join('\n'),
         // ADD (2026-08-25, user request): one real product id per line,
-        // same one-per-line/blank-not-dropped shape as itemCosts/itemRates
+        // same one-per-line/blank-not-dropped shape as itemRates
         // above — this is what makes restockProductsForOrder_() safe on
         // delete. A custom (non-catalog) cart line's id is negative (see
         // isCustom in renderCart) and simply won't match any real product
@@ -11044,22 +11154,18 @@
         itemsSummary: cartSnapshot.map(l=>l.name).join('\n'),
         itemCount: cartSnapshot.reduce((s,l)=>s+l.qty,0),
         itemCounts: cartSnapshot.map(l=>String(l.qty)).join('\n'),
-        // One cost-at-sale-time per line, same "no filter, blank-not-dropped"
-        // rule as itemsSummary/itemCounts above (NOT sizes/colors' .filter
-        // (Boolean), which would break the line-for-line pairing this needs
-        // — a missing cost is a blank segment, not a skipped one).
-        itemCosts: cartSnapshot.map(l=> (l.cost !== undefined ? String(l.cost) : '')).join('\n'),
-        // ADD (2026-08-23, user report: "not showing rate per item column
-        // even on sheets/exports/and in order book") — same one-per-line,
-        // blank-not-dropped shape as itemCosts just above, but this is the
-        // actual SELLING price per unit at time of sale (l.price, what the
-        // customer paid), not l.cost (wholesale cost, a different figure).
-        // Nothing captured this anywhere before now — Total only ever
-        // stored the already-multiplied sum, so there was no way to show a
-        // real rate for a multi-item order at a different price per item.
+        // REMOVED (2026-08-25, user request): itemCosts (per-line cost at
+        // sale time) used to be captured right here — removed along with
+        // the Cost (Rs) field on Add/Edit Product and the Gross Margin
+        // Overview widgets that consumed it. Code.gs's Transactions
+        // 'itemCosts' column is untouched; it just goes unpopulated on
+        // every order from here on.
+        // itemRates (SELLING price per unit at time of sale, l.price — a
+        // different figure from the removed cost) is unaffected and still
+        // captured below, same one-per-line, blank-not-dropped shape.
         itemRates: cartSnapshot.map(l=> (l.price !== undefined ? String(l.price) : '')).join('\n'),
         // ADD (2026-08-25, user request): one real product id per line,
-        // same one-per-line/blank-not-dropped shape as itemCosts/itemRates
+        // same one-per-line/blank-not-dropped shape as itemRates
         // above — this is what makes restockProductsForOrder_() safe on
         // delete. A custom (non-catalog) cart line's id is negative (see
         // isCustom in renderCart) and simply won't match any real product
@@ -11611,6 +11717,13 @@
       // card lived in Settings.
       renderNotifSettingsList_();
       renderNotifPushStatus_();
+      // FIX (2026-08-25): re-check the LIVE Android permission every time
+      // this card is actually looked at, not just once at app startup —
+      // someone can background the app, flip the OS notification toggle
+      // off in Android Settings, then come straight back here, and the
+      // startup-time check alone would never catch that. recheckPushPermission_
+      // re-renders this same status once its result is back (async).
+      recheckPushPermission_();
       const notifFreqSelEl = document.getElementById('settings-notif-frequency');
       if(notifFreqSelEl) notifFreqSelEl.value = String(notifPushFrequencyMinutes_);
       const notifReminderSelEl = document.getElementById('settings-notif-reminder');
@@ -18596,41 +18709,6 @@
       </div>`;
     }
 
-    // ADD (2026-08-20): "Net Profit / Loss" above (unchanged) is just
-    // Sales minus Expenses in aggregate — it can never say which PRODUCTS
-    // are actually profitable vs. just high-revenue, since products only
-    // ever tracked a sale price, never a cost. Now that a product CAN
-    // optionally carry a cost (see pe-cost in the product edit modal) and
-    // every order captures each line's cost-at-sale-time into
-    // t.itemCosts (see addToCart/addUnpaidOrder and Code.gs's Transactions
-    // writer), this computes a genuine product-margin figure alongside
-    // it — deliberately kept as a SEPARATE metric rather than replacing
-    // "Net Profit / Loss", since that's still the correct answer to "did
-    // more cash come in than went out", a different (and still useful)
-    // question from "are the things I sell actually profitable".
-    // Conservative by design: an order with SOME lines costed and some not
-    // only subtracts the known lines' cost, so this can under-state true
-    // COGS for a partially-costed order, but can never overstate it — see
-    // knownCount/unknownCount below, surfaced so the number is never read
-    // as more precise than it actually is.
-    function computeGrossMargin_(txns){
-      let revenue = 0, cogs = 0, knownCount = 0, unknownCount = 0;
-      txns.forEach(t=>{
-        revenue += t.total || 0;
-        if(!t.itemCosts){ unknownCount++; return; }
-        const counts = String(t.itemCounts || '').split('\n');
-        const costs = String(t.itemCosts || '').split('\n');
-        let anyKnown = false, allKnown = true;
-        counts.forEach((c, i)=>{
-          const qty = parseFloat(c) || 0;
-          const costVal = parseFloat(costs[i]);
-          if(!isNaN(costVal)){ cogs += costVal * qty; anyKnown = true; }
-          else allKnown = false;
-        });
-        if(anyKnown && allKnown) knownCount++; else unknownCount++;
-      });
-      return { revenue, cogs, margin: revenue - cogs, knownCount, unknownCount };
-    }
     function renderOverview(){
       renderOverviewCalendar_();
       const wrap = document.getElementById('erp-dashboard');
@@ -18638,7 +18716,6 @@
       const totalSales = countedSales.reduce((s,t)=>s+t.total,0);
       const totalExpenses = expenses.reduce((s,e)=>s+e.amount,0);
       const profit = totalSales - totalExpenses;
-      const grossMargin = computeGrossMargin_(countedSales);
 
       const { from, to } = getPeriodRange_(overviewSalesPeriod);
       const periodTxns = transactionsLog.filter(t=>{
@@ -18721,7 +18798,6 @@
           { label:tr('m_orders'), val: String(summaryReport.orders) },
           { label:tr('period_expenses_' + overviewSummaryPeriod), val: fmt(summaryReport.expTotal) + deltaBadgeHtml_(summaryReport.expTotal, prevSummary_.expTotal, true) },
           { label:tr('m_net_profit'), val: fmt(summaryReport.profit) + deltaBadgeHtml_(summaryReport.profit, prevSummary_.profit), cls: summaryReport.profit >= 0 ? 'pos' : 'neg' },
-          { label:tr('m_gross_margin'), val: summaryReport.margin.knownCount > 0 ? fmt(summaryReport.margin.margin) : '—', cls: summaryReport.margin.knownCount > 0 ? (summaryReport.margin.margin >= 0 ? 'pos' : 'neg') : '' },
           { label:tr('summary_receivables'), val: fmt(summaryReport.receivables), cls: summaryReport.receivables > 0 ? 'pos' : '' },
           { label:tr('summary_payables'), val: fmt(summaryReport.payables), cls: summaryReport.payables > 0 ? 'neg' : '' },
           { label:tr('summary_net_position'), val: fmt(summaryReport.receivables - summaryReport.payables), cls: (summaryReport.receivables - summaryReport.payables) >= 0 ? 'pos' : 'neg' },
@@ -18730,7 +18806,17 @@
           { label:tr('pending_inquiries'), val: String(getPendingInquiries_().length), cls: getPendingInquiries_().length>0 ? 'neg' : '' },
           { label:tr('pending_cheque_clearances'), val: String(getPendingCheques_().length), cls: getPendingCheques_().length>0 ? 'neg' : '' },
           { label:tr('pending_slips'), val: String(getPendingSlips_().length), cls: getPendingSlips_().length>0 ? 'neg' : '' },
+          // FIX (2026-08-25, user report: "Notifications are on and working
+          // but not showing on widget") — this module used to only sum 4 of
+          // the 6 categories the Notifications page (and the header bell's
+          // own badge count, see updateNotificationsBadge_) actually track.
+          // Pending Gate Receipts and Backup Status were both missing here,
+          // so the widget could read "all zero" while the bell showed a
+          // real pending count — exactly what was reported. Now matches
+          // updateNotificationsBadge_'s total exactly, category for category.
+          { label:tr('pending_gate_receipts'), val: String(getPendingOrderReceipts_().length), cls: getPendingOrderReceipts_().length>0 ? 'neg' : '' },
           { label:tr('low_stock_alerts'), val: String(getLowStockAlerts_().length), cls: getLowStockAlerts_().length>0 ? 'neg' : '' },
+          { label:tr('backup_alerts'), val: String(getBackupOverdueAlert_().length), cls: getBackupOverdueAlert_().length>0 ? 'neg' : '' },
         ]},
         { key:'sales', color:'var(--logo-a)', title:tr('module_sales'), icon:ICONS.sales, periodSelector:'sales', metrics:[
           { label:tr('m_period_sales'), val: fmt(periodSales) + deltaBadgeHtml_(periodSales, prevPeriodSales_), cls:'accent' },
@@ -18742,8 +18828,6 @@
           { label:tr('period_expenses_' + overviewExpensesPeriod), val: fmt(periodExpensesTotal) + deltaBadgeHtml_(periodExpensesTotal, prevPeriodExpensesTotal_, true) },
           { label:tr('m_net_profit'), val: fmt(profit), cls: profit >= 0 ? 'pos' : 'neg' },
           { label:tr('m_expense_entries'), val: String(periodExpensesList.length) },
-          { label:tr('m_gross_margin'), val: grossMargin.knownCount > 0 ? fmt(grossMargin.margin) : '—', cls: grossMargin.knownCount > 0 ? (grossMargin.margin >= 0 ? 'pos' : 'neg') : '' },
-          { label:tr('m_margin_coverage'), val: (grossMargin.knownCount) + ' / ' + (grossMargin.knownCount + grossMargin.unknownCount) },
         ]},
         { key:'utility', color:'var(--logo-b)', title:tr('module_utility'), icon:ICONS.finance, periodSelector:'utility', metrics:[
           { label:tr('m_utility_total'), val: fmt(periodUtilityTotal), cls:'accent' },
@@ -19108,14 +19192,13 @@
       }).filter(isCountedSale_);
       const sales = txns.reduce((s,t)=>s+t.total,0);
       const orders = txns.length;
-      const margin = computeGrossMargin_(txns);
       const expList = expenses.filter(e=>{
         const d = parseExpenseDate_(e.date);
         return d && !isNaN(d.getTime()) && d >= from && d <= to;
       });
       const expTotal = expList.reduce((s,e)=>s+e.amount,0);
       const profit = sales - expTotal;
-      return { sales, orders, expTotal, profit, margin };
+      return { sales, orders, expTotal, profit };
     }
     function buildBusinessSummaryReport_(period){
       const { from, to } = getPeriodRange_(period);
@@ -19886,6 +19969,20 @@
     // hamburger drawer first.
     const headerNotifBtn_ = document.getElementById('header-notifications-btn');
     if(headerNotifBtn_) headerNotifBtn_.addEventListener('click', ()=> setView('notifications'));
+    // ADD (2026-08-25, user request: "add notifications settings on top
+    // right left next to notifications in ⚙️") — opens the Notifications
+    // tab (where the Notification Alerts card actually lives, see the
+    // "MOVED" comment on #notif-alerts-settings-card above) and scrolls
+    // straight to that card instead of leaving the person to find it below
+    // every alert section themselves.
+    const headerNotifSettingsBtn_ = document.getElementById('header-notif-settings-btn');
+    if(headerNotifSettingsBtn_) headerNotifSettingsBtn_.addEventListener('click', ()=>{
+      setView('notifications');
+      setTimeout(()=>{
+        const card = document.getElementById('notif-alerts-settings-card');
+        if(card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    });
     globalSearchInput_.addEventListener('input', ()=> renderGlobalSearchResults_(globalSearchInput_.value));
     // FIX (2026-08-19): collapsible toggles for the Settings page's Export
     // Settings columns list and Ledger Settings' Overview Dashboard list
