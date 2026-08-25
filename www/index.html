@@ -2497,6 +2497,39 @@
         <div id="scrapledger-table"></div>
       </div>
 
+      <!-- ADD (2026-08-25, user request): Withdrawal Ledger — "a Withdrawal
+           Tab in side menu, under Scrap Tab" for owner withdrawals. NOT
+           treated as debit/credit like every other ledger here — just a
+           flat log of withdrawal entries (Description, Amount, payment
+           method, Withdrawal By / Withdrawal In), deducted from "Total
+           Collected" cash-on-hand (see computeAccountsBalances_) but
+           deliberately NOT folded into the Net Profit calc (an owner
+           withdrawal isn't a business expense). "record and save total
+           payments and dated out the ledger too in big boxes" is the two
+           stat-cards in #withdrawal-stats below. -->
+      <div id="view-withdrawal" style="display:none;">
+        <div class="view-header">
+          <div class="view-header-text">
+            <h2 data-i18n="withdrawal_title">Withdrawal Ledger</h2>
+            <p data-i18n="withdrawal_sub">Track money withdrawn from the business — not counted as a business expense.</p>
+          </div>
+          <div class="header-actions">
+            <div class="export-dropdown" data-export-dropdown>
+              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <div class="export-dropdown-menu">
+                <button onclick="openExportFilterModal('withdrawal','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="openExportFilterModal('withdrawal','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
+                <button onclick="openExportFilterModal('withdrawal','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
+              </div>
+            </div>
+            <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openWithdrawalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
+          </div>
+        </div>
+        <div class="stat-grid" id="withdrawal-stats" style="margin-bottom:18px;"></div>
+        <div class="overdue-cheque-banner-slot"></div>
+        <div id="withdrawal-table"></div>
+      </div>
+
       <!-- ADD (2026-08-24, user request): Stock tab — a dedicated page to
            view every product's stock quantity across all categories and
            adjust it right here, since Stock Quantity was removed from the
@@ -3642,6 +3675,90 @@
         <button class="btn-confirm" id="sl-add-entry" data-i18n="add_entry">Add Entry</button>
       </div>
       <button class="btn-cancel" id="sl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= WITHDRAWAL LEDGER MODAL =================
+     Flat single-entry modal (like Expenses), NOT roster+entries like Scrap/
+     Raw/Paint — a withdrawal has no per-party balance concept, just a log.
+     Description (own suggestion combo), Date, Amount, full 4-option payment-
+     method block (borrowed from Scrap Ledger's sl-method pattern, not
+     Expenses' 2-option exp-method), Withdrawal By / Withdrawal In (own
+     dedicated suggestion combos — see withdrawalByList/withdrawalInList).
+     Deliberately no receipt attachment (not requested) and no debit/credit
+     split — single Amount field: "it will not be treated in debit and
+     credit but as just withdrawal" per the user's request. -->
+<div class="modal-overlay" id="withdrawal-modal">
+  <div class="modal-box">
+    <h3 id="withdrawal-modal-title" data-i18n="add_withdrawal">Add Withdrawal</h3>
+    <label class="field-label" data-i18n="description">Description</label>
+    <div class="pl-colour-wrap" id="wd-desc-wrap">
+      <div class="pl-colour-bar" id="wd-desc-bar">
+        <input class="pl-colour-search" id="wd-desc" placeholder="e.g. Owner Withdrawal" autocomplete="off">
+      </div>
+      <div class="pl-colour-dropdown" id="wd-desc-dropdown" style="display:none;"></div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <div style="flex:1;">
+        <label class="field-label" data-i18n="date">Date</label>
+        <input class="field-input" id="wd-date" type="date">
+      </div>
+      <div style="flex:1;">
+        <label class="field-label" data-i18n="amount_rs">Amount (Rs)</label>
+        <input class="field-input" id="wd-amount" type="number" min="0" placeholder="0">
+      </div>
+    </div>
+    <label class="field-label" data-i18n="payment_method">Payment Method</label>
+    <select class="field-input" id="wd-method">
+      <option value="Cash" data-i18n="method_cash">Cash</option>
+      <option value="Online" data-i18n="method_online">Online</option>
+      <option value="Cheque" data-i18n="method_cheque">Cheque</option>
+      <option value="Item/Material" data-i18n="method_item_material">Item / Material</option>
+    </select>
+    <div id="wd-method-detail-wrap" style="display:none;">
+      <input class="field-input" id="wd-method-detail" data-i18n-placeholder="method_detail_placeholder" placeholder="e.g. account no. / Easypaisa number">
+    </div>
+    <div id="wd-cheque-date-wrap" style="display:none;">
+      <label class="field-label" data-i18n="cheque_date">Cheque Date (clearance due)</label>
+      <input class="field-input" id="wd-cheque-date" type="date">
+    </div>
+    <!-- ADD (2026-08-25): unlike the roster+entries ledgers (which show
+         Mark Cleared/Bounced buttons per-entry in their entries list), a
+         withdrawal has no such per-entry list — this modal IS the entry —
+         so the same toggle lives here instead, shown only when editing an
+         existing Cheque entry. -->
+    <div id="wd-cheque-status-wrap" style="display:none; margin:-6px 0 12px;">
+      <div id="wd-cheque-status-label" style="font-family:var(--mono); font-size:11.5px; color:var(--text-dim); margin-bottom:6px;"></div>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="cheque-action-btn clear" id="wd-mark-cleared" data-i18n="mark_cleared">Mark Cleared</button>
+        <button type="button" class="cheque-action-btn bounce" id="wd-mark-bounced" data-i18n="mark_bounced">Mark Bounced</button>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <div style="flex:1; min-width:0;">
+        <label class="field-label" data-i18n="withdrawal_by_optional">Withdrawal By (optional)</label>
+        <div class="pl-colour-wrap" id="wd-withdrawnby-wrap">
+          <div class="pl-colour-bar" id="wd-withdrawnby-bar">
+            <input class="pl-colour-search" id="wd-withdrawnby" data-i18n-placeholder="withdrawal_by_placeholder" placeholder="e.g. Umar" autocomplete="off">
+          </div>
+          <div class="pl-colour-dropdown" id="wd-withdrawnby-dropdown" style="display:none;"></div>
+        </div>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <label class="field-label" data-i18n="withdrawal_in_optional">Withdrawal In (optional)</label>
+        <div class="pl-colour-wrap" id="wd-withdrawnin-wrap">
+          <div class="pl-colour-bar" id="wd-withdrawnin-bar">
+            <input class="pl-colour-search" id="wd-withdrawnin" data-i18n-placeholder="withdrawal_in_placeholder" placeholder="e.g. Personal Account" autocomplete="off">
+          </div>
+          <div class="pl-colour-dropdown" id="wd-withdrawnin-dropdown" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="withdrawal-delete" style="border-color:var(--red) !important; color:var(--red); display:none;" data-i18n="delete">Delete</button>
+      <button class="btn-cancel" id="withdrawal-cancel" data-i18n="cancel">Cancel</button>
+      <button class="btn-confirm" id="withdrawal-add" data-i18n="add_withdrawal">Add Withdrawal</button>
     </div>
   </div>
 </div>
@@ -4793,6 +4910,7 @@
           expenses, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
           rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawLedgerDescriptions, rawMaterialResetAt,
           scrapDescriptions, scrapItemNames, scrapTypes,
+          withdrawals, withdrawalDescriptions, withdrawalByList, withdrawalInList,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
@@ -4844,6 +4962,10 @@
       if(Array.isArray(snap.scrapDescriptions) && snap.scrapDescriptions.length) scrapDescriptions = snap.scrapDescriptions;
       if(Array.isArray(snap.scrapItemNames) && snap.scrapItemNames.length) scrapItemNames = snap.scrapItemNames;
       if(Array.isArray(snap.scrapTypes) && snap.scrapTypes.length) scrapTypes = snap.scrapTypes;
+      if(Array.isArray(snap.withdrawals)) withdrawals = snap.withdrawals;
+      if(Array.isArray(snap.withdrawalDescriptions) && snap.withdrawalDescriptions.length) withdrawalDescriptions = snap.withdrawalDescriptions;
+      if(Array.isArray(snap.withdrawalByList) && snap.withdrawalByList.length) withdrawalByList = snap.withdrawalByList;
+      if(Array.isArray(snap.withdrawalInList) && snap.withdrawalInList.length) withdrawalInList = snap.withdrawalInList;
       if(Array.isArray(snap.paintItemSizes) && snap.paintItemSizes.length) paintItemSizes = snap.paintItemSizes;
       if(Array.isArray(snap.paintItemTypes) && snap.paintItemTypes.length) paintItemTypes = snap.paintItemTypes;
       if(Array.isArray(snap.paintFactoryNames) && snap.paintFactoryNames.length) paintFactoryNames = snap.paintFactoryNames;
@@ -5533,6 +5655,7 @@
       transactionsLog = transactionsLog.filter(t => !isDeleted_('transactionsLog', t && t.id));
       customerPayments = customerPayments.filter(p => !isDeleted_('customerPayments', p && p.id));
       expenses = expenses.filter(e => !isDeleted_('expenses', e && e.id));
+      withdrawals = withdrawals.filter(w => !isDeleted_('withdrawals', w && w.id));
       customLedgers = customLedgers.filter(cl => !isDeleted_('customLedgers', cl && cl.id));
       customLedgers.forEach(cl=>{
         if(Array.isArray(cl.entries)) cl.entries = cl.entries.filter(e => !isDeleted_('customLedgerEntries', e && e.id));
@@ -5678,6 +5801,11 @@
     // below can flatten it the same way computeConfirmedEmptyCustomerLedgerEntries_
     // flattens lastRemoteRosters_.customerledger.
     let lastRemoteCustomLedgers_ = [];
+    // Same idea again, but for Withdrawals — a flat, id-keyed list (see
+    // withdrawals above), gets its own confirmed-empty check below just like
+    // lastRemoteTransactions_/lastRemoteProducts_ instead of the expenses
+    // pattern (which never got one — a pre-existing gap not replicated here).
+    let lastRemoteWithdrawals_ = [];
     // BUG (2026-08-23): Factories was the one roster tab that never got this
     // treatment when Products/Transactions/CustomerPayments were fixed —
     // deleting the shop's only/last factory (or supplier) emptied
@@ -5720,6 +5848,9 @@
       { key: 'scrapDescriptions', get: () => scrapDescriptions, set: v => { scrapDescriptions = v; } },
       { key: 'scrapItemNames', get: () => scrapItemNames, set: v => { scrapItemNames = v; } },
       { key: 'scrapTypes', get: () => scrapTypes, set: v => { scrapTypes = v; } },
+      { key: 'withdrawalDescriptions', get: () => withdrawalDescriptions, set: v => { withdrawalDescriptions = v; } },
+      { key: 'withdrawalByList', get: () => withdrawalByList, set: v => { withdrawalByList = v; } },
+      { key: 'withdrawalInList', get: () => withdrawalInList, set: v => { withdrawalInList = v; } },
       { key: 'paintItemSizes', get: () => paintItemSizes, set: v => { paintItemSizes = v; } },
       { key: 'paintItemTypes', get: () => paintItemTypes, set: v => { paintItemTypes = v; } },
       { key: 'paintFactoryNames', get: () => paintFactoryNames, set: v => { paintFactoryNames = v; } },
@@ -5792,6 +5923,7 @@
         lastRemoteCustomerPayments_ = Array.isArray(d.customerPayments) ? d.customerPayments : [];
         lastRemoteCustomLedgers_ = Array.isArray(d.customLedgers) ? d.customLedgers : [];
         lastRemoteFactories_ = Array.isArray(d.factories) ? d.factories : [];
+        lastRemoteWithdrawals_ = Array.isArray(d.withdrawals) ? d.withdrawals : [];
         // FIX: fold in every tombstone recorded by ANY device (not just
         // this one), then actively drop anything this device is still
         // holding locally that one of those tombstones covers — see
@@ -5804,6 +5936,7 @@
         transactionsLog = mergeById_(transactionsLog, (d.transactionsLog || []).map(migrateTxnPayment_), 'transactionsLog');
         customerPayments = mergeById_(customerPayments, d.customerPayments, 'customerPayments');
         expenses = mergeById_(expenses, d.expenses, 'expenses');
+        withdrawals = mergeById_(withdrawals, d.withdrawals, 'withdrawals');
         factories = mergeByName_(factories, d.factories, 'factories');
         // FIX (2026-08-21): PRODUCTS was fetched into lastRemoteProducts_
         // above (for the confirmedEmpty tombstone check) but never actually
@@ -6008,6 +6141,14 @@
       const remoteList = lastRemoteFactories_ || [];
       return factories.length === 0 && remoteList.length > 0 &&
         remoteList.every(f => f && f.name && isDeleted_('factories', f.name));
+    }
+    // Same reasoning again, for Withdrawals — flat id-keyed list, same proof
+    // shape as computeConfirmedEmptyTransactions_ above (unlike expenses,
+    // which never got this guard — deliberately not repeating that gap here).
+    function computeConfirmedEmptyWithdrawals_(){
+      const remoteList = lastRemoteWithdrawals_ || [];
+      return withdrawals.length === 0 && remoteList.length > 0 &&
+        remoteList.every(w => w && w.id && isDeleted_('withdrawals', w.id));
     }
     // Same reasoning again, for Customer Payments — see lastRemoteCustomerPayments_
     // above for why this was missing and how it caused a permanent "SYNC
@@ -6322,6 +6463,7 @@
       });
       const confirmedEmpty = computeConfirmedEmptyLedgers_();
       if(computeConfirmedEmptyTransactions_()) confirmedEmpty.transactions = true;
+      if(computeConfirmedEmptyWithdrawals_()) confirmedEmpty.withdrawals = true;
       // Either check alone can prove intentional emptiness for this tab —
       // the roster one for "I deleted every customer", this one for "every
       // customer's entries are gone" — so either is enough to let it
@@ -6349,6 +6491,7 @@
           expenses: expensesForSync, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
           rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawLedgerDescriptions, rawMaterialResetAt,
           scrapDescriptions, scrapItemNames, scrapTypes,
+          withdrawals, withdrawalDescriptions, withdrawalByList, withdrawalInList,
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers: customLedgersForSync, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
@@ -6699,6 +6842,8 @@
           confirmed: ()=> allTombstoned_(customerPayments, 'customerPayments', p => p && p.id) },
         { label: 'expenses', local: expenses.length, incoming: Array.isArray(d.expenses) ? d.expenses.length : 0,
           confirmed: ()=> allTombstoned_(expenses, 'expenses', e => e && e.id) },
+        { label: 'withdrawals', local: withdrawals.length, incoming: Array.isArray(d.withdrawals) ? d.withdrawals.length : 0,
+          confirmed: ()=> allTombstoned_(withdrawals, 'withdrawals', w => w && w.id) },
         // FIX (2026-08-24): CRITICAL — 'factories' was missing from this list
         // entirely. loadStateFromSheet() applies d.factories with NO
         // length-guard at all (unlike products, which only ever gets
@@ -6850,6 +6995,7 @@
           if(Array.isArray(d.products) && d.products.length > 0) PRODUCTS = d.products;
           if(Array.isArray(d.factories)) factories = d.factories;
           if(Array.isArray(d.expenses)) expenses = d.expenses;
+          if(Array.isArray(d.withdrawals)) withdrawals = d.withdrawals;
           if(Array.isArray(d.expenseCategories) && d.expenseCategories.length > 0) expenseCategories = d.expenseCategories;
           if(Array.isArray(d.workTypes) && d.workTypes.length > 0) workTypes = d.workTypes;
           if(Array.isArray(d.guardSizes) && d.guardSizes.length > 0) guardSizes = d.guardSizes;
@@ -6870,6 +7016,9 @@
           if(Array.isArray(d.scrapDescriptions) && d.scrapDescriptions.length > 0) scrapDescriptions = d.scrapDescriptions;
           if(Array.isArray(d.scrapItemNames) && d.scrapItemNames.length > 0) scrapItemNames = d.scrapItemNames;
           if(Array.isArray(d.scrapTypes) && d.scrapTypes.length > 0) scrapTypes = d.scrapTypes;
+          if(Array.isArray(d.withdrawalDescriptions) && d.withdrawalDescriptions.length > 0) withdrawalDescriptions = d.withdrawalDescriptions;
+          if(Array.isArray(d.withdrawalByList) && d.withdrawalByList.length > 0) withdrawalByList = d.withdrawalByList;
+          if(Array.isArray(d.withdrawalInList) && d.withdrawalInList.length > 0) withdrawalInList = d.withdrawalInList;
           if(Array.isArray(d.paintItemSizes) && d.paintItemSizes.length > 0) paintItemSizes = d.paintItemSizes;
           if(Array.isArray(d.paintItemTypes) && d.paintItemTypes.length > 0) paintItemTypes = d.paintItemTypes;
           if(Array.isArray(d.paintFactoryNames) && d.paintFactoryNames.length > 0) paintFactoryNames = d.paintFactoryNames;
@@ -7657,6 +7806,16 @@
         rate_per_kg: "Rate per kg (Rs)", debit_owed: "Debit — Owed (Rs)", credit_payment: "Credit — Payment (Rs)",
         scrap_stock_title: "Scrap Stock", scrap_stock_sub: "Total scrap weight sold and payments received across every buyer, from the Scrap Ledger.",
         scrap_weight_total: "Total Weight Sold", scrap_payment_total: "Total Payment Received", as_of: "as of",
+        // ADD (2026-08-25, user request): Withdrawal Ledger — a flat log of
+        // money withdrawn from the business, "not treated in debit and
+        // credit but as just withdrawal".
+        nav_withdrawal: "Withdrawal Ledger",
+        withdrawal_title: "Withdrawal Ledger", withdrawal_sub: "Track money withdrawn from the business — not counted as a business expense.",
+        add_withdrawal: "Add Withdrawal", edit_withdrawal: "Edit Withdrawal",
+        no_withdrawals_yet: "No withdrawals logged yet", add_one_below_withdrawal: "Add one below to start tracking",
+        total_withdrawn: "Total Withdrawn",
+        withdrawal_by_optional: "Withdrawal By (optional)", withdrawal_by_placeholder: "e.g. Umar",
+        withdrawal_in_optional: "Withdrawal In (optional)", withdrawal_in_placeholder: "e.g. Personal Account",
         nav_labourledger: "Labour Ledger",
         labourledger_title: "Labour Ledger", labourledger_sub: "Attendance, wages, payments and dues — daily, weekly, monthly or yearly.",
         mark_attendance: "Mark Attendance", add_worker: "Add Worker", rate_type: "Rate Type",
@@ -8011,6 +8170,14 @@
         rate_per_kg: "ریٹ فی کلوگرام (روپے)", debit_owed: "ڈیبٹ — واجب الادا (روپے)", credit_payment: "کریڈٹ — ادائیگی (روپے)",
         scrap_stock_title: "سکریپ اسٹاک", scrap_stock_sub: "سکریپ لیجر سے، ہر خریدار میں فروخت شدہ سکریپ کا کل وزن اور موصول شدہ کل ادائیگیاں۔",
         scrap_weight_total: "کل فروخت شدہ وزن", scrap_payment_total: "کل موصول شدہ ادائیگی", as_of: "بمطابق",
+        // ADD (2026-08-25, user request): Withdrawal Ledger.
+        nav_withdrawal: "نکاسی لیجر",
+        withdrawal_title: "نکاسی لیجر", withdrawal_sub: "کاروبار سے نکالی گئی رقم کا ریکارڈ رکھیں — اسے کاروباری خرچ شمار نہیں کیا جاتا۔",
+        add_withdrawal: "نکاسی شامل کریں", edit_withdrawal: "نکاسی میں ترمیم کریں",
+        no_withdrawals_yet: "ابھی تک کوئی نکاسی درج نہیں", add_one_below_withdrawal: "ٹریک کرنا شروع کرنے کے لیے نیچے ایک شامل کریں",
+        total_withdrawn: "کل نکاسی",
+        withdrawal_by_optional: "نکاسی از (اختیاری)", withdrawal_by_placeholder: "مثال کے طور پر عمر",
+        withdrawal_in_optional: "نکاسی میں (اختیاری)", withdrawal_in_placeholder: "مثال کے طور پر ذاتی اکاؤنٹ",
         nav_labourledger: "لیبر لیجر",
         labourledger_title: "لیبر لیجر", labourledger_sub: "حاضری، اجرت، ادائیگیاں اور واجبات — روزانہ، ہفتہ وار، ماہانہ یا سالانہ۔",
         mark_attendance: "حاضری لگائیں", add_worker: "مزدور شامل کریں", rate_type: "ریٹ کی قسم",
@@ -8548,6 +8715,23 @@
     let scrapDescriptions = [];
     let scrapItemNames = [];
     let scrapTypes = [];
+    // ADD (2026-08-25, user request): Withdrawal Ledger — a flat-array ledger
+    // (like expenses/transactionsLog, NOT a roster+entries ledger like Scrap/
+    // Raw/Paint) since withdrawals have no per-party balance concept, just a
+    // running log. Deducted from "Total Collected" cash-on-hand in
+    // computeAccountsBalances_ (mirrors how expenses reduce it) but NOT folded
+    // into totalSales/totalExpenses "Net Profit" — an owner's withdrawal isn't
+    // a business expense.
+    let withdrawals = [];
+    let withdrawalDescriptions = [];
+    // "Withdrawal By" / "Withdrawal In" — same free-text suggestion combo
+    // pattern as the shared paymentReceivedByList/paymentReceivedInList used
+    // everywhere else, but kept as their OWN dedicated lists rather than
+    // reused, since the user asked for these as distinct fields ("withdrawal
+    // by, withdrawal in") with their own labels/meaning (who withdrew it /
+    // where it went), not the same "money coming in" concept those lists represent.
+    let withdrawalByList = [];
+    let withdrawalInList = [];
     // ADD (2026-08-24, user request): "Raw Material Stock" — per-material-name
     // low-stock threshold, keyed by the same name used in a Raw Material
     // Ledger entry's stockName / a product's recipe[].material (see
@@ -9410,7 +9594,7 @@
       "Pedestal Fan": "nav_pedestal_fan", "Exhaust Fan": "nav_exhaust_fan", "Universal Fan": "nav_universal_fan",
       "Factories": "nav_factories", "Sales": "nav_sales", "Transactions": "nav_transactions", "Expenses": "nav_expenses",
       "Raw Material": "nav_rawmaterial", "Labour": "nav_labour", "Paint": "nav_paint", "Labour Ledger": "nav_labourledger",
-      "Scrap Ledger": "nav_scrapledger", "Stock": "stock_title"
+      "Scrap Ledger": "nav_scrapledger", "Withdrawal Ledger": "nav_withdrawal", "Stock": "stock_title"
     };
     function i18nSpan_(label){
       const key = NAV_LABEL_KEYS[label];
@@ -9552,6 +9736,9 @@
       // curved arrows) for the new Scrap Ledger nav item, distinct from the
       // other inventory icons.
       "Scrap Ledger": '<path d="M7 7h9l-2-2"/><path d="M17 12l1.5 4.5H10"/><path d="M6 17.5L4 13l4-3"/><path d="M13 17.5H8l2 2"/><path d="M11 12L9.5 7.5H16"/><path d="M18 6.5L20 11l-4 3"/>',
+      // ADD (2026-08-25, user request): a wallet-with-outgoing-arrow icon for
+      // the new Withdrawal Ledger nav item, distinct from the other icons.
+      "Withdrawal Ledger": '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.6"/><path d="M8 3l3 3-3 3"/><path d="M11 6H4"/>',
       // ADD (2026-08-24, user request): a box/package icon for the new
       // top-level Stock tab, distinct from the other inventory icons.
       "Stock": '<path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/><path d="M7.5 4.5l9 5.2"/>'
@@ -9566,10 +9753,13 @@
       // ledger) plus a rollup summary inside the Stock tab itself (see
       // "Scrap Stock" section in view-stock) — both, per the confirmed plan.
       { key: "scrapledger", label: "Scrap Ledger" },
+      // ADD (2026-08-25, user request): "Withdrawal Tab in side menu, under
+      // Scrap Tab" — placed directly after scrapledger in this list.
+      { key: "withdrawal", label: "Withdrawal Ledger" },
       { key: "stock", label: "Stock" }
     ];
     const inventoryNav = document.getElementById('side-inventory-nav');
-    const ALL_VIEW_KEYS = ["overview","notifications","factories","sales","transactions","expenses","rawmaterial","paint","labourledger","scrapledger","stock","backup","settings"];
+    const ALL_VIEW_KEYS = ["overview","notifications","factories","sales","transactions","expenses","rawmaterial","paint","labourledger","scrapledger","withdrawal","stock","backup","settings"];
     let currentView = 'products';
 
     function setView(v){
@@ -9605,6 +9795,7 @@
       if(v==='paint') renderPaintLedger();
       if(v==='labourledger') renderLabourLedgerTable_();
       if(v==='scrapledger') renderScrapLedger();
+      if(v==='withdrawal') renderWithdrawalLedger();
       if(v==='stock'){ renderStockReady(); renderStock(); renderStockOnHand_(); renderScrapStockSummary_(); }
       if(v==='backup') renderBackupView_();
       if(v==='settings') renderSettingsView_();
@@ -10371,8 +10562,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.25.7";
-    const APP_VERSION_NOTE = "New: Scrap Ledger — a dedicated ledger per scrap buyer (Stock tab area / its own sidebar page) tracking scrap sold by weight: Scrap Description, Item Name, Type, Weight and Rate per kg (auto-multiplies into Debit — Owed), Credit — Payment, plus the same Cash/Online/Cheque/Item-Material payment-method options every other ledger has. Stock tab now also shows a \"Scrap Stock\" rollup (total weight sold, total payment received, each with its own last-updated date). Export (PDF/JPG/CSV) is available from the Scrap Ledger page same as other ledgers. Deliberately left out: receipt-photo attachment and bundle/gauge/size-style stock tracking — none of those were asked for. Requires the updated Code.gs (new ScrapBuyers/ScrapLedger sheet tabs + Meta columns) redeployed alongside this index.html.";
+    const APP_VERSION = "2026.08.25.8";
+    const APP_VERSION_NOTE = "New: Withdrawal Ledger — a new sidebar tab (under Scrap Ledger) for money withdrawn from the business. A flat log (NOT debit/credit like the other ledgers): Description, Date, Amount, the same Cash/Online/Cheque/Item-Material payment-method options every other ledger has, plus Withdrawal By / Withdrawal In (own saved-suggestion combos). Withdrawals now reduce \"Total Collected\" cash-on-hand in the Overview Accounts module exactly like Expenses do, but are deliberately NOT counted in Net Profit (Sales − Expenses) — an owner's withdrawal isn't a business expense. The Withdrawal Ledger page shows Total Withdrawn + Entries Logged in stat boxes, has PDF/JPG/CSV export with its own Export Settings column picker, and a new Overview widget (toggleable in Settings > Overview Modules) shows the same totals. Requires the updated Code.gs (new Withdrawal sheet tab + Meta columns) redeployed alongside this index.html.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -12501,6 +12692,15 @@
       (inventory.customerledger || []).forEach(c => (c.entries||[]).forEach(e=>{ if(isOverdue(e)) count++; }));
       (inventory.labourledger || []).forEach(w => (w.entries||[]).forEach(e=>{ if(isOverdue(e)) count++; }));
       customLedgers.forEach(cl => (cl.entries||[]).forEach(e=>{ if(isOverdue(e)) count++; }));
+      // FIX (2026-08-25): Scrap Ledger's own overdue-cheque-banner-slot was
+      // wired into the page (see #view-scrapledger) but never actually
+      // counted here — a Scrap Ledger cheque could sit overdue forever with
+      // no banner/notification badge ever showing it. Fixed while adding
+      // the same coverage for the new Withdrawal Ledger (flat array, so
+      // scanned directly rather than via .entries like the roster ledgers
+      // above).
+      (inventory.scrapledger || []).forEach(s => (s.entries||[]).forEach(e=>{ if(isOverdue(e)) count++; }));
+      withdrawals.forEach(w=>{ if(isOverdue(w)) count++; });
       return count;
     }
     function renderOverdueChequeBanner_(){
@@ -14521,6 +14721,36 @@
       exportAsJPG_('Scrap Ledger', f.headers, f.rows, exportFilename_('Scrap-Ledger', name, 'jpg'), true, undefined, undefined, 'Scrap-Ledger');
     }
 
+    // ---------------- WITHDRAWAL LEDGER EXPORT ----------------
+    // ADD (2026-08-25, user request): "export options as well". Flat array
+    // (like Expenses), so no buyer/party filter — just date range, same as
+    // openExportFilterModal treats customledger/painterledger (name dropdown
+    // hidden). Dates are stored ISO (like Expenses), so parseExpenseDate_
+    // is used here instead of parseDMY_ (which the roster ledgers use).
+    function withdrawalLedgerRows_(dateFrom, dateTo){
+      const rows = [];
+      withdrawals.forEach(w=>{
+        const d = parseExpenseDate_(w.date);
+        const inRange = (!dateFrom || !d || d >= dateFrom) && (!dateTo || !d || d <= dateTo);
+        if(inRange) rows.push([w.date, w.desc || '', w.amount || 0, w.method || '', w.detail || '', w.withdrawnBy || '', w.withdrawnIn || '']);
+      });
+      return rows;
+    }
+    const WITHDRAWAL_LEDGER_HEADERS = ['Date','Description','Amount','Payment Method','Method Detail','Withdrawal By','Withdrawal In'];
+    function exportWithdrawalLedgerCSVRows_(rows){
+      const f = filterExportColumns_('withdrawal', WITHDRAWAL_LEDGER_HEADERS, rows);
+      const csv = toCSV_(f.headers, f.rows);
+      downloadCSV_(exportFilename_('Withdrawal-Ledger', null, 'csv'), withCompanyHeader_(csv), 'Withdrawal-Ledger');
+    }
+    function exportWithdrawalLedgerPDFRows_(rows){
+      const f = filterExportColumns_('withdrawal', WITHDRAWAL_LEDGER_HEADERS, rows);
+      exportPDF_('Withdrawal Ledger', f.headers, f.rows, exportFilename_('Withdrawal-Ledger', null, 'pdf'), 'l', null, undefined, 'Withdrawal-Ledger');
+    }
+    function exportWithdrawalLedgerJPGRows_(rows){
+      const f = filterExportColumns_('withdrawal', WITHDRAWAL_LEDGER_HEADERS, rows);
+      exportAsJPG_('Withdrawal Ledger', f.headers, f.rows, exportFilename_('Withdrawal-Ledger', null, 'jpg'), true, undefined, undefined, 'Withdrawal-Ledger');
+    }
+
     // ---------------- CUSTOM LEDGERS (separate per-supplier ledgers) ----------------
     function customLedgerBalance_(cl){
       // Debit = Cost (owed), Credit = Payment — opposite direction from the
@@ -16217,6 +16447,16 @@
       () => scrapItemNames, v => { scrapItemNames = v; });
     createSuggestCombo_(document.getElementById('sl-type'), document.getElementById('sl-type-dropdown'), document.getElementById('sl-type-wrap'),
       () => scrapTypes, v => { scrapTypes = v; });
+    // Withdrawal Ledger entry form — Description, and its own dedicated
+    // Withdrawal By / Withdrawal In combos (kept separate from the shared
+    // paymentReceivedByList/paymentReceivedInList — see withdrawalByList/
+    // withdrawalInList declaration for why).
+    createSuggestCombo_(document.getElementById('wd-desc'), document.getElementById('wd-desc-dropdown'), document.getElementById('wd-desc-wrap'),
+      () => withdrawalDescriptions, v => { withdrawalDescriptions = v; });
+    createSuggestCombo_(document.getElementById('wd-withdrawnby'), document.getElementById('wd-withdrawnby-dropdown'), document.getElementById('wd-withdrawnby-wrap'),
+      () => withdrawalByList, v => { withdrawalByList = v; });
+    createSuggestCombo_(document.getElementById('wd-withdrawnin'), document.getElementById('wd-withdrawnin-dropdown'), document.getElementById('wd-withdrawnin-wrap'),
+      () => withdrawalInList, v => { withdrawalInList = v; });
     // Paint Ledger entry form — Item Size / Item Type / Factory Name.
     createSuggestCombo_(document.getElementById('pl-itemsize'), document.getElementById('pl-itemsize-dropdown'), document.getElementById('pl-itemsize-wrap'),
       () => paintItemSizes, v => { paintItemSizes = v; });
@@ -17700,6 +17940,242 @@
       queueSync();
     });
 
+    // ---------------- WITHDRAWAL LEDGER ----------------
+    // ADD (2026-08-25, user request): "Withdrawal Tab in side menu, under
+    // Scrap Tab... it will not be treated in debit and credit but as just
+    // withdrawal." Structured like Expenses (flat array, single-entry
+    // modal, no PIN-reverify gate on add/edit/delete — Expenses is the
+    // closest existing "other ledger" in shape and doesn't gate those
+    // either) but with Description/Withdrawal By/Withdrawal In as saved-
+    // suggestion combos and the full 4-option payment-method block
+    // borrowed from Scrap Ledger, instead of Expenses' Category dropdown
+    // and 2-option method.
+    const withdrawalModal = document.getElementById('withdrawal-modal');
+    function nextWithdrawalId_(){
+      return 'wd' + Date.now() + Math.floor(Math.random()*1000);
+    }
+    // Small standalone cousin of chequeBadgeHtml_ above — that shared
+    // helper reads `e.debit || e.credit`, which Withdrawal has neither of
+    // (just a single `amount`), so it gets this dedicated version instead
+    // of forcing every other ledger's badge to special-case a field they
+    // don't have.
+    function withdrawalChequeBadgeHtml_(w){
+      if(!w || w.method !== 'Cheque') return '';
+      if(w.chequeStatus === 'bounced'){
+        return ` <span class="cheque-badge bounced">${tr('cheque_bounced').replace('{x}', fmt(w.amount || 0))}</span>`;
+      }
+      if(w.chequeStatus === 'pending'){
+        const due = parseDMY_(w.chequeDate);
+        const today = new Date(); today.setHours(0,0,0,0);
+        const overdue = due && due < today;
+        return ` <span class="cheque-badge ${overdue ? 'overdue' : 'pending'}">${tr(overdue ? 'cheque_overdue' : 'cheque_pending')} ${w.chequeDate || ''}</span>`;
+      }
+      return '';
+    }
+    function renderWithdrawalLedger(){
+      const totalWithdrawn = withdrawals.reduce((s,w)=>s+(w.amount||0),0);
+      let latestDate = null;
+      withdrawals.forEach(w=>{
+        const d = parseExpenseDate_(w.date);
+        if(d && !isNaN(d.getTime()) && (!latestDate || d > latestDate)) latestDate = w.date;
+      });
+      const statsGrid = document.getElementById('withdrawal-stats');
+      statsGrid.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-label">${tr('total_withdrawn')}</div>
+          <div class="stat-val">${fmt(totalWithdrawn)}</div>
+          <div style="font-size:10.5px; color:var(--text-dim); margin-top:4px;">${tr('as_of')} ${latestDate || tr('no_entries_yet')}</div>
+        </div>
+        <div class="stat-card"><div class="stat-label">${tr('entries_logged')}</div><div class="stat-val">${withdrawals.length}</div></div>
+      `;
+
+      const wrap = document.getElementById('withdrawal-table');
+      const sorted = [...withdrawals]
+        .map((w, originalIdx) => ({ w, originalIdx }))
+        .sort((a,b)=> String(b.w.date).localeCompare(String(a.w.date)));
+      let rows = '';
+      sorted.forEach(({w, originalIdx})=>{
+        rows += `
+          <tr>
+            <td>${w.date}</td>
+            <td class="inv-name">${w.desc || ''}</td>
+            <td>${w.method || ''}${withdrawalChequeBadgeHtml_(w)}</td>
+            <td class="num inv-total">${fmt(w.amount)}</td>
+            <td class="inv-actions-cell">
+              <div class="inv-row-actions">
+                <button class="inv-row-edit" data-idx="${originalIdx}" title="${tr('edit')}">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+                <button class="inv-row-delete" data-idx="${originalIdx}" title="${tr('delete')}">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>`;
+      });
+
+      if(withdrawals.length === 0){
+        wrap.innerHTML = '<div class="empty-state">' + tr('no_withdrawals_yet') + '<br>' + tr('add_one_below_withdrawal') + '</div>';
+      } else {
+        wrap.innerHTML = `
+          <div class="table-scroll"><table class="inv-table">
+            <thead>
+              <tr>
+                <th>${tr('date')}</th>
+                <th>${tr('description')}</th>
+                <th>${tr('payment_method')}</th>
+                <th class="num">${tr('amount')}</th>
+                <th class="inv-actions-th"></th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table></div>
+        `;
+        wrap.querySelectorAll('.inv-row-edit').forEach(btn=>{
+          btn.addEventListener('click', ()=> openWithdrawalModal(parseInt(btn.dataset.idx,10)));
+        });
+        wrap.querySelectorAll('.inv-row-delete').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            if(!confirm(tr('confirm_delete_entry'))) return;
+            const idx = parseInt(btn.dataset.idx,10);
+            const removed = withdrawals[idx];
+            if(removed && removed.id) markDeleted_('withdrawals', removed.id);
+            withdrawals.splice(idx,1);
+            renderWithdrawalLedger();
+            queueSync();
+          });
+        });
+      }
+
+      const addRow = document.createElement('button');
+      addRow.className = 'inv-add-row';
+      addRow.innerHTML = `<span style="font-size:16px;">+</span><span>${tr('add_withdrawal')}</span>`;
+      addRow.addEventListener('click', ()=> openWithdrawalModal(null));
+      wrap.appendChild(addRow);
+    }
+
+    const withdrawalDeleteBtn = document.getElementById('withdrawal-delete');
+    let editingWithdrawalIdx = null;
+
+    function openWithdrawalModal(idx){
+      editingWithdrawalIdx = idx;
+      if(idx === null){
+        document.getElementById('withdrawal-modal-title').textContent = tr('add_withdrawal');
+        document.getElementById('withdrawal-add').textContent = tr('add_withdrawal');
+        document.getElementById('wd-desc').value = '';
+        document.getElementById('wd-date').value = isoDate(0);
+        document.getElementById('wd-amount').value = '';
+        document.getElementById('wd-method').value = 'Cash';
+        document.getElementById('wd-method-detail').value = '';
+        document.getElementById('wd-method-detail-wrap').style.display = 'none';
+        document.getElementById('wd-cheque-date-wrap').style.display = 'none';
+        document.getElementById('wd-cheque-date').value = '';
+        document.getElementById('wd-withdrawnby').value = '';
+        document.getElementById('wd-withdrawnin').value = '';
+        document.getElementById('wd-cheque-status-wrap').style.display = 'none';
+        withdrawalDeleteBtn.style.display = 'none';
+      } else {
+        const w = withdrawals[idx];
+        document.getElementById('withdrawal-modal-title').textContent = tr('edit_withdrawal');
+        document.getElementById('withdrawal-add').textContent = tr('save');
+        document.getElementById('wd-desc').value = w.desc || '';
+        document.getElementById('wd-date').value = w.date || isoDate(0);
+        document.getElementById('wd-amount').value = w.amount;
+        document.getElementById('wd-method').value = w.method || 'Cash';
+        document.getElementById('wd-method-detail').value = w.detail || '';
+        document.getElementById('wd-method-detail-wrap').style.display = (w.method && w.method !== 'Cash') ? '' : 'none';
+        document.getElementById('wd-cheque-date-wrap').style.display = (w.method === 'Cheque') ? '' : 'none';
+        // chequeDate is stored DMY (like every other ledger's cheque date —
+        // see getOverdueCheques_/scanCheques, which assume parseDMY_ on it)
+        // even though wd-date itself stays ISO like Expenses — a native
+        // date input only accepts ISO, hence the conversion here.
+        document.getElementById('wd-cheque-date').value = dmyToISO_(w.chequeDate) || '';
+        document.getElementById('wd-withdrawnby').value = w.withdrawnBy || '';
+        document.getElementById('wd-withdrawnin').value = w.withdrawnIn || '';
+        // Mark Cleared/Bounced — only meaningful for a pending cheque (same
+        // isPendingCheque gate every other ledger's chequeActionsHtml_ uses).
+        const isPendingCheque = w.method === 'Cheque' && w.chequeStatus === 'pending';
+        document.getElementById('wd-cheque-status-wrap').style.display = isPendingCheque ? '' : 'none';
+        if(isPendingCheque){
+          document.getElementById('wd-cheque-status-label').textContent = chequeBadgeText_(w.chequeDate);
+        }
+        withdrawalDeleteBtn.style.display = '';
+      }
+      withdrawalModal.classList.add('active');
+    }
+
+    // Plain-text version of chequeBadgeHtml_'s pending/overdue message,
+    // reused here since wd-cheque-status-label is a plain label, not a
+    // styled badge span.
+    function chequeBadgeText_(chequeDate){
+      const due = parseDMY_(chequeDate);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const overdue = due && due < today;
+      return tr(overdue ? 'cheque_overdue' : 'cheque_pending') + ' ' + (chequeDate || '');
+    }
+
+    document.getElementById('wd-method').addEventListener('change', function(){
+      document.getElementById('wd-method-detail-wrap').style.display = this.value === 'Cash' ? 'none' : '';
+      document.getElementById('wd-cheque-date-wrap').style.display = this.value === 'Cheque' ? '' : 'none';
+      if(this.value !== 'Cheque') document.getElementById('wd-cheque-status-wrap').style.display = 'none';
+    });
+    document.getElementById('wd-mark-cleared').addEventListener('click', ()=>{
+      if(editingWithdrawalIdx === null) return;
+      withdrawals[editingWithdrawalIdx].chequeStatus = 'cleared';
+      document.getElementById('wd-cheque-status-wrap').style.display = 'none';
+      renderWithdrawalLedger();
+      renderOverdueChequeBanner_();
+      queueSync();
+      showToast_(tr('cheque_cleared'));
+    });
+    document.getElementById('wd-mark-bounced').addEventListener('click', ()=>{
+      if(editingWithdrawalIdx === null) return;
+      withdrawals[editingWithdrawalIdx].chequeStatus = 'bounced';
+      document.getElementById('wd-cheque-status-wrap').style.display = 'none';
+      renderWithdrawalLedger();
+      renderOverdueChequeBanner_();
+      queueSync();
+      showToast_(tr('mark_bounced'));
+    });
+
+    document.getElementById('withdrawal-cancel').addEventListener('click', ()=> withdrawalModal.classList.remove('active'));
+    withdrawalDeleteBtn.addEventListener('click', ()=>{
+      if(editingWithdrawalIdx !== null){
+        if(!confirm(tr('confirm_delete_entry'))) return;
+        const removed = withdrawals[editingWithdrawalIdx];
+        if(removed && removed.id) markDeleted_('withdrawals', removed.id);
+        withdrawals.splice(editingWithdrawalIdx,1);
+      }
+      withdrawalModal.classList.remove('active');
+      renderWithdrawalLedger();
+      queueSync();
+    });
+    document.getElementById('withdrawal-add').addEventListener('click', ()=>{
+      const desc = document.getElementById('wd-desc').value.trim();
+      const date = document.getElementById('wd-date').value || isoDate(0);
+      const amount = parseFloat(document.getElementById('wd-amount').value);
+      const method = document.getElementById('wd-method').value;
+      const detail = document.getElementById('wd-method-detail').value.trim();
+      // Converted to DMY on the way in — see the dmyToISO_ comment above in
+      // openWithdrawalModal for why chequeDate specifically stays DMY.
+      const chequeDate = isoToDMY_(document.getElementById('wd-cheque-date').value) || '';
+      const withdrawnBy = document.getElementById('wd-withdrawnby').value.trim();
+      const withdrawnIn = document.getElementById('wd-withdrawnin').value.trim();
+      if(!desc){ alert(tr('enter_description')); return; }
+      if(!(amount >= 0)){ alert(tr('enter_valid_amount')); return; }
+      if(editingWithdrawalIdx === null){
+        const id = nextWithdrawalId_();
+        withdrawals.push({ id, date, desc, amount, method, detail, chequeDate: method === 'Cheque' ? chequeDate : '', chequeStatus: method === 'Cheque' ? 'pending' : '', withdrawnBy, withdrawnIn, device: DEVICE_NAME });
+      } else {
+        const existing = withdrawals[editingWithdrawalIdx];
+        const id = existing.id || nextWithdrawalId_();
+        withdrawals[editingWithdrawalIdx] = { id, date, desc, amount, method, detail, chequeDate: method === 'Cheque' ? chequeDate : '', chequeStatus: method === 'Cheque' ? (existing.chequeStatus || 'pending') : '', withdrawnBy, withdrawnIn, device: existing.device };
+      }
+      withdrawalModal.classList.remove('active');
+      renderWithdrawalLedger();
+      queueSync();
+    });
+
     // ---------------- SALES VIEW ----------------
     // ---------------- OVERVIEW VIEW (Profit & Loss widgets go here) ----------------
 
@@ -18215,7 +18691,9 @@
         finance: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
         paint: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.37 2.63 14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3Z"/><path d="M9 8c-2 3-4 3.5-7 4l8 10c2-1 6-5 6-7"/></svg>',
         accounts: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
-        notifications: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
+        notifications: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+        // ADD (2026-08-25, user request): "also add withdrawal widget in overview".
+        withdrawal: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.6"/><path d="M8 3l3 3-3 3"/><path d="M11 6H4"/></svg>'
       };
 
       const rawLedgerSuppliers = inventory.rawledger || [];
@@ -18228,6 +18706,11 @@
       const customLedgerGrandCredit = customLedgers.reduce((s,cl)=> s + customLedgerTotals_(cl).credit, 0);
       const customLedgerGrandBal = customLedgers.reduce((s,cl)=> s + customLedgerBalance_(cl), 0);
       const customLedgerBl = balanceLabel_(customLedgerGrandBal);
+
+      // ADD (2026-08-25, user request): "also add withdrawal widget in
+      // overview" — total withdrawn all-time + entry count, same simple
+      // 2-metric style as the labour module above.
+      const totalWithdrawn = withdrawals.reduce((s,w)=>s+(w.amount||0),0);
 
       const summaryReport = buildBusinessSummaryReport_(overviewSummaryPeriod);
       const prevSummaryRange_ = getPreviousPeriodRange_(overviewSummaryPeriod);
@@ -18301,6 +18784,14 @@
           { label:tr('total_cost_debit'), val: fmt(customLedgerGrandDebit) },
           { label:tr('total_payment_credit'), val: fmt(customLedgerGrandCredit) },
           { label:tr('custom_ledgers_overall_balance'), val: customLedgerBl.text, cls: customLedgerBl.cls === 'ledger-balance-owed' ? 'pos' : (customLedgerBl.cls === 'ledger-balance-advance' ? 'neg' : '') },
+        ]},
+        // ADD (2026-08-25, user request): "also add withdrawal widget in
+        // overview" — kept deliberately simple (2 metrics), same as the
+        // labour module above; not counted in the Net Profit metric in the
+        // summary module (see the computeAccountsBalances_ comment).
+        { key:'withdrawal', color:'var(--red)', title:tr('nav_withdrawal'), icon:ICONS.withdrawal, metrics:[
+          { label:tr('total_withdrawn'), val: fmt(totalWithdrawn), cls: totalWithdrawn>0 ? 'neg' : '' },
+          { label:tr('entries_logged'), val: String(withdrawals.length) },
         ]},
       ].filter(m => overviewModulePrefs_[m.key] !== false);
 
@@ -18690,6 +19181,14 @@
         });
       });
       expenses.forEach(x=>{ result[bucket(x.method)].out += x.amount || 0; });
+      // ADD (2026-08-25, user request): "withdrawal payments will be
+      // deducted by total income when entry will be happened" — the most
+      // defensible literal reading is that a withdrawal reduces cash-on-hand
+      // exactly like an expense does (same mechanism, right below it).
+      // Deliberately NOT folded into totalSales/totalExpenses ("Net Profit")
+      // below — an owner's withdrawal isn't a business expense, and
+      // conflating the two would misrepresent business profitability.
+      withdrawals.forEach(x=>{ result[bucket(x.method)].out += x.amount || 0; });
 
       return ACCOUNT_METHODS.map(m => ({ account: m, in: result[m].in, out: result[m].out, balance: result[m].in - result[m].out }));
     }
@@ -19977,15 +20476,17 @@
       const isPainterLedger = section === 'painterledger';
       const isCustomLedger = section === 'customledger';
       const isScrapLedger = section === 'scrapledger';
+      const isWithdrawalLedger = section === 'withdrawal';
       const currentPainterName = (isPainterLedger && currentPainterIdx !== null && inventory.paint[currentPainterIdx]) ? inventory.paint[currentPainterIdx].name : '';
       const currentCustomLedgerName = (isCustomLedger && currentCustomLedgerIdx !== null && customLedgers[currentCustomLedgerIdx]) ? customLedgers[currentCustomLedgerIdx].name : '';
-      const title = isTxn ? 'Export Transactions' : (isRawLedger ? 'Export Raw Material Ledger' : (isLabourLedger ? 'Export Labour Ledger' : (isFactoryLedger ? 'Export ' + (currentCustomerName || '') : (isPainterLedger ? 'Export ' + currentPainterName : (isCustomLedger ? 'Export ' + currentCustomLedgerName : (isScrapLedger ? 'Export Scrap Ledger' : 'Export Paint Ledger'))))));
+      const title = isTxn ? 'Export Transactions' : (isRawLedger ? 'Export Raw Material Ledger' : (isLabourLedger ? 'Export Labour Ledger' : (isFactoryLedger ? 'Export ' + (currentCustomerName || '') : (isPainterLedger ? 'Export ' + currentPainterName : (isCustomLedger ? 'Export ' + currentCustomLedgerName : (isScrapLedger ? 'Export Scrap Ledger' : (isWithdrawalLedger ? 'Export Withdrawal Ledger' : 'Export Paint Ledger')))))));
       document.getElementById('ef-title').textContent = title + ' — ' + format.toUpperCase();
-      // A factory/painter/custom ledger export is already scoped to one
-      // customer/painter/ledger (the one you have open) — no Name dropdown
-      // needed, just dates (plus Order # for factory ledger).
-      document.getElementById('ef-name-label').style.display = (isFactoryLedger || isPainterLedger || isCustomLedger) ? 'none' : '';
-      document.getElementById('ef-name').style.display = (isFactoryLedger || isPainterLedger || isCustomLedger) ? 'none' : '';
+      // A factory/painter/custom/withdrawal ledger export is already scoped
+      // to one customer/painter/ledger (or, for withdrawal, has no
+      // buyer/party concept at all) — no Name dropdown needed, just dates
+      // (plus Order # for factory ledger).
+      document.getElementById('ef-name-label').style.display = (isFactoryLedger || isPainterLedger || isCustomLedger || isWithdrawalLedger) ? 'none' : '';
+      document.getElementById('ef-name').style.display = (isFactoryLedger || isPainterLedger || isCustomLedger || isWithdrawalLedger) ? 'none' : '';
       document.getElementById('ef-name-label').textContent = isTxn ? 'Factory / Workshop' : (isRawLedger ? tr('supplier') : (isLabourLedger ? tr('labour_name') : (isScrapLedger ? tr('scrap_buyer') : tr('painter'))));
       const names = isTxn ? factories.map(f=>f.name) : (isRawLedger ? (inventory.rawledger||[]).map(s=>s.name) : (isLabourLedger ? (inventory.labourledger||[]).map(w=>w.name) : (isScrapLedger ? (inventory.scrapledger||[]).map(s=>s.name) : (inventory.paint||[]).map(p=>p.name))));
       document.getElementById('ef-name').innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
@@ -19999,7 +20500,7 @@
       // From/To and unchecks "All Dates", but the user can still freely
       // change or clear it here same as always, this only changes what the
       // modal opens showing.
-      const exportRangeLedgerKey = isRawLedger ? 'raw' : (isLabourLedger ? 'labour' : (isFactoryLedger ? 'customerledger' : (isPainterLedger ? 'paint' : (isCustomLedger ? 'custom' : (isScrapLedger ? 'scrap' : section)))));
+      const exportRangeLedgerKey = isRawLedger ? 'raw' : (isLabourLedger ? 'labour' : (isFactoryLedger ? 'customerledger' : (isPainterLedger ? 'paint' : (isCustomLedger ? 'custom' : (isScrapLedger ? 'scrap' : (isWithdrawalLedger ? 'withdrawal' : section))))));
       const defaultRange = computeDefaultExportRange_(exportRangeLedgerKey);
       document.getElementById('ef-date-from').value = defaultRange.from;
       document.getElementById('ef-date-to').value = defaultRange.to;
@@ -20081,6 +20582,12 @@
         if(format === 'csv') exportScrapLedgerCSVRows_(rows, name);
         if(format === 'pdf') exportScrapLedgerPDFRows_(rows, name);
         if(format === 'jpg') exportScrapLedgerJPGRows_(rows, name);
+      } else if(section === 'withdrawal'){
+        const rows = withdrawalLedgerRows_(dateFrom, dateTo);
+        if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
+        if(format === 'csv') exportWithdrawalLedgerCSVRows_(rows);
+        if(format === 'pdf') exportWithdrawalLedgerPDFRows_(rows);
+        if(format === 'jpg') exportWithdrawalLedgerJPGRows_(rows);
       } else {
         const rows = paintLedgerRows_(dateFrom, dateTo, name);
         if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
@@ -20892,13 +21399,14 @@
       transactions: ['id','date','time','items','itemCount','rate','size','colour','total','factory','status','debit','credit','balance','paymentMode'],
       customerledger: ['factory','date','desc','items','size','colour','qty','debit','credit','balance','method','paymentNum','chequeStatus'],
       expenses: ['date','desc','category','amount'],
-      scrap: ['buyer','date','time','desc','itemName','type','weight','rate','debit','credit','balance','receivedBy','receivedIn']
+      scrap: ['buyer','date','time','desc','itemName','type','weight','rate','debit','credit','balance','receivedBy','receivedIn'],
+      withdrawal: ['date','desc','amount','method','detail','withdrawnBy','withdrawnIn']
     };
     const EXPORT_LEDGER_TITLES_ = {
       paint: 'Paint Ledger', raw: 'Raw Material Ledger', custom: 'Custom Ledgers',
       labour: 'Labour Ledger', transactions: 'Transactions',
       customerledger: 'Customer / Factory Ledger', expenses: 'Expenses',
-      scrap: 'Scrap Ledger'
+      scrap: 'Scrap Ledger', withdrawal: 'Withdrawal Ledger'
     };
     // Same column-label text the exports themselves use for each ledger —
     // reused as-is for the Export Settings checkbox labels below, so a
@@ -20909,7 +21417,7 @@
       paint: PAINT_LEDGER_HEADERS, raw: RAW_LEDGER_HEADERS, custom: CUSTOM_LEDGER_HEADERS,
       labour: LABOUR_LEDGER_HEADERS, transactions: TXN_EXPORT_HEADERS,
       customerledger: CUSTOMER_LEDGER_HEADERS, expenses: ['Date','Description','Category','Amount'],
-      scrap: SCRAP_LEDGER_HEADERS
+      scrap: SCRAP_LEDGER_HEADERS, withdrawal: WITHDRAWAL_LEDGER_HEADERS
     };
     const OVERVIEW_MODULE_DEFS_ = [
       { key:'summary', labelKey:'module_summary' },
@@ -20921,7 +21429,9 @@
       { key:'labour', labelKey:'nav_labourledger' },
       { key:'accounts', labelKey:'module_accounts' },
       { key:'rawledger', labelKey:'rawledger_title' },
-      { key:'customledger', labelKey:'custom_ledgers_title' }
+      { key:'customledger', labelKey:'custom_ledgers_title' },
+      // ADD (2026-08-25, user request): "also add withdrawal widget in overview".
+      { key:'withdrawal', labelKey:'nav_withdrawal' }
     ];
     // ---------------- EXPORT SETTINGS + LEDGER SETTINGS: relocated onto
     // each ledger (2026-08-23) ----------------
@@ -21061,6 +21571,9 @@
     // page — same Export dropdown (PDF/JPG/CSV) + column-picker settings
     // icon every other ledger's page has, top-right of the header.
     window.openScrapExportSettings_ = () => openLedgerExportSettings_('scrap', tr('scrapledger_title'));
+    // ADD (2026-08-25, user request): same export options for the
+    // Withdrawal Ledger page.
+    window.openWithdrawalExportSettings_ = () => openLedgerExportSettings_('withdrawal', tr('withdrawal_title'));
     window.openPainterModalExportSettings_ = () => {
       const p = inventory.paint[currentPainterIdx];
       openLedgerExportSettings_('paint', p ? p.name : tr('paint_title'));
