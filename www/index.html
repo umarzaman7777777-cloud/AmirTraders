@@ -5602,6 +5602,23 @@
     function saveTombstones_(){
       try{ localStorage.setItem('pos-deleted-tombstones', JSON.stringify(deletedIds_)); }catch(e){}
     }
+    // FIX (2026-08-25, user report: "always makes trouble when I delete an
+    // entry from one device and the other/sheet can't sync deletes easily"):
+    // set whenever ANY deletion happens, anywhere in the app. Consumed once,
+    // by the very next save (see saveStateToSheetInner_'s skip-window check
+    // below) to force a guaranteed-fresh mergeLatestRemoteBeforeSave_ pull
+    // before that save's payload is built — bypassing SYNC_SKIP_WINDOW_MS_/
+    // remoteChangedSinceLastKnown_'s speed shortcuts, which are fine for an
+    // ordinary add (nothing there needs "proof") but risky for a delete: the
+    // backend's safeWriteRows_ guard only lets a category shrink to zero
+    // through if THIS device can prove every remote item is tombstoned
+    // (see computeConfirmedEmptyFactories_ etc.), and that proof is only as
+    // good as how recently this device actually checked the real sheet. A
+    // delete that fires on a slightly-stale local picture of the sheet
+    // (very easy to hit in normal, everyday use — not just today's manual
+    // cleanup) was exactly the kind of "Refused to overwrite"/stuck-retrying
+    // situation seen throughout today's incident.
+    let pendingDeletionSync_ = false;
     function markDeleted_(bucket, key){
       if(!bucket || !key) return;
       if(!Array.isArray(deletedIds_[bucket])) deletedIds_[bucket] = [];
@@ -5609,6 +5626,7 @@
         deletedIds_[bucket].push(key);
         saveTombstones_();
       }
+      pendingDeletionSync_ = true;
     }
     function isDeleted_(bucket, key){
       return !!(bucket && key && Array.isArray(deletedIds_[bucket]) && deletedIds_[bucket].includes(key));
@@ -6299,10 +6317,18 @@
       // changed remotely before paying for a full loadAll() — see
       // remoteChangedSinceLastKnown_ for why this can only ever save
       // time, never weaken the safety guarantee.
-      if(Date.now() - lastSyncConfirmedAt_ > SYNC_SKIP_WINDOW_MS_){
-        if(await remoteChangedSinceLastKnown_()){
+      // FIX (2026-08-25): a pending deletion always forces the full fresh
+      // merge below, skipping BOTH speed shortcuts (the skip-window and the
+      // cheap version check) — see pendingDeletionSync_'s own comment for
+      // why a delete can't safely rely on either. Consumed (reset) right
+      // after, so this only costs the extra round-trip on saves that
+      // actually include a deletion, not every save forever after the
+      // first one.
+      if(pendingDeletionSync_ || Date.now() - lastSyncConfirmedAt_ > SYNC_SKIP_WINDOW_MS_){
+        if(pendingDeletionSync_ || await remoteChangedSinceLastKnown_()){
           await mergeLatestRemoteBeforeSave_();
         }
+        pendingDeletionSync_ = false;
       }
       // FIX (2026-08-19): reconstruct real base64 data URLs for any
       // not-yet-uploaded receipt before building the *ForSync payloads
@@ -10633,8 +10659,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.25.10";
-    const APP_VERSION_NOTE = "Fixed (Raw Material Stock): the Raw Material Ledger's Description suggestion list was seeded with the same six material names as the Raw Material Name field (Steel Taar, Steel Patri, Kirrik Karri Patri, Chutki, Tala, Mono) — picking one filled Description with a material name while leaving Raw Material Name blank, silently excluding that entry's Weight/Items Received from Raw Material Stock. Reseeded Description with real payment-context text (Advance Payment, Balance Payment, Purchase) — new devices only; an existing synced Description list needs its old material-look entries removed via that field's own Manage link. Added: a kg/g unit selector next to each product recipe's Weight/unit field — recipe weight is still always stored in kg (nothing downstream changed), but a per-unit weight of a few grams (pin, ribit, paint...) can now be typed directly in grams instead of an easy-to-mistype kg decimal; switching the unit converts the number shown so the actual quantity never silently changes. Confirmed (no bug found): weight-based and item-based raw material tracking already stay in fully separate columns end to end (Weight In/Used/Remaining vs. Items In/Used/Remaining) — a material with both set never has one figure bleed into the other.";
+    const APP_VERSION = "2026.08.25.11";
+    const APP_VERSION_NOTE = "Fixed (multi-device delete sync): reported as \"everything auto-deletes on restart\" / \"deletes don't sync between devices while adds work fine.\" Root cause: the backend only lets a category (Factories, Transactions, a ledger, etc.) shrink to zero if this device can PROVE every item still on the sheet was deliberately deleted by it — that proof depends on this device having just checked the real sheet. Saves had a speed shortcut that could skip re-checking the sheet if it looked recently synced, which is harmless for adding something but meant a delete could be judged against a slightly stale picture of the sheet and get wrongly refused (\"Refused to overwrite\" / stuck \"Retrying\") — exactly the pattern seen today across two devices. Every deletion now forces a guaranteed-fresh sheet check immediately before the next save, bypassing that shortcut, so the guard's proof is always based on the truest possible data. Also includes the earlier same-day Code.gs fix (one guarded tab's refusal no longer blocks every other tab's save in the same pass) and the Raw Material Stock fixes below — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
