@@ -5714,6 +5714,35 @@
       });
       if(changed) saveTombstones_();
     }
+    // ADD (2026-08-26, order-numbering reset feature): resetOrdersFresh_()
+    // in Code.gs renumbers whatever real order(s) survive down to a clean
+    // #0001-up sequence and clears every 'transactionsLog' tombstone on the
+    // shared sheet — but mergeRemoteTombstones_ above only ever ADDS
+    // remote tombstones into this device's own local list, it never
+    // REMOVES local ones just because the server dropped them. Left alone,
+    // this device would still privately remember the old ids as deleted,
+    // and the next time pruneLocalTombstoned_() runs (every save), it would
+    // silently strip the freshly-renamed order right back out — the exact
+    // failure this whole day has been about, just self-inflicted by the
+    // reset instead of the original race. orderTombstoneResetToken is a
+    // plain timestamp bumped only by that reset function; the moment this
+    // device sees a value it hasn't seen before, it drops its ENTIRE local
+    // transactionsLog tombstone cache (safe — the shared sheet's copy was
+    // just cleared too, so there's nothing real being un-forgotten) and
+    // remembers the new token so this only ever fires once per reset.
+    // MUST run before pruneLocalTombstoned_() wherever it's called from, so
+    // pruning never acts on the stale entries this is about to clear.
+    function applyOrderResetTokenIfChanged_(d){
+      if(!d || !d.orderTombstoneResetToken) return;
+      const token = String(d.orderTombstoneResetToken);
+      let seen = null;
+      try{ seen = localStorage.getItem('pos-order-reset-token-seen'); } catch(e){ /* ignore */ }
+      if(token === seen) return;
+      deletedIds_.transactionsLog = [];
+      saveTombstones_();
+      try{ localStorage.setItem('pos-order-reset-token-seen', token); } catch(e){ /* ignore */ }
+      console.warn('[order-reset] Detected a server-side order-numbering reset — cleared this device\'s local transactionsLog deletion memory so the renumbered order(s) can\'t get silently wiped again.');
+    }
     // Removes anything still sitting in local in-memory state that's now
     // tombstoned — including tombstones this device just learned about
     // from another device via mergeRemoteTombstones_ above, which is
@@ -6021,6 +6050,7 @@
         // Must run before those merges so a deletion from elsewhere can't
         // get merged back in first and then survive the prune.
         mergeRemoteTombstones_(d.tombstones);
+        applyOrderResetTokenIfChanged_(d);
         pruneLocalTombstoned_();
         transactionsLog = mergeById_(transactionsLog, (d.transactionsLog || []).map(migrateTxnPayment_), 'transactionsLog');
         customerPayments = mergeById_(customerPayments, d.customerPayments, 'customerPayments');
@@ -7232,6 +7262,7 @@
           // opens, not just after its first save. See
           // mergeRemoteTombstones_ above.
           mergeRemoteTombstones_(d.tombstones);
+          applyOrderResetTokenIfChanged_(d);
         }
         dataDirty = false;
         // Also a confirmed-fresh sync point (see SYNC_SKIP_WINDOW_MS_) — this
@@ -10831,7 +10862,7 @@
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
     const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.26.9. CRITICAL FIX: a confirmed order could silently vanish with no trace right after tapping Order Confirm. Root cause — the 20s background sync poll could pull an OLDER order-counter value from the sheet during a narrow race window (right after a new order was created, before its own save reached the sheet), walking the local order counter backward; the next new/confirmed order could then reuse an id an old, already-deleted order once had, and the app's own cross-device delete-protection (tombstones) correctly-but-wrongly treated the brand-new order as a re-appearing deleted one and silently removed it. Fixed on 3 layers: new orders can never reuse a tombstoned id even if the counter is wrong; the background poll can no longer walk the counter backward; same fix applied to CSV import. Also includes: Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION_NOTE = "Build 2026.08.26.10. Added self-heal support for the one-time order-numbering reset (resetOrdersFresh_ in Code.gs) — every device now clears its own local order-deletion memory automatically the moment the server signals a reset, so a renumbered order can't get silently wiped again by a device that still remembers the old numbering. Also includes: the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
