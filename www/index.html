@@ -10738,8 +10738,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.26.4";
-    const APP_VERSION_NOTE = "Fixed: the Notification Settings gear was living in the global top bar, which wraps onto the same line as the company name on a phone's narrow header — not the intended spot. Moved it inside the Notifications page itself, top-left right next to the \"Notifications\" title, matching how every ledger page already places its own Settings icon next to its title. Tapping it still jumps straight to the Notification Alerts card lower on the same page. Also includes: the 2026.08.26.3 self-healing sync fix (a device protecting real local data now automatically pushes it up instead of staying stuck), real push notifications (app-side @capacitor/push-notifications plugin), and the 2026.08.25.11 multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION = "2026.08.26.5";
+    const APP_VERSION_NOTE = "Fixed: a Customer/Factory Ledger entry linked to an order that's been permanently lost (not just temporarily out of sync — genuinely gone, no tombstone either) used to be impossible to remove — order-linked rows hide their delete button on purpose, since reconciliation normally manages them, but an order that never comes back left that row stuck forever, regenerating identically every time the ledger reopened. It now shows a delete button specifically when the linked order is verified completely absent from this device's order history, and deleting it also tombstones the order id itself so it can never resurrect the entry again. Also includes: the 2026.08.26.4 Notification Settings relocation, the 2026.08.26.3 self-healing sync fix, real push notifications (app-side @capacitor/push-notifications plugin), and the 2026.08.25.11 multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -12352,6 +12352,28 @@
         // uses: a real txnId, or the auto-generated "Order #X" description)
         // now shows a plain explanatory note instead of those two buttons.
         const isOrderLinked = !!(e.txnId || /^Order #(.+)$/.exec(e.desc || ''));
+        // FIX (2026-08-26, real device report): an order-linked entry whose
+        // order has gone missing from transactionsLog entirely (not "still
+        // present but unconfirmed" — genuinely nowhere, no tombstone either)
+        // is deliberately KEPT by reconcileFactoryLedgerOrders_'s cleanup
+        // above ("can't prove it's gone, keep it rather than risk losing
+        // real data" — the right call when the gap might just be a sync
+        // delay). But when that order is NEVER coming back — the original
+        // 2026-08-25 data-loss incident is exactly this case — that safety
+        // net turns into a PERMANENT ghost: no delete button (order-linked
+        // rows hide it, since reconciliation is supposed to manage them),
+        // regenerated identically every time this ledger reopens, no way
+        // to ever clear it. That's the exact "ghost entry I can't even
+        // click on" report. Rather than relaxing the safe default (which
+        // would risk deleting a real entry mid-sync-gap), this adds a
+        // narrow manual escape hatch: ONLY when the linked order id is
+        // truly absent from transactionsLog altogether (not present under
+        // any factory, confirmed or not) does a Delete button appear here
+        // — letting a person confirm "yes, this one really is gone" by
+        // hand, for exactly the case the automatic cleanup can't safely
+        // decide on its own.
+        const linkedOrderId = e.txnId || (/^Order #(.+)$/.exec(e.desc || '') || [])[1] || null;
+        const linkedOrderGone = isOrderLinked && linkedOrderId && !transactionsLog.some(t => t.id === linkedOrderId);
         blocks.push(`
           <div class="ledger-entry-block ${chequeCls} ${isOrderLinked ? 'order-linked' : ''}">
           <div class="ledger-entry-row">
@@ -12364,9 +12386,13 @@
             <button class="ledger-entry-del cl-entry-receipt" data-idx="${eIdx}" title="${tr('view_attached_receipt')}" style="border-color:var(--yellow); color:var(--yellow);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </button>` : ''}
-            ${isOrderLinked ? `
-            <span title="${tr('order_linked_row_note')}" style="font-size:9.5px; color:var(--text-dim); white-space:nowrap; padding:0 4px;">${tr('order_linked_row_short')}</span>
+            ${isOrderLinked ? (linkedOrderGone ? `
+            <button class="ledger-entry-del cl-entry-del-ghost" data-idx="${eIdx}" title="This order no longer exists — remove this leftover entry">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
             ` : `
+            <span title="${tr('order_linked_row_note')}" style="font-size:9.5px; color:var(--text-dim); white-space:nowrap; padding:0 4px;">${tr('order_linked_row_short')}</span>
+            `) : `
             <button class="ledger-entry-del cl-entry-edit" data-idx="${eIdx}" title="${tr('edit_entry')}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             </button>
@@ -12412,7 +12438,7 @@
           document.getElementById('cl-desc').scrollIntoView({ behavior:'smooth', block:'center' });
         });
       });
-      entriesWrap.querySelectorAll('.ledger-entry-del:not(.cl-entry-receipt):not(.cl-entry-edit)').forEach(btn=>{
+      entriesWrap.querySelectorAll('.ledger-entry-del:not(.cl-entry-receipt):not(.cl-entry-edit):not(.cl-entry-del-ghost)').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           if(!confirm(tr('confirm_delete_entry'))) return;
           requirePinReverify_(()=>{
@@ -12428,6 +12454,37 @@
             renderFactories();
             renderOverdueChequeBanner_();
             queueSync();
+          }, tr('confirm_pin_delete_hint'));
+        });
+      });
+      // ADD (2026-08-26): handles the ghost-cleanup button added above —
+      // an order-linked entry whose order is verified gone from
+      // transactionsLog entirely. Unlike the generic delete handler, this
+      // ALSO tombstones the order id itself (not just the ledger entry),
+      // matching the exact check reconcileFactoryLedgerOrders_'s cleanup
+      // filter already uses (isDeleted_('transactionsLog', oid)) — so if
+      // this same order id ever resurfaces from an old backup or a lagging
+      // device's sync, it can never regenerate this same ghost entry again.
+      entriesWrap.querySelectorAll('.cl-entry-del-ghost').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const eIdx = parseInt(btn.dataset.idx,10);
+          const removed = c.entries[eIdx];
+          if(!removed) return;
+          const linkedOrderId = removed.txnId || (/^Order #(.+)$/.exec(removed.desc || '') || [])[1] || null;
+          if(!confirm('This order (' + (linkedOrderId || '?') + ') no longer exists anywhere in this app — remove this leftover ledger entry for good? This cannot be undone.')) return;
+          requirePinReverify_(()=>{
+            if(removed.id){ delete customerReceiptFiles[removed.id]; persistCustomerReceiptLocally_(removed.id, null); markDeleted_('customerledgerEntries', removed.id); }
+            if(linkedOrderId) markDeleted_('transactionsLog', linkedOrderId);
+            c.entries.splice(eIdx,1);
+            if(editingClEntryIdx === eIdx){
+              editingClEntryIdx = null;
+              document.getElementById('cl-add-entry').textContent = tr('add_entry');
+            }
+            renderCustomerLedgerModalContent_();
+            renderFactories();
+            renderOverdueChequeBanner_();
+            queueSync();
+            showToast_('Ghost entry removed');
           }, tr('confirm_pin_delete_hint'));
         });
       });
