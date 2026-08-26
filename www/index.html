@@ -10772,8 +10772,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.26.6";
-    const APP_VERSION_NOTE = "Fixed: a save could get stuck on \"Syncing...\" forever with no error and no retry — the save request had no timeout at all, so a genuinely stalled connection or a slow Apps Script run (several receipt photos in one save adds real time) left it hanging indefinitely, and the only way out was force-closing the app. Saves now time out after 90s and fall into the existing automatic retry-every-10s path instead of hanging. Also includes: the 2026.08.26.5 ghost order-linked ledger entry delete fix, the 2026.08.26.4 Notification Settings relocation, the 2026.08.26.3 self-healing sync fix, real push notifications (app-side @capacitor/push-notifications plugin), and the 2026.08.25.11 multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION = "2.0";
+    const APP_VERSION_NOTE = "Build 2026.08.26.6. Fixed: a save could get stuck on \"Syncing...\" forever with no error and no retry — the save request had no timeout at all, so a genuinely stalled connection or a slow Apps Script run (several receipt photos in one save adds real time) left it hanging indefinitely, and the only way out was force-closing the app. Saves now time out after 90s and fall into the existing automatic retry-every-10s path instead of hanging. Also includes: the ghost order-linked ledger entry delete fix, the Notification Settings relocation, the self-healing sync fix, real push notifications (app-side @capacitor/push-notifications plugin), and the multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
