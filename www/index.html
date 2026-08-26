@@ -10983,7 +10983,7 @@
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
     const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.26.15. Notification Alerts settings (push enable, check frequency, reminder interval, per-type mute list) moved off the Notifications page's main scroll into its own popup — tap the gear icon top-left of Notifications to open it, same pattern as every other page's Settings gear. Also includes: ledger export Rate columns on Raw Material/Labour Ledgers, the Raw Material Ledger export missing-data fix (entries added via 'Raw Material Name'/'Weight Received' now always show their weight/count), the Export Settings checkbox-misalignment fix, and the Customer/Factory Ledger Time + Received By/In export fix (build .14). Also includes: the grams/kg fix extended to the Raw Material Ledger's own entry fields and the product recipe rows/Raw Material Stock table (builds .12-.13), the order-numbering reset counter fix, the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION_NOTE = "Build 2026.08.26.16. Fixed a bug from build .15: closing the new Notification Alerts popup after changing a setting wrongly asked 'Discard what you've entered?', even though every field there already auto-saves instantly (same fix already applied to the Export Settings/Ledger Settings popups). Also includes: Notification Alerts settings moved off the Notifications page's main scroll into its own popup — tap the gear icon top-left of Notifications to open it (build .15); ledger export Rate columns on Raw Material/Labour Ledgers, the Raw Material Ledger export missing-data fix (entries added via 'Raw Material Name'/'Weight Received' now always show their weight/count), the Export Settings checkbox-misalignment fix, and the Customer/Factory Ledger Time + Received By/In export fix (build .14). Also includes: the grams/kg fix extended to the Raw Material Ledger's own entry fields and the product recipe rows/Raw Material Stock table (builds .12-.13), the order-numbering reset counter fix, the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -20706,7 +20706,19 @@
       // replaced), so the input/change listener above marking them dirty
       // is a false positive here — "Discard what you've entered?" would
       // be asked for a change that's already been saved.
-      if(!btn || /delete/i.test(btn.id || '') || btn.id === 'les-close' || btn.id === 'lsm-close') return;
+      // ADD (2026-08-26, found while auditing the just-moved Notification
+      // Alerts modal): same exact situation — notif-alerts-settings-close.
+      // Every field inside that modal (frequency/reminder selects, the
+      // per-type mute checkboxes) already saves on 'change' via
+      // localStorage.setItem + postToBackend_/syncPushPrefsToBackend_ (see
+      // notifFreqSel_/notifReminderSel_/renderNotifSettingsList_ above) —
+      // this modal never had a Save step even back when it was an inline
+      // card on the Notifications page, so wrapping it in a modal-overlay
+      // must not start asking "Discard what you've entered?" for a change
+      // that already landed. Missing this when the card was moved into a
+      // modal would have been a real, user-visible regression the first
+      // time someone changed a setting and tapped Close.
+      if(!btn || /delete/i.test(btn.id || '') || btn.id === 'les-close' || btn.id === 'lsm-close' || btn.id === 'notif-alerts-settings-close') return;
       const overlay = btn.closest('.modal-overlay');
       if(!overlay || overlay.dataset.formDirty !== '1') return;
       if(!confirm(tr('discard_changes_confirm'))){
