@@ -2066,15 +2066,17 @@
            behaviour of that side-nav entry (see updateNotificationsBadge_
            below, which now updates both). The side-menu entry is left in
            place too — this only adds a faster way in, nothing is removed. -->
-      <!-- ADD (2026-08-25, user request: "add notifications settings on top
-           right left next to notifications in ⚙️") — one-tap shortcut to
-           the Notification Alerts card (push toggle + frequency/reminder
-           settings), which otherwise means opening Notifications and
-           scrolling all the way past every alert section to reach it. Sits
-           immediately left of the bell it configures. -->
-      <button type="button" class="theme-toggle" id="header-notif-settings-btn" title="Notification Settings">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
+      <!-- MOVED (2026-08-26, user correction: "I told you add settings of
+           notifications inside of notifications page on top left along
+           notifications name" — the 2026-08-25 version below put this
+           gear in the GLOBAL top bar, which on a phone's narrow header
+           wraps onto the same line as the brand/company name, so it read
+           as sitting next to "Amir Traders" instead of next to the
+           Notifications page's own title. Relocated into
+           #view-notifications itself, in a .ledger-settings-btn-row right
+           beside its <h2> — same pattern already used for every ledger
+           page's own Settings/Export icons (see openTxnLedgerSettings_
+           and friends). See that button for the actual wiring. -->
       <button type="button" class="theme-toggle header-notif-btn" id="header-notifications-btn" title="Notifications">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="header-notif-badge" id="header-notifications-badge" style="display:none;"></span>
@@ -2276,7 +2278,24 @@
       <div id="view-notifications" style="display:none;">
         <div class="view-header">
           <div class="view-header-text">
-            <h2 data-i18n="notifications_title">Notifications</h2>
+            <!-- MOVED (2026-08-26, user correction: "settings of
+                 notifications inside of notifications page on top left
+                 along notifications name") — this used to be a shortcut
+                 icon living in the global top bar (see the "MOVED" comment
+                 where #header-notifications-btn is declared above), which
+                 on a phone's narrow header wrapped onto the same line as
+                 the brand/company name — not what was asked for. Now lives
+                 top-left right beside this page's own title, same
+                 .ledger-settings-btn-row pattern every other ledger page
+                 already uses for its own Settings icon. Still jumps to the
+                 same #notif-alerts-settings-card lower on this same page
+                 (see the "MOVED" comment on that card) — no need to
+                 setView('notifications') any more since this button only
+                 exists on that view already. -->
+            <div class="ledger-settings-btn-row">
+              <button type="button" class="ledger-icon-btn" id="notif-page-settings-btn" title="Notification Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+              <h2 data-i18n="notifications_title">Notifications</h2>
+            </div>
             <p data-i18n="notifications_sub">Unconfirmed orders, cheques awaiting clearance, and entries missing a receipt.</p>
           </div>
         </div>
@@ -4863,7 +4882,11 @@
       if(isSyncing){
         el.textContent = tr('sync_status_syncing');
       } else if(isError){
-        el.textContent = tr('sync_status_error').replace('{detail}', lastSyncErrorDetail_ || syncLabel.textContent);
+        // A real stuck save (lastSyncErrorDetail_) is the more urgent/
+        // actionable of the two when both happen to be set at once — it
+        // means the automatic self-heal push queued by the load guard
+        // below is itself failing for its own reason and needs attention.
+        el.textContent = tr('sync_status_error').replace('{detail}', lastSyncErrorDetail_ || lastLoadGuardDetail_ || syncLabel.textContent);
       } else if(dataDirty){
         el.textContent = timeStr ? tr('sync_status_pending_synced').replace('{time}', timeStr) : tr('sync_status_pending_never');
       } else if(timeStr){
@@ -5461,6 +5484,19 @@
     // testSheetConnection_ can surface it directly in the dialog the user
     // already knows to check.
     let lastSyncErrorDetail_ = '';
+    // ADD (2026-08-26): separate from lastSyncErrorDetail_ above on purpose.
+    // That variable — and the "Connected, but a save is stuck... retrying
+    // every ~10s" dialog it feeds in testSheetConnection_ — means one
+    // specific thing: a real save just threw and syncRetryTimer is actively
+    // retrying it. The load-time data-loss guard below (looksLikeDataLoss_)
+    // is a DIFFERENT situation: nothing is retrying anything, a completed
+    // load was simply refused because it looked like it would wipe real
+    // local data. Writing that into lastSyncErrorDetail_ made
+    // testSheetConnection_ falsely claim an active 10s retry loop for a
+    // case where — before this fix — nothing was retrying at all, leaving
+    // the person waiting forever on a promise the app wasn't keeping. Kept
+    // separate so each dialog says something true.
+    let lastLoadGuardDetail_ = '';
     // SPEED: the backend now tracks a single cheap "data version" number
     // (bumped only when something real actually changes — see
     // DATA_VERSION_PROP_/getDataVersion_ in Code.gs) that this device can
@@ -6986,14 +7022,32 @@
             // "incomplete" with no detail, so diagnosing it meant guessing
             // from screenshots back and forth. looksLikeDataLoss_ already
             // knew the answer (it returns the category label); just surface
-            // it, the same way a real save failure's error message already
-            // does via lastSyncErrorDetail_ (see Settings > Sync, and the
-            // 2026-08-23 comment on renderSyncSettingsCard_ — the tooltip
-            // this also sets doesn't work on a touchscreen, Settings does).
-            lastSyncErrorDetail_ = 'Protecting local "' + suspiciousArea + '" — the sheet came back with none, but this device still has real ' + suspiciousArea + ' data that isn\'t confirmed deleted (see Settings > Sync).';
-            setSyncStatus('error', 'Sheet data looked incomplete — kept local data', lastSyncErrorDetail_);
+            // it (see Settings > Sync — the tooltip this also sets doesn't
+            // work on a touchscreen). Uses lastLoadGuardDetail_, NOT
+            // lastSyncErrorDetail_ — see that variable's own comment for why
+            // conflating the two produced a false "retrying every ~10s"
+            // claim in testSheetConnection_'s dialog.
+            lastLoadGuardDetail_ = 'Protecting local "' + suspiciousArea + '" — the sheet came back with none, but this device still has real ' + suspiciousArea + ' data that isn\'t confirmed deleted (see Settings > Sync).';
+            setSyncStatus('error', 'Sheet data looked incomplete — kept local data', lastLoadGuardDetail_);
+            // Sitting on protected local data forever fixes nothing by
+            // itself — this device's copy needs to actually reach the
+            // sheet. A guard refusal only ever means the category grew or
+            // held steady from this device's point of view (the backend's
+            // own MIN_ROWS_TO_PROTECT_ guard in Code.gs only ever blocks a
+            // category shrinking to zero — never blocks it growing), so
+            // pushing this device's current state up is always safe here.
+            // Queuing it automatically means the common case (the sheet was
+            // just genuinely behind this device) resolves itself within
+            // seconds with no action needed, instead of staying stuck until
+            // someone happens to make an unrelated edit.
+            queueSync();
             return false;
           }
+          // A load just genuinely went through without the guard tripping —
+          // any earlier "protecting local data" state is stale, don't keep
+          // surfacing it (mirrors the same clear-on-success already done for
+          // lastSyncErrorDetail_ after a real save succeeds).
+          lastLoadGuardDetail_ = '';
           if(Array.isArray(d.transactionsLog)) transactionsLog = d.transactionsLog.map(migrateTxnPayment_);
           if(Array.isArray(d.customerPayments)) customerPayments = d.customerPayments;
           if(d.inventory){
@@ -7283,6 +7337,20 @@
             'Connected, but a save is stuck'
           );
           setSyncStatus('error', 'Sync failed', lastSyncErrorDetail_);
+        } else if(lastLoadGuardDetail_){
+          // ADD (2026-08-26): distinct, ACCURATE copy for the load-guard
+          // case — see lastLoadGuardDetail_'s own comment for why reusing
+          // the "a save is stuck... retrying every ~10s" dialog above was
+          // wrong here (nothing was retrying before this fix). Now that the
+          // guard trip itself queues a self-heal push (see loadStateFromSheet),
+          // this can honestly say a push was queued rather than imply an
+          // open-ended wait.
+          showSuccessDialog(
+            'Connected to Google Sheet "' + (json.sheetName || '') + '" — the connection itself is fine.\n\n' +
+            'On the last sync, the sheet came back without some data this device still has, so it was kept safe here instead of being erased:\n' + lastLoadGuardDetail_ +
+            '\n\nThis device\'s copy has been queued to push up to the sheet automatically — check back shortly. If this keeps recurring for the same category, another device may still be missing that data too and needs to sync first.',
+            'Connected — local data protected'
+          );
         } else {
           showSuccessDialog('Connected to Google Sheet "' + (json.sheetName || '') + '". Everything is working.', 'Connection OK');
           setSyncStatus('synced', 'Synced');
@@ -10670,8 +10738,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.26.2";
-    const APP_VERSION_NOTE = "Fixed: the \"Sheet data looked incomplete — kept local data\" banner used to give no clue WHICH category triggered it, so tracking down a stuck device meant guessing from screenshots. It now records exactly which category (Factories, Transactions, a specific ledger, etc.) is being protected and why — check Settings > Sync for the detail after seeing this banner. Also includes: real push notifications (the @capacitor/push-notifications native plugin, wired to your Firebase google-services.json — the app-side piece that was still missing after the 2026-08-24 backend/FCM setup; tap \"Enable\" under Notification Alerts once per device after installing this build) and the 2026.08.25.11 multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION = "2026.08.26.4";
+    const APP_VERSION_NOTE = "Fixed: the Notification Settings gear was living in the global top bar, which wraps onto the same line as the company name on a phone's narrow header — not the intended spot. Moved it inside the Notifications page itself, top-left right next to the \"Notifications\" title, matching how every ledger page already places its own Settings icon next to its title. Tapping it still jumps straight to the Notification Alerts card lower on the same page. Also includes: the 2026.08.26.3 self-healing sync fix (a device protecting real local data now automatically pushes it up instead of staying stuck), real push notifications (app-side @capacitor/push-notifications plugin), and the 2026.08.25.11 multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -20006,15 +20074,13 @@
     // hamburger drawer first.
     const headerNotifBtn_ = document.getElementById('header-notifications-btn');
     if(headerNotifBtn_) headerNotifBtn_.addEventListener('click', ()=> setView('notifications'));
-    // ADD (2026-08-25, user request: "add notifications settings on top
-    // right left next to notifications in ⚙️") — opens the Notifications
-    // tab (where the Notification Alerts card actually lives, see the
-    // "MOVED" comment on #notif-alerts-settings-card above) and scrolls
-    // straight to that card instead of leaving the person to find it below
-    // every alert section themselves.
-    const headerNotifSettingsBtn_ = document.getElementById('header-notif-settings-btn');
+    // MOVED (2026-08-26, was header-notif-settings-btn in the global top
+    // bar — see the "MOVED" comment on #notif-page-settings-btn's markup
+    // above for why). This button only exists inside #view-notifications
+    // itself now, so there's no other view to navigate away from — just
+    // scroll straight to the settings card below every alert section.
+    const headerNotifSettingsBtn_ = document.getElementById('notif-page-settings-btn');
     if(headerNotifSettingsBtn_) headerNotifSettingsBtn_.addEventListener('click', ()=>{
-      setView('notifications');
       setTimeout(()=>{
         const card = document.getElementById('notif-alerts-settings-card');
         if(card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
