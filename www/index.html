@@ -2287,11 +2287,11 @@
                  the brand/company name — not what was asked for. Now lives
                  top-left right beside this page's own title, same
                  .ledger-settings-btn-row pattern every other ledger page
-                 already uses for its own Settings icon. Still jumps to the
-                 same #notif-alerts-settings-card lower on this same page
-                 (see the "MOVED" comment on that card) — no need to
-                 setView('notifications') any more since this button only
-                 exists on that view already. -->
+                 already uses for its own Settings icon. Opens the
+                 #notif-alerts-settings-modal (see its markup near
+                 ledger-settings-modal) — no need to setView('notifications')
+                 any more since this button only exists on that view
+                 already. -->
             <div class="ledger-settings-btn-row">
               <button type="button" class="ledger-icon-btn" id="notif-page-settings-btn" title="Notification Settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
               <h2 data-i18n="notifications_title">Notifications</h2>
@@ -2301,49 +2301,6 @@
         </div>
         <div class="stat-grid" id="notifications-stats" style="margin-bottom:18px;"></div>
         <div id="notifications-body"></div>
-
-        <!-- MOVED (2026-08-24, user request: "move notifications settings
-             from setting menu and move along side notifications in
-             notifications bar for ease of access") — relocated from
-             Settings so it sits right next to the alerts it configures.
-             Same ids, same JS wiring (renderNotifSettingsList_/
-             renderNotifPushStatus_/notifFreqSel_/notifReminderSel_ etc. —
-             all plain getElementById lookups, unaffected by where this
-             markup lives) — see renderNotifications() below for where the
-             per-view-open repopulation moved to (was in
-             renderSettingsView_()). -->
-        <div class="settings-card" id="notif-alerts-settings-card" style="margin-top:22px;">
-          <div class="settings-card-header" style="--settings-icon-color:var(--orange);">
-            <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
-            <div class="settings-card-title" data-i18n="notif_settings_title">Notification Alerts</div>
-          </div>
-          <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="notif_settings_desc">Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.</div>
-          <div id="settings-notif-push-status" style="font-family:var(--mono); font-size:11.5px; margin-bottom:10px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line); color:var(--text-dim);"></div>
-          <button id="settings-notif-enable-btn" type="button" style="background:var(--yellow); color:#1C1F22; border:none; padding:9px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase; margin-bottom:16px;" data-i18n="notif_enable_btn">Enable Push Notifications</button>
-
-          <label class="field-label" data-i18n="notif_settings_frequency_label">Check For New Alerts Every</label>
-          <select id="settings-notif-frequency" class="field-input">
-            <option value="5" data-i18n="notif_freq_5">5 minutes</option>
-            <option value="15" data-i18n="notif_freq_15">15 minutes</option>
-            <option value="30" data-i18n="notif_freq_30">30 minutes</option>
-            <option value="60" data-i18n="notif_freq_60">1 hour</option>
-          </select>
-
-          <label class="field-label" style="margin-top:12px;" data-i18n="notif_settings_reminder_label">Remind Me Again After</label>
-          <select id="settings-notif-reminder" class="field-input">
-            <option value="0" data-i18n="notif_reminder_never">Never (only once)</option>
-            <option value="1" data-i18n="notif_reminder_1h">1 hour</option>
-            <option value="6" data-i18n="notif_reminder_6h">6 hours</option>
-            <option value="12" data-i18n="notif_reminder_12h">12 hours</option>
-            <option value="24" data-i18n="notif_reminder_24h">24 hours</option>
-            <option value="72" data-i18n="notif_reminder_72h">3 days</option>
-          </select>
-
-          <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--steel-line);">
-            <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;" data-i18n="notif_settings_types_label">Alert Me About</div>
-            <div id="settings-notif-types-list" style="display:flex; flex-direction:column; gap:10px;"></div>
-          </div>
-        </div>
       </div>
 
       <div id="view-expenses" style="display:none;">
@@ -4189,6 +4146,56 @@
       <option value="newest" data-i18n="sort_newest_first">Newest First</option>
     </select>
     <button class="btn-cancel" id="lsm-close" style="width:100%; margin-top:16px;" data-i18n="close">Close</button>
+  </div>
+</div>
+
+<!-- ================= NOTIFICATION ALERTS SETTINGS MODAL ================= -->
+<!-- MOVED (2026-08-26, user request: "I want this notification panel
+     inside of gear setting box of notifications so it will be ease
+     there") — this used to be an always-visible card sitting inline
+     below every alert section on the Notifications page (see the
+     2026-08-24 "MOVED" history above #notif-page-settings-btn), which
+     took up permanent scroll space just to reach settings looked at
+     rarely. Now it only appears when the gear icon top-left of the
+     Notifications page is tapped — same modal-overlay pattern as
+     ledger-settings-modal just above. Every id inside is UNCHANGED from
+     the old inline card (settings-notif-push-status/settings-notif-
+     enable-btn/settings-notif-frequency/settings-notif-reminder/
+     settings-notif-types-list), so renderNotifSettingsList_/
+     renderNotifPushStatus_/the frequency+reminder value-sync in
+     renderNotifications() all keep working with zero JS changes —
+     populating a hidden modal's fields is harmless, same as any other
+     modal that's pre-filled before it's opened. -->
+<div class="modal-overlay" id="notif-alerts-settings-modal">
+  <div class="modal-box">
+    <h3 data-i18n="notif_settings_title">Notification Alerts</h3>
+    <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="notif_settings_desc">Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.</div>
+    <div id="settings-notif-push-status" style="font-family:var(--mono); font-size:11.5px; margin-bottom:10px; padding:10px 12px; border-radius:8px; background:var(--panel-raised); border:1px solid var(--steel-line); color:var(--text-dim);"></div>
+    <button id="settings-notif-enable-btn" type="button" style="background:var(--yellow); color:#1C1F22; border:none; padding:9px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase; margin-bottom:16px;" data-i18n="notif_enable_btn">Enable Push Notifications</button>
+
+    <label class="field-label" data-i18n="notif_settings_frequency_label">Check For New Alerts Every</label>
+    <select id="settings-notif-frequency" class="field-input">
+      <option value="5" data-i18n="notif_freq_5">5 minutes</option>
+      <option value="15" data-i18n="notif_freq_15">15 minutes</option>
+      <option value="30" data-i18n="notif_freq_30">30 minutes</option>
+      <option value="60" data-i18n="notif_freq_60">1 hour</option>
+    </select>
+
+    <label class="field-label" style="margin-top:12px;" data-i18n="notif_settings_reminder_label">Remind Me Again After</label>
+    <select id="settings-notif-reminder" class="field-input">
+      <option value="0" data-i18n="notif_reminder_never">Never (only once)</option>
+      <option value="1" data-i18n="notif_reminder_1h">1 hour</option>
+      <option value="6" data-i18n="notif_reminder_6h">6 hours</option>
+      <option value="12" data-i18n="notif_reminder_12h">12 hours</option>
+      <option value="24" data-i18n="notif_reminder_24h">24 hours</option>
+      <option value="72" data-i18n="notif_reminder_72h">3 days</option>
+    </select>
+
+    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--steel-line);">
+      <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;" data-i18n="notif_settings_types_label">Alert Me About</div>
+      <div id="settings-notif-types-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+    <button class="btn-cancel" id="notif-alerts-settings-close" style="width:100%; margin-top:16px;" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -10976,7 +10983,7 @@
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
     const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.26.14. Ledger exports/sheets now show a Rate column (per-kg or per-item) on the Raw Material and Labour Ledgers. Fixed a real data-loss-looking bug the user caught via screenshot: Raw Material Ledger entries added through 'Raw Material Name' + 'Weight Received' (instead of the older free-text Weight/Bundle Count boxes) were exporting completely blank Weight/Bundle Count cells despite Export Settings showing every column checked — those entries' real weight/count now always show. Also fixed an Export Settings checkbox misalignment on the Raw Material and Labour Ledgers (introduced when the Rate column was added) where every checkbox from Rate onward silently controlled the wrong column. Customer/Factory Ledger export now includes Time and a combined Received By / In column, including for order-linked rows (sourced from the actual Record Payment entries) which never surfaced this before. Also includes: the grams/kg fix extended to the Raw Material Ledger's own entry fields and the product recipe rows/Raw Material Stock table (builds .12-.13), the order-numbering reset counter fix, the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION_NOTE = "Build 2026.08.26.15. Notification Alerts settings (push enable, check frequency, reminder interval, per-type mute list) moved off the Notifications page's main scroll into its own popup — tap the gear icon top-left of Notifications to open it, same pattern as every other page's Settings gear. Also includes: ledger export Rate columns on Raw Material/Labour Ledgers, the Raw Material Ledger export missing-data fix (entries added via 'Raw Material Name'/'Weight Received' now always show their weight/count), the Export Settings checkbox-misalignment fix, and the Customer/Factory Ledger Time + Received By/In export fix (build .14). Also includes: the grams/kg fix extended to the Raw Material Ledger's own entry fields and the product recipe rows/Raw Material Stock table (builds .12-.13), the order-numbering reset counter fix, the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -20617,14 +20624,21 @@
     // MOVED (2026-08-26, was header-notif-settings-btn in the global top
     // bar — see the "MOVED" comment on #notif-page-settings-btn's markup
     // above for why). This button only exists inside #view-notifications
-    // itself now, so there's no other view to navigate away from — just
-    // scroll straight to the settings card below every alert section.
+    // itself now.
+    // MOVED AGAIN (2026-08-26, user request: "I want this notification
+    // panel inside of gear setting box of notifications so it will be
+    // ease there") — used to scroll down to an always-visible inline
+    // card; that card is now its own modal (#notif-alerts-settings-modal,
+    // see the markup near ledger-settings-modal), so this just opens it,
+    // same as every other page's own gear-icon Settings button.
     const headerNotifSettingsBtn_ = document.getElementById('notif-page-settings-btn');
-    if(headerNotifSettingsBtn_) headerNotifSettingsBtn_.addEventListener('click', ()=>{
-      setTimeout(()=>{
-        const card = document.getElementById('notif-alerts-settings-card');
-        if(card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 50);
+    const notifAlertsSettingsModal_ = document.getElementById('notif-alerts-settings-modal');
+    if(headerNotifSettingsBtn_ && notifAlertsSettingsModal_) headerNotifSettingsBtn_.addEventListener('click', ()=>{
+      notifAlertsSettingsModal_.classList.add('active');
+    });
+    const notifAlertsSettingsCloseBtn_ = document.getElementById('notif-alerts-settings-close');
+    if(notifAlertsSettingsCloseBtn_ && notifAlertsSettingsModal_) notifAlertsSettingsCloseBtn_.addEventListener('click', ()=>{
+      notifAlertsSettingsModal_.classList.remove('active');
     });
     globalSearchInput_.addEventListener('input', ()=> renderGlobalSearchResults_(globalSearchInput_.value));
     // FIX (2026-08-19): collapsible toggles for the Settings page's Export
