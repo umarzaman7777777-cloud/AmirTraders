@@ -4542,20 +4542,18 @@
     <p style="font-size:11px; color:var(--text-dim); margin:-6px 0 8px;" data-i18n="recipe_sub">Optional — set once and every order of this product automatically deducts from Raw Material Stock.</p>
     <div id="pe-recipe-rows"></div>
     <button type="button" class="weight-add-btn" id="pe-recipe-add-row" data-i18n="recipe_add_row" style="margin-bottom:14px;">+ Add Material</button>
-    <label class="field-label" data-i18n="colour">Colour</label>
-    <select class="field-input" id="pe-color">
-      <option value="Black" data-i18n="color_black">Black</option>
-      <option value="Shine Black" data-i18n="color_shine_black">Shine Black</option>
-      <option value="Matt Black" data-i18n="color_matt_black">Matt Black</option>
-      <option value="White" data-i18n="color_white">White</option>
-      <option value="Moon White" data-i18n="color_moon_white">Moon White</option>
-      <option value="Half White" data-i18n="color_half_white">Half White</option>
-      <option value="Grey" data-i18n="color_grey">Grey</option>
-      <option value="Silver" data-i18n="color_silver">Silver</option>
-      <option value="Red" data-i18n="color_red">Red</option>
-      <option value="Blue" data-i18n="color_blue">Blue</option>
-      <option value="Other" data-i18n="other">Other</option>
-    </select>
+    <div style="display:flex; align-items:baseline; justify-content:space-between;">
+      <label class="field-label" style="margin:0;" data-i18n="colour">Colour</label>
+      <button type="button" id="pe-color-manage-btn" class="ml-manage-link" data-list="productcolour" data-i18n="manage">Manage</button>
+    </div>
+    <!-- FIX (2026-08-26, user request): this used to be a fixed, hardcoded
+         list of <option>s with no way to add/delete entries, unlike every
+         other field on this form (Description, Raw Material Name, Work
+         Type, etc.) — see productColours / MANAGEABLE_LISTS.productcolour.
+         Options are now rendered by renderProductColorOptions_() from that
+         list; the "Other" option + free-text fallback below stays for a
+         genuinely one-off colour someone doesn't want saved to the list. -->
+    <select class="field-input" id="pe-color"></select>
     <input class="field-input" id="pe-color-other" data-i18n-placeholder="enter_custom_colour" placeholder="Enter custom colour" style="display:none;">
     <div class="modal-actions">
       <button class="btn-cancel" id="pe-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete">Delete</button>
@@ -4948,6 +4946,7 @@
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
+          productColours,
           txnNumber, sessionTotal, sessionCount, products: PRODUCTS
         };
         localStorage.setItem(LOCAL_SNAPSHOT_KEY, JSON.stringify(snap));
@@ -5011,6 +5010,7 @@
       if(Array.isArray(snap.customWeightPerItems) && snap.customWeightPerItems.length) customWeightPerItems = snap.customWeightPerItems;
       if(Array.isArray(snap.customWeightPerScraps) && snap.customWeightPerScraps.length) customWeightPerScraps = snap.customWeightPerScraps;
       if(Array.isArray(snap.customItemSizes) && snap.customItemSizes.length) customItemSizes = snap.customItemSizes;
+      if(Array.isArray(snap.productColours) && snap.productColours.length) productColours = snap.productColours;
       if(snap.txnNumber) txnNumber = snap.txnNumber;
       if(typeof snap.sessionTotal === 'number') sessionTotal = snap.sessionTotal;
       if(typeof snap.sessionCount === 'number') sessionCount = snap.sessionCount;
@@ -5934,7 +5934,8 @@
       { key: 'customDescriptions', get: () => customDescriptions, set: v => { customDescriptions = v; } },
       { key: 'customWeightPerItems', get: () => customWeightPerItems, set: v => { customWeightPerItems = v; } },
       { key: 'customWeightPerScraps', get: () => customWeightPerScraps, set: v => { customWeightPerScraps = v; } },
-      { key: 'customItemSizes', get: () => customItemSizes, set: v => { customItemSizes = v; } }
+      { key: 'customItemSizes', get: () => customItemSizes, set: v => { customItemSizes = v; } },
+      { key: 'productColours', get: () => productColours, set: v => { productColours = v; } }
     ];
     // Picks the next order number not already used by ANY order this device
     // knows about — its own local list, plus whatever the freshest sheet
@@ -5945,13 +5946,27 @@
     // explicitly accepted tradeoff of resolving this locally/offline rather
     // than requiring a network call at order-creation time — see
     // renumberCollidedOrder_ below for what happens if it still collides.
+    // FIX (2026-08-26, real report: a confirmed order "vanished... not even
+    // in factory like ghost no proof" right after tapping Order Confirm):
+    // this used to only avoid an id already in use by a LIVE order (locally
+    // or remotely) — it had no idea an id could belong to an OLD, already-
+    // DELETED order that's still sitting in this device's tombstone list
+    // (deletedIds_['transactionsLog'], see markDeleted_/isDeleted_). If
+    // txnNumber ever drifts backward for any reason (see the loadStateFromSheet
+    // fix below for the specific way that happened here), the very next order
+    // minted can land on an id that's tombstoned — and the instant any save's
+    // pre-merge step calls pruneLocalTombstoned_(), that BRAND NEW order gets
+    // silently filtered straight back out of transactionsLog, indistinguishable
+    // from a real, confirmed deletion. Now also skips any tombstoned id, so a
+    // fresh order can never collide with an old deleted one even if the
+    // counter itself is wrong.
     function nextFreeTxnId_(remoteById){
       const used = new Set();
       transactionsLog.forEach(x=>{ if(x && x.id) used.add(String(x.id)); });
       Object.keys(remoteById || {}).forEach(id => used.add(String(id)));
       let n = Math.max(txnNumber, 1);
       let id = String(n).padStart(4,'0');
-      while(used.has(id)){ n++; id = String(n).padStart(4,'0'); }
+      while(used.has(id) || isDeleted_('transactionsLog', id)){ n++; id = String(n).padStart(4,'0'); }
       return { id, n };
     }
     // Gives a locally-created order that just collided with a different
@@ -6110,9 +6125,29 @@
         }
         // Run the union merge for every small saved-suggestion list — see
         // SUGGESTION_LISTS_ above for why/what.
+        // FIX (2026-08-26, real report: "I delete a Description/Raw
+        // Material Name and it comes right back after restart"): this
+        // union merge only ever ADDED — it never had any way to tell "this
+        // device never had this item" apart from "this item was
+        // deliberately deleted and the sheet just hasn't caught up yet".
+        // So the very next time anything triggered a save (which always
+        // merges-before-saving), a deleted suggestion got silently pulled
+        // right back in from the remote copy — the delete button visibly
+        // worked for a moment, then undid itself on the next sync, which
+        // is exactly what looked like "the old name comes back after
+        // restart". Same tombstone mechanism already used for ledger
+        // entries/rosters (markDeleted_/isDeleted_, synced via the shared
+        // Deletions tab) now applies here too — a deliberately-removed
+        // suggestion stays removed, and unlike a ledger row this is
+        // low-stakes enough (a dropdown suggestion, not real financial
+        // data) that no extra confirmation or safety net is needed beyond
+        // what deleting already does.
         SUGGESTION_LISTS_.forEach(({key, get, set})=>{
           const remote = d[key];
-          if(Array.isArray(remote) && remote.length) set(unionStrArrays_(get(), remote));
+          if(!Array.isArray(remote) || !remote.length) return;
+          const merged = unionStrArrays_(get(), remote);
+          const bucket = 'suggestionList:' + key;
+          set(merged.filter(v => !isDeleted_(bucket, String(v).toLowerCase())));
         });
         if(Array.isArray(d.customLedgers)) customLedgers = mergeCustomLedgersWithEntries_(customLedgers, d.customLedgers);
         if(d.inventory){
@@ -6577,6 +6612,7 @@
           paintItemSizes, paintItemTypes, paintFactoryNames,
           paymentReceivedByList, paymentReceivedInList,
           customLedgers: customLedgersForSync, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
+          productColours,
           txnNumber, sessionTotal, sessionCount, products: PRODUCTS,
           salesSummary: buildSalesSummaryRows_(), expensesSummary: buildExpensesSummaryRows_(),
           accountsSummary: buildAccountsSummaryRows_(),
@@ -7165,12 +7201,27 @@
             customLedgers.forEach(culCleanWeightStock_);
           }
           if(Array.isArray(d.customItemColours) && d.customItemColours.length > 0) customItemColours = d.customItemColours;
+          if(Array.isArray(d.productColours) && d.productColours.length > 0) productColours = d.productColours;
           if(Array.isArray(d.customDescriptions) && d.customDescriptions.length > 0) customDescriptions = d.customDescriptions;
           if(Array.isArray(d.customWeightPerItems) && d.customWeightPerItems.length > 0) customWeightPerItems = d.customWeightPerItems;
           if(Array.isArray(d.customWeightPerScraps) && d.customWeightPerScraps.length > 0) customWeightPerScraps = d.customWeightPerScraps;
           if(Array.isArray(d.customItemSizes) && d.customItemSizes.length > 0) customItemSizes = d.customItemSizes;
           culMigrateAllLedgersStock_();
-          if(d.txnNumber) txnNumber = d.txnNumber;
+          // FIX (2026-08-26, real report: a just-confirmed order "vanished...
+          // ghost no proof"): this used to blindly take the sheet's
+          // txnNumber no matter what — unlike mergeLatestRemoteBeforeSave_'s
+          // own txnNumber handling (see its own comment), which only ever
+          // moves the counter UP. This is a full background pull (the 20s
+          // idle poll, see idleSyncPollOnce_), so it can run at any moment —
+          // including the narrow window right after this device incremented
+          // txnNumber locally for a brand-new order but before that order's
+          // own save has actually reached the sheet. In that window the
+          // sheet's txnNumber is still the OLDER, lower value; applying it
+          // here walked this device's counter backward, so the very next
+          // order minted could reuse an id an old, already-deleted order
+          // once had — see nextFreeTxnId_'s comment for what that then does.
+          // Same max-only guard as the merge path closes this off entirely.
+          if(typeof d.txnNumber === 'number' && d.txnNumber > txnNumber) txnNumber = d.txnNumber;
           if(d.sessionTotal) sessionTotal = d.sessionTotal;
           if(d.sessionCount) sessionCount = d.sessionCount;
           // FIX: this full load already takes the sheet as the source of
@@ -9033,6 +9084,13 @@
     // Colour are new fields with their own lists.
     let customLedgers = [];
     let customItemColours = [];
+    // ADD (2026-08-26, user request): Product Editor's Colour field used to
+    // be a fixed <select> with hardcoded options and no "Manage" (add/
+    // delete) capability, unlike every other field (Description, Raw
+    // Material Name, Work Type, etc.). Seeded with the same 10 colours that
+    // used to be hardcoded so existing behaviour doesn't change on upgrade;
+    // now a normal saved/synced list like productNames/productSizes.
+    let productColours = ["Black","Shine Black","Matt Black","White","Moon White","Half White","Grey","Silver","Red","Blue"];
     // Saved suggestion list for the Custom Ledger's Description field — same
     // "type to add, click to reuse, ✕ to delete" combo as Item Colour above
     // (replaces the old free-text input). Synced/persisted the same way as
@@ -10773,7 +10831,7 @@
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
     const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.26.6. Fixed: a save could get stuck on \"Syncing...\" forever with no error and no retry — the save request had no timeout at all, so a genuinely stalled connection or a slow Apps Script run (several receipt photos in one save adds real time) left it hanging indefinitely, and the only way out was force-closing the app. Saves now time out after 90s and fall into the existing automatic retry-every-10s path instead of hanging. Also includes: the ghost order-linked ledger entry delete fix, the Notification Settings relocation, the self-healing sync fix, real push notifications (app-side @capacitor/push-notifications plugin), and the multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION_NOTE = "Build 2026.08.26.9. CRITICAL FIX: a confirmed order could silently vanish with no trace right after tapping Order Confirm. Root cause — the 20s background sync poll could pull an OLDER order-counter value from the sheet during a narrow race window (right after a new order was created, before its own save reached the sheet), walking the local order counter backward; the next new/confirmed order could then reuse an id an old, already-deleted order once had, and the app's own cross-device delete-protection (tombstones) correctly-but-wrongly treated the brand-new order as a re-appearing deleted one and silently removed it. Fixed on 3 layers: new orders can never reuse a tombstoned id even if the counter is wrong; the background poll can no longer walk the counter backward; same fix applied to CSV import. Also includes: Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -10818,7 +10876,6 @@
     const peDeleteBtn = document.getElementById('pe-delete');
     let editingProductId = null;
 
-    const STANDARD_COLORS = ["Black","Shine Black","Matt Black","White","Moon White","Half White","Grey","Silver","Red","Blue"];
     peColor.addEventListener('change', ()=>{
       peColorOther.style.display = (peColor.value === 'Other') ? '' : 'none';
     });
@@ -11038,6 +11095,7 @@
     function openProductEditModal(id){
       editingProductId = id;
       refreshRawMaterialDatalist_();
+      renderProductColorOptions_();
       const isAmericanPedestal = activeCat === AMERICAN_PEDESTAL_CAT;
       peName.style.display = isAmericanPedestal ? 'none' : '';
       peNameComboWrap.style.display = isAmericanPedestal ? '' : 'none';
@@ -11072,7 +11130,7 @@
         // p.stock is deliberately not shown/edited here (2026-08-24: Stock
         // Quantity removed from this form) — see the HTML comment above.
         const color = p.color || 'Black';
-        if(STANDARD_COLORS.includes(color)){
+        if(productColours.includes(color)){
           peColor.value = color;
           peColorOther.style.display = 'none';
           peColorOther.value = '';
@@ -11183,7 +11241,10 @@
     function addUnpaidOrder(){
       const due = cartTotal();
       const now = new Date();
-      const txnId = String(txnNumber).padStart(4,'0');
+      // FIX (2026-08-26): was `String(txnNumber).padStart(4,'0')` — see
+      // nextFreeTxnId_'s comment for why that could silently mint an id
+      // belonging to an old, deleted order.
+      const { id: txnId, n: mintedTxnN_ } = nextFreeTxnId_();
       const factoryName = document.getElementById('invoice-factory').value;
       // The cart's own Date box (see invoice-date) lets a backdated order
       // be logged against an earlier day instead of always today — same
@@ -11238,7 +11299,7 @@
       decrementProductStock_(cartSnapshot);
       sessionTotal += due;
       sessionCount += 1;
-      txnNumber += 1;
+      txnNumber = mintedTxnN_ + 1;
       cart = [];
       dataDirty = true;
       saveLocalSnapshot_();
@@ -11275,7 +11336,10 @@
     function completeSale(cash, change){
       const due = cartTotal();
       const now = new Date();
-      const txnId = String(txnNumber).padStart(4,'0');
+      // FIX (2026-08-26): was `String(txnNumber).padStart(4,'0')` — see
+      // nextFreeTxnId_'s comment for why that could silently mint an id
+      // belonging to an old, deleted order.
+      const { id: txnId, n: mintedTxnN_ } = nextFreeTxnId_();
       const factoryName = document.getElementById('invoice-factory').value;
       // Same backdating support as addUnpaidOrder — see the comment there.
       const chosenDate = isoToDMY_(document.getElementById('invoice-date').value) || now.toLocaleDateString('en-GB');
@@ -11323,7 +11387,7 @@
       decrementProductStock_(cartSnapshot);
       sessionTotal += due;
       sessionCount += 1;
-      txnNumber += 1;
+      txnNumber = mintedTxnN_ + 1;
       cart = [];
       dataDirty = true;
       saveLocalSnapshot_();
@@ -16652,6 +16716,31 @@
       const el = document.getElementById('dl-rawmaterial');
       if(el) el.innerHTML = rawItemNames.map(v => `<option value="${escHtml_(v)}">`).join('');
     }
+    // ADD (2026-08-26, user request): rebuilds the Product Editor's Colour
+    // <select> options from the productColours list (plus a trailing
+    // "Other" option for a genuinely one-off colour). Keeps the original
+    // 10 built-in colours translated via their existing color_* i18n keys;
+    // anything added/renamed via Manage is shown as plain text since it has
+    // no translation. Called on page init, whenever the product edit modal
+    // opens, and after any add/delete in the Manage Colours modal — same
+    // "just re-render, it's cheap" approach as refreshRawMaterialDatalist_.
+    const PRODUCT_COLOR_I18N_KEYS_ = {
+      'Black':'color_black', 'Shine Black':'color_shine_black', 'Matt Black':'color_matt_black',
+      'White':'color_white', 'Moon White':'color_moon_white', 'Half White':'color_half_white',
+      'Grey':'color_grey', 'Silver':'color_silver', 'Red':'color_red', 'Blue':'color_blue'
+    };
+    function renderProductColorOptions_(){
+      const sel = document.getElementById('pe-color');
+      if(!sel) return;
+      const prevValue = sel.value;
+      const optionsHtml = productColours.map(c=>{
+        const key = PRODUCT_COLOR_I18N_KEYS_[c];
+        const label = key ? tr(key) : c;
+        return `<option value="${escHtml_(c)}">${escHtml_(label)}</option>`;
+      }).join('') + `<option value="Other">${escHtml_(tr('other'))}</option>`;
+      sel.innerHTML = optionsHtml;
+      if(prevValue && (productColours.includes(prevValue) || prevValue === 'Other')) sel.value = prevValue;
+    }
 
     // Generic single-select "type to add, click to reuse, ✕ to delete from
     // the shared list" combo box — same dropdown markup as the Paint
@@ -16927,26 +17016,37 @@
 
     // ---- Manage Lists modal (generic add/delete for the 4 saved lists) ----
     const manageListsModal = document.getElementById('manage-lists-modal');
+    // FIX (2026-08-26, real report: deletes from these lists not sticking —
+    // see the tombstone fix on SUGGESTION_LISTS_'s union merge above): each
+    // entry now also carries `syncKey`, the exact field name this list
+    // travels under in the sync payload / SUGGESTION_LISTS_ (not always the
+    // same string as the MANAGEABLE_LISTS key here — e.g. 'rawdesc' here is
+    // 'rawLedgerDescriptions' on the wire). The delete handler below needs
+    // this to tombstone under the SAME bucket name the merge step checks.
     const MANAGEABLE_LISTS = {
-      worktype:  { get: () => workTypes,    set: v => { workTypes = v; },    placeholderKey: 'work_type' },
-      guardsize: { get: () => guardSizes,   set: v => { guardSizes = v; },   placeholderKey: 'guard_size' },
-      weight:    { get: () => guardWeights, set: v => { guardWeights = v; }, placeholderKey: 'weight' },
-      sticks:    { get: () => stickCounts,  set: v => { stickCounts = v; },  placeholderKey: 'sticks_no' },
+      worktype:  { get: () => workTypes,    set: v => { workTypes = v; },    placeholderKey: 'work_type', syncKey: 'workTypes' },
+      guardsize: { get: () => guardSizes,   set: v => { guardSizes = v; },   placeholderKey: 'guard_size', syncKey: 'guardSizes' },
+      weight:    { get: () => guardWeights, set: v => { guardWeights = v; }, placeholderKey: 'weight', syncKey: 'guardWeights' },
+      sticks:    { get: () => stickCounts,  set: v => { stickCounts = v; },  placeholderKey: 'sticks_no', syncKey: 'stickCounts' },
       // Opened via the Custom Ledger item's Description "Manage" link — this
       // manages the SAME customDescriptions list the Description field's own
       // inline suggestion dropdown reads from, so anything added here shows
       // up as a suggestion there too (and vice versa — they're one list).
-      description: { get: () => customDescriptions, set: v => { customDescriptions = v; }, placeholderKey: 'description', labelOverride: 'description', inputPlaceholder: 'e.g. Steel Wire delivery / Advance payment', solo: true },
+      description: { get: () => customDescriptions, set: v => { customDescriptions = v; }, placeholderKey: 'description', labelOverride: 'description', inputPlaceholder: 'e.g. Steel Wire delivery / Advance payment', solo: true, syncKey: 'customDescriptions' },
       // ADD (2026-08-24, user request #2): the Raw Material Ledger's own
       // Description "Manage" link — same idea as 'description' above, just
       // its own independent list (see rawLedgerDescriptions) now that it's
       // been split off from the Raw Material Name list below.
-      rawdesc: { get: () => rawLedgerDescriptions, set: v => { rawLedgerDescriptions = v; }, placeholderKey: 'description', labelOverride: 'description', inputPlaceholder: 'e.g. Steel Wire delivery / Advance payment', solo: true },
+      rawdesc: { get: () => rawLedgerDescriptions, set: v => { rawLedgerDescriptions = v; }, placeholderKey: 'description', labelOverride: 'description', inputPlaceholder: 'e.g. Steel Wire delivery / Advance payment', solo: true, syncKey: 'rawLedgerDescriptions' },
       // Raw Material Name "Manage" link — backs rl-stockname's datalist
       // (dl-rawmaterial) and the Product recipe's material picker
       // (pe-recipe-material). refreshRawMaterialDatalist_ keeps the
       // datalist in sync — see the manage-lists-close/add handlers below.
-      rawmaterialname: { get: () => rawItemNames, set: v => { rawItemNames = v; }, placeholderKey: 'rl_stock_name', labelOverride: 'rl_stock_name', inputPlaceholder: 'e.g. Steel Taar', solo: true }
+      rawmaterialname: { get: () => rawItemNames, set: v => { rawItemNames = v; }, placeholderKey: 'rl_stock_name', labelOverride: 'rl_stock_name', inputPlaceholder: 'e.g. Steel Taar', solo: true, syncKey: 'rawItemNames' },
+      // ADD (2026-08-26, user request): Product Editor's Colour "Manage"
+      // link — backs the pe-color <select>'s options via
+      // renderProductColorOptions_(), same idea as rawmaterialname above.
+      productcolour: { get: () => productColours, set: v => { productColours = v; }, placeholderKey: 'colour', labelOverride: 'colour', inputPlaceholder: 'e.g. Bronze', solo: true, syncKey: 'productColours' }
     };
     // Tracks which MANAGEABLE_LISTS entry is currently being managed —
     // NOT read from the <select> element's value, because 'description'
@@ -16971,11 +17071,21 @@
         wrap.querySelectorAll('.cm-del').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const list = cfg.get().slice();
-            list.splice(parseInt(btn.dataset.idx,10),1);
+            const idx = parseInt(btn.dataset.idx,10);
+            const removedValue = list[idx];
+            list.splice(idx,1);
             cfg.set(list);
+            // FIX (2026-08-26): tombstone the removed value so the union
+            // merge in mergeLatestRemoteBeforeSave_ can't silently pull it
+            // back in from the sheet on the very next save — see that
+            // merge's own comment for the full story. Bucket must match
+            // cfg.syncKey exactly (the field name this list travels under
+            // on the wire), not the MANAGEABLE_LISTS key used here.
+            if(cfg.syncKey && removedValue !== undefined) markDeleted_('suggestionList:' + cfg.syncKey, String(removedValue).toLowerCase());
             renderManageListsItems_();
             refreshLabourDatalists_();
             refreshRawMaterialDatalist_();
+            renderProductColorOptions_();
             queueSync();
           });
         });
@@ -17023,12 +17133,14 @@
       renderManageListsItems_();
       refreshLabourDatalists_();
       refreshRawMaterialDatalist_();
+      renderProductColorOptions_();
       queueSync();
     });
     document.getElementById('manage-lists-close').addEventListener('click', ()=>{
       manageListsModal.classList.remove('active');
       refreshLabourDatalists_();
       refreshRawMaterialDatalist_();
+      renderProductColorOptions_();
     });
 
     // ---- Worker Ledger modal ----
@@ -18078,7 +18190,13 @@
         </div>`).join('');
       wrap.querySelectorAll('.cm-del').forEach(btn=>{
         btn.addEventListener('click', ()=>{
-          expenseCategories.splice(parseInt(btn.dataset.idx,10),1);
+          const idx = parseInt(btn.dataset.idx,10);
+          const removedValue = expenseCategories[idx];
+          expenseCategories.splice(idx,1);
+          // FIX (2026-08-26): same tombstone fix as MANAGEABLE_LISTS above —
+          // without this, the next save's merge-before-save silently pulls
+          // a deleted category right back in from the sheet.
+          if(removedValue !== undefined) markDeleted_('suggestionList:expenseCategories', String(removedValue).toLowerCase());
           renderManageCategoriesList_();
           renderCategorySelectOptions_();
           queueSync();
@@ -21170,7 +21288,10 @@
             const total = parseMoney_(r[iTotal]);
             if(!r[iDate] && !total) return;
             const { paid, method } = iStatus !== -1 ? normalizeMethod_(r[iStatus]) : { paid:true, method:'Cash' };
-            const txnId = String(txnNumber).padStart(4,'0');
+            // FIX (2026-08-26): same nextFreeTxnId_ hardening as
+            // addUnpaidOrder/completeSale — only matters for a row with no
+            // ID column of its own (the common case uses the CSV's own id).
+            const { id: txnId, n: importedTxnN_ } = nextFreeTxnId_();
             const t = {
               id: iId !== -1 && r[iId] ? r[iId] : txnId,
               date: iDate !== -1 ? (r[iDate] || '') : '',
@@ -21190,7 +21311,7 @@
               else t.detailCash = detail;
             }
             transactionsLog.unshift(t);
-            txnNumber += 1;
+            txnNumber = importedTxnN_ + 1;
             added++;
           });
           recomputeSessionTotals();
