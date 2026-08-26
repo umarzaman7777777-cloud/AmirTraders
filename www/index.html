@@ -5740,8 +5740,27 @@
       if(token === seen) return;
       deletedIds_.transactionsLog = [];
       saveTombstones_();
+      // FIX (2026-08-26, real report: reset ran, Meta txnNumber correctly
+      // went to 1, but the very next order booked still came out as #0011)
+      // — this function cleared the tombstone memory but never touched
+      // txnNumber itself. Every OTHER place that applies d.txnNumber
+      // deliberately only ever moves it UP (see loadStateFromSheet's and
+      // mergeLatestRemoteBeforeSave_'s own txnNumber comments) — exactly
+      // right for an ordinary sync, but that same protection was silently
+      // blocking this device from ever accepting a genuine, deliberate
+      // reset back DOWN. A changed reset token is proof this isn't a stale/
+      // racing load — it's the server explicitly saying "start over" — so
+      // this is the one place allowed to move the counter down. In
+      // loadStateFromSheet this call runs after that function's own
+      // max-only line, so it wins outright. In mergeLatestRemoteBeforeSave_
+      // it runs earlier (it has to, so the tombstone clear above happens
+      // before pruneLocalTombstoned_ can act on stale entries) — that's
+      // still safe: this line sets txnNumber to exactly d.txnNumber, so the
+      // later max-only guard there (`d.txnNumber > txnNumber`) sees them
+      // equal and no-ops instead of undoing this.
+      if(typeof d.txnNumber === 'number') txnNumber = d.txnNumber;
       try{ localStorage.setItem('pos-order-reset-token-seen', token); } catch(e){ /* ignore */ }
-      console.warn('[order-reset] Detected a server-side order-numbering reset — cleared this device\'s local transactionsLog deletion memory so the renumbered order(s) can\'t get silently wiped again.');
+      console.warn('[order-reset] Detected a server-side order-numbering reset — cleared this device\'s local transactionsLog deletion memory and synced the order counter to ' + d.txnNumber + ' so the renumbered order(s) can\'t get silently wiped or misnumbered again.');
     }
     // Removes anything still sitting in local in-memory state that's now
     // tombstoned — including tombstones this device just learned about
@@ -10862,7 +10881,7 @@
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
     const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.26.10. Added self-heal support for the one-time order-numbering reset (resetOrdersFresh_ in Code.gs) — every device now clears its own local order-deletion memory automatically the moment the server signals a reset, so a renumbered order can't get silently wiped again by a device that still remembers the old numbering. Also includes: the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION_NOTE = "Build 2026.08.26.11. Fixed the order-numbering reset (resetOrdersFresh in Code.gs) not fully taking effect on other devices — the self-heal added in build .10 cleared each device's local order-deletion memory on reset, but never forced its order counter down to match, so a device that still remembered a higher count (e.g. 11) kept numbering new orders from there instead of from 1. Now a genuine server-side reset also forces the counter down. Also includes: the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
