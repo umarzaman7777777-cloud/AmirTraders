@@ -3429,8 +3429,24 @@
       <input class="field-input" id="rl-stockname" list="dl-rawmaterial" data-i18n-placeholder="rl_stock_name_placeholder" placeholder="e.g. Steel Taar" autocomplete="off">
       <div style="display:flex; gap:10px;">
         <div style="flex:1;">
-          <label class="field-label" data-i18n="rl_weight_in">Weight Received (kg)</label>
-          <input class="field-input" id="rl-weightin" type="number" min="0" step="any" placeholder="0">
+          <label class="field-label" data-i18n="rl_weight_in">Weight Received</label>
+          <!-- ADD (2026-08-26, user request: "i want ledgers to be affected
+               by remaining weight and if in small unit grams... should be
+               result as remaining weight even in ledgers") — same kg/g
+               selector as the Product Edit recipe rows, so receiving stock
+               in grams (e.g. 50 g of pins) doesn't have to be hand-converted
+               to a kg decimal to type in. Always converted to/stored as kg
+               (see rl-add-entry's commit handler below); defaults to
+               whatever unit this Raw Material Name was last used in
+               (rawMaterialUnits, same map the recipe rows and Raw Material
+               Stock table already use) — see rlUpdateStockPreview_. -->
+          <div style="display:flex; gap:6px;">
+            <input class="field-input" id="rl-weightin" type="number" min="0" step="any" placeholder="0" style="flex:1; margin-bottom:0;">
+            <select class="field-input" id="rl-weightin-unit" style="flex:0 0 60px; margin-bottom:0; padding-left:6px; padding-right:6px;" title="Unit this weight is typed in — always converted to/stored as kg">
+              <option value="kg" selected>kg</option>
+              <option value="g">g</option>
+            </select>
+          </div>
         </div>
         <div style="flex:1;">
           <label class="field-label" data-i18n="rl_items_in">Items Received (pcs)</label>
@@ -3577,7 +3593,13 @@
            rawMaterialResetAt. -->
       <div style="font-family:var(--mono); font-size:10.5px; color:var(--text-dim); margin:10px 2px 2px;" data-i18n="rl_quick_stock_hint">Quick stock adjustments for the Raw Material Name above:</div>
       <div style="display:flex; gap:10px;">
-        <input class="field-input" id="rl-addweight-amount" type="number" min="0" step="any" data-i18n-placeholder="rl_add_weight_placeholder" placeholder="Weight to add (kg)" style="flex:1;">
+        <div style="flex:1; display:flex; gap:6px;">
+          <input class="field-input" id="rl-addweight-amount" type="number" min="0" step="any" data-i18n-placeholder="rl_add_weight_placeholder" placeholder="Weight to add" style="flex:1; margin-bottom:0;">
+          <select class="field-input" id="rl-addweight-unit" style="flex:0 0 56px; margin-bottom:0; padding-left:4px; padding-right:4px;" title="Unit this weight is typed in — always converted to/stored as kg">
+            <option value="kg" selected>kg</option>
+            <option value="g">g</option>
+          </select>
+        </div>
         <input class="field-input" id="rl-additems-amount" type="number" min="0" step="1" data-i18n-placeholder="rl_add_items_placeholder" placeholder="Items to add" style="flex:1;">
       </div>
       <div class="weight-add-row">
@@ -4940,7 +4962,7 @@
           dirty: dataDirty, savedAt: Date.now(),
           transactionsLog, customerPayments, inventory, factories,
           expenses, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
-          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawLedgerDescriptions, rawMaterialResetAt,
+          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawMaterialUnits, rawLedgerDescriptions, rawMaterialResetAt,
           scrapDescriptions, scrapItemNames, scrapTypes,
           withdrawals, withdrawalDescriptions, withdrawalByList, withdrawalInList,
           paintItemSizes, paintItemTypes, paintFactoryNames,
@@ -4990,6 +5012,7 @@
       if(Array.isArray(snap.rawGaugeCounts) && snap.rawGaugeCounts.length) rawGaugeCounts = snap.rawGaugeCounts;
       if(Array.isArray(snap.rawSizeCounts) && snap.rawSizeCounts.length) rawSizeCounts = snap.rawSizeCounts;
       if(snap.rawMaterialReorderLevels && typeof snap.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = snap.rawMaterialReorderLevels;
+      if(snap.rawMaterialUnits && typeof snap.rawMaterialUnits === 'object') rawMaterialUnits = snap.rawMaterialUnits;
       if(Array.isArray(snap.rawLedgerDescriptions) && snap.rawLedgerDescriptions.length) rawLedgerDescriptions = snap.rawLedgerDescriptions;
       if(snap.rawMaterialResetAt && typeof snap.rawMaterialResetAt === 'object') rawMaterialResetAt = snap.rawMaterialResetAt;
       if(Array.isArray(snap.scrapDescriptions) && snap.scrapDescriptions.length) scrapDescriptions = snap.scrapDescriptions;
@@ -6148,6 +6171,15 @@
         if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object'){
           rawMaterialReorderLevels = Object.assign({}, d.rawMaterialReorderLevels, rawMaterialReorderLevels);
         }
+        // ADD (2026-08-26): rawMaterialUnits — same small flat per-material
+        // settings map, same per-key-union merge as rawMaterialReorderLevels
+        // just above, for the same reason (a unit remembered on another
+        // device shouldn't get lost, but one this device just set — possibly
+        // mid-edit right now — should never be clobbered by a stale remote
+        // copy).
+        if(d.rawMaterialUnits && typeof d.rawMaterialUnits === 'object'){
+          rawMaterialUnits = Object.assign({}, d.rawMaterialUnits, rawMaterialUnits);
+        }
         // ADD (2026-08-24, user request #2): rawMaterialResetAt is keyed by
         // material name -> {weight:{date,time}, items:{date,time}} — a plain
         // per-key union (like rawMaterialReorderLevels above) would let one
@@ -6655,7 +6687,7 @@
           transactionsLog: transactionsForSync, customerPayments: customerPaymentsForSync, inventory: inventoryForSync, factories,
           confirmedEmpty,
           expenses: expensesForSync, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
-          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawLedgerDescriptions, rawMaterialResetAt,
+          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawMaterialUnits, rawLedgerDescriptions, rawMaterialResetAt,
           scrapDescriptions, scrapItemNames, scrapTypes,
           withdrawals, withdrawalDescriptions, withdrawalByList, withdrawalInList,
           paintItemSizes, paintItemTypes, paintFactoryNames,
@@ -7231,6 +7263,7 @@
           if(Array.isArray(d.rawGaugeCounts) && d.rawGaugeCounts.length > 0) rawGaugeCounts = d.rawGaugeCounts;
           if(Array.isArray(d.rawSizeCounts) && d.rawSizeCounts.length > 0) rawSizeCounts = d.rawSizeCounts;
           if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = d.rawMaterialReorderLevels;
+          if(d.rawMaterialUnits && typeof d.rawMaterialUnits === 'object') rawMaterialUnits = d.rawMaterialUnits;
           if(Array.isArray(d.rawLedgerDescriptions) && d.rawLedgerDescriptions.length > 0) rawLedgerDescriptions = d.rawLedgerDescriptions;
           if(d.rawMaterialResetAt && typeof d.rawMaterialResetAt === 'object') rawMaterialResetAt = d.rawMaterialResetAt;
           if(typeof d.lastBackupEmailAt === 'string' && d.lastBackupEmailAt) lastBackupEmailAt = d.lastBackupEmailAt;
@@ -7918,11 +7951,11 @@
         stock_product_search_placeholder: "Search by product name…",
         // ADD (2026-08-24, user request): Raw Material Stock table + forms
         rawmat_total_materials: "Materials Tracked", rawmat_low_count: "Low Stock",
-        rawmat_name: "Raw Material", rawmat_weight_in: "Weight In (kg)", rawmat_weight_used: "Weight Used (kg)", rawmat_weight_remaining: "Weight Remaining (kg)",
+        rawmat_name: "Raw Material", rawmat_weight_in: "Weight In", rawmat_weight_used: "Weight Used", rawmat_weight_remaining: "Weight Remaining",
         rawmat_items_in: "Items In (pcs)", rawmat_items_used: "Items Used (pcs)", rawmat_items_remaining: "Items Remaining (pcs)",
         rawmat_threshold: "Low Stock At", rawmat_threshold_placeholder: "Not set", no_raw_material_stock: "No raw material stock yet — add a Raw Material Ledger entry with a Raw Material Name and weight/items received, or link a product's recipe, to see it here.",
         rl_stock_name: "Raw Material Name (for stock tracking, optional)", rl_stock_name_placeholder: "e.g. Steel Taar",
-        rl_weight_in: "Weight Received (kg)", rl_items_in: "Items Received (pcs)",
+        rl_weight_in: "Weight Received", rl_items_in: "Items Received (pcs)",
         // ADD (2026-08-24, user request #2): Raw Material Ledger — Remaining
         // Weight/Items preview, Rate → Credit auto-fill, quick Add/Reset.
         rl_remaining_items: "Remaining Items",
@@ -7930,7 +7963,7 @@
         rl_rate_value: "Rate Amount (Rs)",
         rl_quick_stock_hint: "Quick stock adjustments for the Raw Material Name above:",
         rl_quick_add_desc: "Stock Added",
-        rl_add_weight_placeholder: "Weight to add (kg)", rl_add_items_placeholder: "Items to add",
+        rl_add_weight_placeholder: "Weight to add", rl_add_items_placeholder: "Items to add",
         rl_add_weight_btn: "+ Add Weight", rl_add_items_btn: "+ Add Items",
         rl_reset_weight_btn: "Reset Weight", rl_reset_items_btn: "Reset Items",
         rl_enter_add_amount_first: "Enter a Weight or Items amount first.",
@@ -8283,17 +8316,17 @@
         stock_product_title: "پروڈکٹ اسٹاک (موجودہ)", stock_product_sub: "ہر پروڈکٹ کی اسٹاک مقدار اور کم اسٹاک الرٹ لیول ایک ہی جگہ — یہاں سے سیٹ یا ایڈجسٹ کریں؛ اس آئٹم کو ٹریک نہ کرنے کے لیے خالی چھوڑ دیں۔",
         stock_product_search_placeholder: "پروڈکٹ کے نام سے تلاش کریں…",
         rawmat_total_materials: "ٹریک شدہ خام مال", rawmat_low_count: "کم اسٹاک",
-        rawmat_name: "خام مال", rawmat_weight_in: "وزن آیا (کلوگرام)", rawmat_weight_used: "وزن استعمال ہوا (کلوگرام)", rawmat_weight_remaining: "باقی وزن (کلوگرام)",
+        rawmat_name: "خام مال", rawmat_weight_in: "وزن آیا", rawmat_weight_used: "وزن استعمال ہوا", rawmat_weight_remaining: "باقی وزن",
         rawmat_items_in: "آئٹمز آئے (عدد)", rawmat_items_used: "آئٹمز استعمال ہوئے (عدد)", rawmat_items_remaining: "باقی آئٹمز (عدد)",
         rawmat_threshold: "کم اسٹاک حد", rawmat_threshold_placeholder: "سیٹ نہیں", no_raw_material_stock: "ابھی تک کوئی خام مال اسٹاک نہیں — خام مال لیجر میں خام مال کا نام اور وزن/آئٹمز درج کریں، یا کسی پروڈکٹ کی ریسیپی سے لنک کریں۔",
         rl_stock_name: "خام مال کا نام (اسٹاک ٹریکنگ کے لیے، اختیاری)", rl_stock_name_placeholder: "مثلاً اسٹیل تار",
-        rl_weight_in: "وزن موصول ہوا (کلوگرام)", rl_items_in: "آئٹمز موصول ہوئے (عدد)",
+        rl_weight_in: "وزن موصول ہوا", rl_items_in: "آئٹمز موصول ہوئے (عدد)",
         rl_remaining_items: "باقی آئٹمز",
         rl_rate_type: "ریٹ", rl_rate_none: "کوئی ریٹ نہیں", rl_rate_by_weight: "فی وزن ریٹ (کلوگرام)", rl_rate_by_item: "فی آئٹم ریٹ",
         rl_rate_value: "ریٹ رقم (روپے)",
         rl_quick_stock_hint: "اوپر درج خام مال کے نام کے لیے فوری اسٹاک ایڈجسٹمنٹ:",
         rl_quick_add_desc: "اسٹاک شامل کیا گیا",
-        rl_add_weight_placeholder: "شامل کرنے کے لیے وزن (کلوگرام)", rl_add_items_placeholder: "شامل کرنے کے لیے آئٹمز",
+        rl_add_weight_placeholder: "شامل کرنے کے لیے وزن", rl_add_items_placeholder: "شامل کرنے کے لیے آئٹمز",
         rl_add_weight_btn: "+ وزن شامل کریں", rl_add_items_btn: "+ آئٹمز شامل کریں",
         rl_reset_weight_btn: "وزن ری سیٹ کریں", rl_reset_items_btn: "آئٹمز ری سیٹ کریں",
         rl_enter_add_amount_first: "پہلے وزن یا آئٹمز کی مقدار درج کریں۔",
@@ -9058,6 +9091,20 @@
     // p.reorderLevel. Synced via Code.gs's Meta tab (readMeta_/writeMeta_),
     // since it's a small flat settings map, not a per-row sheet column.
     let rawMaterialReorderLevels = {};
+    // ADD (2026-08-26, user report: "when i save tracking weight of some
+    // item in grams then why it used weight is Kg and deduction in kg
+    // instead of grams... should be in grams until i change them") —
+    // per-material-name display unit ('g' or 'kg'), same key convention as
+    // rawMaterialReorderLevels above. weightPerUnit itself is still ALWAYS
+    // stored/read in kg everywhere (computeRawMaterialStock_ unchanged) —
+    // this map only remembers which unit a material's numbers should be
+    // shown/typed in, so a material entered in grams (e.g. a few grams of
+    // pin/rivet/tape per fan) stops silently reverting to a "kg" display
+    // every time its recipe row is reopened, which is exactly how a real
+    // report got recorded as 1000x too large (85 g typed while the
+    // selector still said "kg" got stored as 85 kg, not 0.085 kg — see
+    // renderPeRecipeRows_ and the Raw Material Stock table below).
+    let rawMaterialUnits = {};
     // ADD (2026-08-24, user request #2): "Reset Weight"/"Reset Items" on the
     // Raw Material Ledger — since Remaining is computed fresh every time
     // from real history (ledger entries + recipe usage on booked orders,
@@ -10560,6 +10607,21 @@
       if(!(n || n === 0)) return '';
       return (Math.round(n * 100) / 100).toLocaleString('en-PK');
     }
+    // ADD (2026-08-26, part of the grams-saved-as-kg fix): weight values
+    // (weightIn/weightUsed/weightRemaining, and the low-stock threshold) are
+    // always stored/computed in kg (computeRawMaterialStock_ unchanged) —
+    // this converts a kg value into whichever unit that material is
+    // actually remembered/tracked in (rawMaterialUnits) purely for display,
+    // and appends the unit so a table with some materials in kg and others
+    // in grams is never ambiguous about which is which.
+    function rawmatWeightUnit_(name){
+      return (name && rawMaterialUnits[name]) || 'kg';
+    }
+    function rawmatNumInUnit_(kgValue, unit){
+      if(!(kgValue || kgValue === 0)) return '';
+      const n = unit === 'g' ? kgValue * 1000 : kgValue;
+      return (Math.round(n * 100) / 100).toLocaleString('en-PK') + ' ' + unit;
+    }
     let stockSearchTerm_ = '';
     function renderStock(){
       const wrap = document.getElementById('stock-table');
@@ -10581,19 +10643,29 @@
 
       const rows = list.map(rec=>{
         const lowStyle = rec.isLow ? 'color:var(--red); font-weight:600;' : '';
+        const unit = rawmatWeightUnit_(rec.name);
+        // Threshold is stored in kg like everything else — shown/typed here
+        // in the material's own remembered unit for consistency with the
+        // Weight In/Used/Remaining cells right next to it.
+        const threshDisplay = rec.threshold !== undefined
+          ? (unit === 'g' ? Math.round(rec.threshold * 1000 * 100) / 100 : Math.round(rec.threshold * 100) / 100)
+          : '';
         return `
           <tr>
             <td class="inv-name">${rec.name}</td>
-            <td class="num">${rawmatNum_(rec.weightIn)}</td>
-            <td class="num">${rawmatNum_(rec.weightUsed)}</td>
-            <td class="num" style="${lowStyle}">${(rec.weightIn || rec.weightUsed) ? rawmatNum_(rec.weightRemaining) : ''}</td>
+            <td class="num">${rawmatNumInUnit_(rec.weightIn, unit)}</td>
+            <td class="num">${rawmatNumInUnit_(rec.weightUsed, unit)}</td>
+            <td class="num" style="${lowStyle}">${(rec.weightIn || rec.weightUsed) ? rawmatNumInUnit_(rec.weightRemaining, unit) : ''}</td>
             <td class="num">${rawmatNum_(rec.itemsIn)}</td>
             <td class="num">${rawmatNum_(rec.itemsUsed)}</td>
             <td class="num" style="${lowStyle}">${(rec.itemsIn || rec.itemsUsed) ? rawmatNum_(rec.itemsRemaining) : ''}</td>
             <td class="num">
-              <input type="number" class="field-input rawmat-threshold-input" data-name="${escHtml_(rec.name)}" min="0" step="any"
-                value="${rec.threshold !== undefined ? rec.threshold : ''}" placeholder="${tr('rawmat_threshold_placeholder')}"
-                style="width:110px; text-align:right; margin-bottom:0;">
+              <div style="display:flex; align-items:center; gap:4px; justify-content:flex-end;">
+                <input type="number" class="field-input rawmat-threshold-input" data-name="${escHtml_(rec.name)}" data-unit="${unit}" min="0" step="any"
+                  value="${threshDisplay}" placeholder="${tr('rawmat_threshold_placeholder')}"
+                  style="width:90px; text-align:right; margin-bottom:0;">
+                <span style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">${unit}</span>
+              </div>
             </td>
             <td>${rec.isLow ? `<span style="color:var(--red); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('low_stock')}</span>` : ''}</td>
           </tr>`;
@@ -10621,13 +10693,23 @@
       wrap.querySelectorAll('.rawmat-threshold-input').forEach(inp=>{
         inp.addEventListener('change', ()=>{
           const name = inp.dataset.name;
+          const unit = inp.dataset.unit || 'kg';
           const raw = inp.value.trim();
+          // Revert to the currently-stored value (converted back into this
+          // same display unit) on a blank clear or invalid entry — mirrors
+          // the pre-fix behavior, just unit-aware now.
+          const revertDisplay = ()=> (rawMaterialReorderLevels[name] !== undefined)
+            ? (unit === 'g' ? Math.round(rawMaterialReorderLevels[name] * 1000 * 100) / 100 : Math.round(rawMaterialReorderLevels[name] * 100) / 100)
+            : '';
           if(raw === ''){
             delete rawMaterialReorderLevels[name];
           } else {
             const n = parseFloat(raw);
-            if(!(n >= 0)){ inp.value = (rawMaterialReorderLevels[name] !== undefined ? rawMaterialReorderLevels[name] : ''); return; }
-            rawMaterialReorderLevels[name] = n;
+            if(!(n >= 0)){ inp.value = revertDisplay(); return; }
+            // Typed in the material's own unit — convert back to kg for storage,
+            // since computeRawMaterialStock_ compares this against weightRemaining
+            // (always kg) unchanged.
+            rawMaterialReorderLevels[name] = unit === 'g' ? n / 1000 : n;
           }
           queueSync();
           renderStock();
@@ -10881,7 +10963,7 @@
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
     const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.26.11. Fixed the order-numbering reset (resetOrdersFresh in Code.gs) not fully taking effect on other devices — the self-heal added in build .10 cleared each device's local order-deletion memory on reset, but never forced its order counter down to match, so a device that still remembered a higher count (e.g. 11) kept numbering new orders from there instead of from 1. Now a genuine server-side reset also forces the counter down. Also includes: the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION_NOTE = "Build 2026.08.26.13. Extended the grams/kg fix to the Raw Material Ledger — 'Weight Received' and the quick '+ Add Weight' top-up now also have a g/kg selector (defaulting to that material's remembered unit) instead of only accepting kg, so receiving stock in grams no longer needs a hand-converted decimal, and Remaining Weight in the ledger correctly reflects it. Also includes: raw material weights tracked in grams no longer silently default back to kg in the product recipe rows or the Raw Material Stock table (build .12), the order-numbering reset counter fix, the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -11055,24 +11137,41 @@
       // before), but a per-unit weight this small (a few grams of pin/
       // ribit/paint per fan) is genuinely awkward to type as a kg decimal
       // (0.001, 0.035...) and easy to get a decimal place wrong on. This
-      // adds a kg/g selector next to the field — always defaults to "kg"
-      // on render since the stored number IS the kg value already; typing
-      // in "g" mode is just a data-entry convenience, converted to kg the
-      // moment it's read (see readPeRecipeRowsRaw_) or the unit is
-      // switched (see the change listener below, which keeps the actual
-      // quantity constant across a unit switch instead of reinterpreting
-      // the same digits as a different amount).
-      wrap.innerHTML = list.map((r,i)=> `
+      // adds a kg/g selector next to the field, converted to kg the moment
+      // it's read (see readPeRecipeRowsRaw_) or the unit is switched (see
+      // the change listener below, which keeps the actual quantity constant
+      // across a unit switch instead of reinterpreting the same digits as a
+      // different amount).
+      //
+      // FIX (2026-08-26, real report: a material genuinely meant as grams
+      // per fan — e.g. 85 g of tape — got typed as "85" while this selector
+      // defaulted back to "kg" on reopen, silently saving/using 85 KG per
+      // fan instead, 1000x too much, and compounding across every order).
+      // The selector used to always default to "kg" on every render no
+      // matter what was chosen last time. It now defaults to whatever unit
+      // this material name was last saved in (rawMaterialUnits, updated at
+      // Save — see the pe-save handler below), and the displayed number is
+      // converted into that unit for display, so reopening a material
+      // that's genuinely tracked in grams shows grams, not a kg value that
+      // looks fine at a glance but is quietly wrong.
+      wrap.innerHTML = list.map((r,i)=>{
+        const unit = (r.material && rawMaterialUnits[r.material]) || 'kg';
+        const hasWeight = (r.weightPerUnit || r.weightPerUnit === 0);
+        const displayWeight = hasWeight
+          ? (unit === 'g' ? Math.round(r.weightPerUnit * 1000 * 1e6) / 1e6 : r.weightPerUnit)
+          : '';
+        return `
         <div class="pe-recipe-row" style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
           <input class="field-input pe-recipe-material" list="dl-rawmaterial" data-i18n-placeholder="recipe_material_placeholder" placeholder="Material name" style="flex:2; margin-bottom:0;" value="${escHtml_(r.material || '')}">
-          <input class="field-input pe-recipe-weight" type="number" min="0" step="any" data-i18n-placeholder="recipe_weight_placeholder" placeholder="Weight/unit" style="flex:1; margin-bottom:0;" value="${(r.weightPerUnit || r.weightPerUnit === 0) ? r.weightPerUnit : ''}">
+          <input class="field-input pe-recipe-weight" type="number" min="0" step="any" data-i18n-placeholder="recipe_weight_placeholder" placeholder="Weight/unit" style="flex:1; margin-bottom:0;" value="${displayWeight}">
           <select class="field-input pe-recipe-weight-unit" style="flex:0 0 62px; margin-bottom:0; padding-left:6px; padding-right:6px;" title="Unit this weight is typed in — always converted to/stored as kg">
-            <option value="kg" selected>kg</option>
-            <option value="g">g</option>
+            <option value="kg" ${unit==='kg' ? 'selected' : ''}>kg</option>
+            <option value="g" ${unit==='g' ? 'selected' : ''}>g</option>
           </select>
           <input class="field-input pe-recipe-items" type="number" min="0" step="1" data-i18n-placeholder="recipe_items_placeholder" placeholder="Items/unit" style="flex:1; margin-bottom:0;" value="${(r.itemsPerUnit || r.itemsPerUnit === 0) ? r.itemsPerUnit : ''}">
           <button type="button" class="weight-remove-btn pe-recipe-remove" data-idx="${i}" title="Remove">✕</button>
-        </div>`).join('');
+        </div>`;
+      }).join('');
       wrap.querySelectorAll('.pe-recipe-remove').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const rowsNow = readPeRecipeRowsRaw_();
@@ -11208,6 +11307,19 @@
       // modal's DOM won't change in the meantime either way.
       const recipe = readPeRecipeRows_();
       if(!name || !(price >= 0)) return;
+      // FIX (2026-08-26, part of the grams-saved-as-kg fix): remember
+      // whichever unit each named raw material's row was actually typed in
+      // right now, so reopening this — or any other product's — recipe row
+      // for the same material name defaults to that unit next time instead
+      // of silently resetting to kg (see rawMaterialUnits declaration and
+      // renderPeRecipeRows_ above). Read straight from the DOM rather than
+      // from `recipe` above since readPeRecipeRowsRaw_ already converted
+      // everything to kg and dropped the selector's own value.
+      document.querySelectorAll('#pe-recipe-rows .pe-recipe-row').forEach(row=>{
+        const material = row.querySelector('.pe-recipe-material').value.trim();
+        const unitSel = row.querySelector('.pe-recipe-weight-unit');
+        if(material && unitSel) rawMaterialUnits[material] = unitSel.value;
+      });
       function commitProductSave_(){
         if(editingProductId === null){
           // No reorderLevel or stock set here (2026-08-23/24: both removed
@@ -14164,10 +14276,12 @@
       document.getElementById('rl-desc').value = '';
       document.getElementById('rl-stockname').value = '';
       document.getElementById('rl-weightin').value = '';
+      document.getElementById('rl-weightin-unit').value = 'kg';
       document.getElementById('rl-itemsin').value = '';
       document.getElementById('rl-rate-type').value = '';
       document.getElementById('rl-rate').value = '';
       document.getElementById('rl-addweight-amount').value = '';
+      document.getElementById('rl-addweight-unit').value = 'kg';
       document.getElementById('rl-additems-amount').value = '';
       rlCreditWasAutoFilled = false;
       document.getElementById('rl-weight').value = '';
@@ -14271,12 +14385,23 @@
             editingRlEntryIdx = eIdx;
             document.getElementById('rl-desc').value = e.desc || '';
             document.getElementById('rl-stockname').value = e.stockName || '';
-            document.getElementById('rl-weightin').value = (e.weightIn || e.weightIn === 0) ? e.weightIn : '';
             document.getElementById('rl-itemsin').value = (e.itemsIn || e.itemsIn === 0) ? e.itemsIn : '';
             document.getElementById('rl-rate-type').value = e.rateType || '';
             document.getElementById('rl-rate').value = (e.rate || e.rate === 0) ? e.rate : '';
             rlCreditWasAutoFilled = false; // editing an existing entry — never clobber its stored Credit on open
+            // rlUpdateStockPreview_ (called next) sets rl-weightin-unit to
+            // this material's remembered unit — display the STORED (always
+            // kg) weightIn converted into that same unit so the field shows
+            // the number the way it was actually typed, not a raw kg value
+            // sitting next to a "g" label.
             rlUpdateStockPreview_();
+            {
+              const hasW = (e.weightIn || e.weightIn === 0);
+              const wUnit = document.getElementById('rl-weightin-unit').value;
+              document.getElementById('rl-weightin').value = hasW
+                ? (wUnit === 'g' ? Math.round(e.weightIn * 1000 * 1e6) / 1e6 : e.weightIn)
+                : '';
+            }
             document.getElementById('rl-weight').value = e.weight || '';
             document.getElementById('rl-bundle').value = e.bundleCount || '';
             document.getElementById('rl-gauge').value = e.gaugeCount || '';
@@ -14371,7 +14496,14 @@
       const stockName = document.getElementById('rl-stockname').value.trim();
       const weightInRaw = document.getElementById('rl-weightin').value.trim();
       const itemsInRaw = document.getElementById('rl-itemsin').value.trim();
-      const weightIn = (weightInRaw !== '' && parseFloat(weightInRaw) >= 0) ? parseFloat(weightInRaw) : undefined;
+      // FIX (2026-08-26, user request): typed in whichever unit rl-weightin-unit
+      // is currently set to (defaults to this material's remembered unit —
+      // see rlUpdateStockPreview_) — always converted to/stored as kg here,
+      // same convention as the recipe rows' weightPerUnit.
+      const weightInUnit_ = document.getElementById('rl-weightin-unit').value;
+      const weightIn = (weightInRaw !== '' && parseFloat(weightInRaw) >= 0)
+        ? (weightInUnit_ === 'g' ? parseFloat(weightInRaw) / 1000 : parseFloat(weightInRaw))
+        : undefined;
       const itemsIn = (itemsInRaw !== '' && parseFloat(itemsInRaw) >= 0) ? parseFloat(itemsInRaw) : undefined;
       // ADD (2026-08-24, user request #2): Rate Type + Rate — stored on the
       // entry (same blank-means-not-set convention as stockName/weightIn/
@@ -14397,6 +14529,11 @@
       const s = inventory.rawledger[currentRawSupplierIdx];
       s.entries = s.entries || [];
       const wasEditingRlEntry_ = editingRlEntryIdx !== null;
+      // Remember this material's unit going forward — same map the recipe
+      // rows and Raw Material Stock table already read from. Placed here
+      // (past the debit/credit validation above) so a rejected save never
+      // updates it.
+      if(stockName) rawMaterialUnits[stockName] = weightInUnit_;
       function commitRlEntrySave_(){
         if(editingRlEntryIdx !== null){
           // Update the existing entry in place — keeps its id/time/receipt/
@@ -14459,6 +14596,7 @@
         document.getElementById('rl-desc').value = '';
         document.getElementById('rl-stockname').value = '';
         document.getElementById('rl-weightin').value = '';
+        document.getElementById('rl-weightin-unit').value = 'kg';
         document.getElementById('rl-itemsin').value = '';
         document.getElementById('rl-rate-type').value = '';
         document.getElementById('rl-rate').value = '';
@@ -14511,8 +14649,29 @@
       const name = document.getElementById('rl-stockname').value.trim();
       if(!name){ wEl.value = ''; iEl.value = ''; return; }
       const rec = computeRawMaterialStock_().find(r => r.name === name);
-      wEl.value = rec ? rawmatNum_(rec.weightRemaining) : rawmatNum_(0);
+      // FIX (2026-08-26): shown in this material's own remembered unit (see
+      // rawmatWeightUnit_/rawMaterialUnits), same as the Raw Material Stock
+      // table, so a material tracked in grams previews as grams here too
+      // instead of an unlabeled kg-looking number.
+      const unit = rawmatWeightUnit_(name);
+      wEl.value = rec ? rawmatNumInUnit_(rec.weightRemaining, unit) : rawmatNumInUnit_(0, unit);
       iEl.value = rec ? rawmatNum_(rec.itemsRemaining) : rawmatNum_(0);
+      // ADD (2026-08-26, user request): default BOTH weight-entry unit
+      // selectors (the main Weight Received field and the quick "+ Add
+      // Weight" field) to this material's remembered unit too, not just the
+      // read-only preview above — so typing/receiving stock for a
+      // gram-tracked material doesn't require manually remembering to
+      // switch the selector every single time, same as the recipe rows.
+      // Only defaults it (doesn't clobber a value the person is actively
+      // typing into right now) — skipped while either weight input itself
+      // has focus, so picking a one-off different unit for THIS delivery
+      // isn't immediately overwritten by this same keystroke's re-render.
+      const weightinUnitEl = document.getElementById('rl-weightin-unit');
+      const weightinEl = document.getElementById('rl-weightin');
+      if(weightinUnitEl && document.activeElement !== weightinEl) weightinUnitEl.value = unit;
+      const addweightUnitEl = document.getElementById('rl-addweight-unit');
+      const addweightEl = document.getElementById('rl-addweight-amount');
+      if(addweightUnitEl && document.activeElement !== addweightEl) addweightUnitEl.value = unit;
     }
     document.getElementById('rl-stockname').addEventListener('input', rlUpdateStockPreview_);
     // Rate Type × Rate → auto-fills Credit — same "keep recalculating live
@@ -14571,7 +14730,18 @@
         device: DEVICE_NAME,
         stockName: name
       };
-      if(kind === 'weight') entry.weightIn = amount; else entry.itemsIn = amount;
+      if(kind === 'weight'){
+        // FIX (2026-08-26, user request): typed in whichever unit
+        // rl-addweight-unit is set to (defaults to this material's
+        // remembered unit — see rlUpdateStockPreview_) — converted to kg
+        // for storage, same as the main Weight Received field, and this
+        // material's unit is remembered going forward too.
+        const addUnit = document.getElementById('rl-addweight-unit').value;
+        entry.weightIn = addUnit === 'g' ? amount / 1000 : amount;
+        rawMaterialUnits[name] = addUnit;
+      } else {
+        entry.itemsIn = amount;
+      }
       s.entries.push(entry);
       amountEl.value = '';
       renderRawLedgerModalContent_();
