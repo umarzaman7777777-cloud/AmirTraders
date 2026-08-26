@@ -8865,11 +8865,24 @@
         // order's own row here — mirrors reconcileFactoryLedgerOrders_'s
         // own `directPaid` exactly, so the sheet's report and the app's own
         // ledger view can never disagree on this order's row again.
-        const directPaid = customerPayments.filter(p => p.txnId === t.id).reduce((s,p)=> s + (p.amount||0), 0);
+        const directPayments = customerPayments.filter(p => p.txnId === t.id);
+        const directPaid = directPayments.reduce((s,p)=> s + (p.amount||0), 0);
+        // ADD (2026-08-26, "check this for all ledgers" audit) — method was
+        // already correctly sourced from these same customerPayments rows
+        // via paymentModeText_ (which itself joins every payment recorded
+        // directly against this order), but receivedBy/receivedIn were
+        // never carried over here at all, even though every customerPayments
+        // row has always saved both (see the Record Payment modal). Same
+        // "join every distinct payment" approach as method above, so an
+        // order paid in two installments by two different people/accounts
+        // shows both rather than just one.
+        const receivedByText = directPayments.map(p => p.receivedBy).filter(Boolean).join(', ');
+        const receivedInText = directPayments.map(p => p.receivedIn).filter(Boolean).join(', ');
         return {
           id: 'order-' + t.id, date: t.date, time: t.time || '', desc: desc,
           debit: t.total, credit: directPaid, method: directPaid > 0 ? paymentModeText_(t) : '',
-          detail: '', chequeDate: '', chequeStatus: '', txnId: t.id
+          detail: '', chequeDate: '', chequeStatus: '', txnId: t.id,
+          receivedBy: receivedByText, receivedIn: receivedInText
         };
       });
       // FIX (2026-08-24): this used to exclude EVERY entry with an order id
@@ -10963,7 +10976,7 @@
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
     const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.26.13. Extended the grams/kg fix to the Raw Material Ledger — 'Weight Received' and the quick '+ Add Weight' top-up now also have a g/kg selector (defaulting to that material's remembered unit) instead of only accepting kg, so receiving stock in grams no longer needs a hand-converted decimal, and Remaining Weight in the ledger correctly reflects it. Also includes: raw material weights tracked in grams no longer silently default back to kg in the product recipe rows or the Raw Material Stock table (build .12), the order-numbering reset counter fix, the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION_NOTE = "Build 2026.08.26.14. Ledger exports/sheets now show a Rate column (per-kg or per-item) on the Raw Material and Labour Ledgers. Fixed a real data-loss-looking bug the user caught via screenshot: Raw Material Ledger entries added through 'Raw Material Name' + 'Weight Received' (instead of the older free-text Weight/Bundle Count boxes) were exporting completely blank Weight/Bundle Count cells despite Export Settings showing every column checked — those entries' real weight/count now always show. Also fixed an Export Settings checkbox misalignment on the Raw Material and Labour Ledgers (introduced when the Rate column was added) where every checkbox from Rate onward silently controlled the wrong column. Customer/Factory Ledger export now includes Time and a combined Received By / In column, including for order-linked rows (sourced from the actual Record Payment entries) which never surfaced this before. Also includes: the grams/kg fix extended to the Raw Material Ledger's own entry fields and the product recipe rows/Raw Material Stock table (builds .12-.13), the order-numbering reset counter fix, the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -14774,6 +14787,55 @@
     document.getElementById('rl-resetweight-btn').addEventListener('click', ()=> rlResetStock_('weight'));
     document.getElementById('rl-resetitems-btn').addEventListener('click', ()=> rlResetStock_('items'));
 
+    // ADD (2026-08-26, user report: "each ledger export and sheet doesn't
+    // have (rate per item or rate per weight)... if 1 item/1 kg rate isn't
+    // shown then how will other person understand his balance") — rl-rate-
+    // type/rl-rate have been captured on every entry since 2026-08-24 (and
+    // already reach the RawLedger sheet tab in Code.gs), but this export
+    // itself never read them. Combined into ONE "500/item" / "1500/kg" cell
+    // rather than two separate columns — verified by rendering real test
+    // PDFs (landscape, this table's actual column widths/fonts) that a
+    // two-column split didn't fit this table's width budget without forcing
+    // either this or another column to wrap mid-word/mid-number, which is
+    // exactly the defect the widths below were already tuned to avoid.
+    function rawLedgerRateCell_(e){
+      if(!e.rateType || e.rate === undefined) return '';
+      return e.rate + (e.rateType === 'weight' ? '/kg' : '/item');
+    }
+    // FIX (2026-08-26, user report with screenshots: "Even it's check mark
+    // but still data is missing in export columns" — entries like "Tika"/
+    // "Chutki"/"Tala"/"Mono" showed real Credit but blank Weight/Bundle
+    // Count) — root cause: this export only ever read the LEGACY free-text
+    // fields (e.weight/e.bundleCount) typed into the "Weight"/"Bundle Count"
+    // boxes, never the newer structured stock-tracking fields (e.stockName/
+    // e.weightIn/e.itemsIn, added 2026-08-24) that the modern add-entry flow
+    // actually populates when someone only fills in "Raw Material Name" +
+    // "Weight Received"/"Items Received" and leaves the legacy free-text
+    // boxes blank — so those entries' real data had NO export column at all.
+    // Fixed by falling back to the structured fields (converted into
+    // whichever unit that material is remembered in, same as the Raw
+    // Material Stock table) whenever the legacy field is empty, so every
+    // entry's real received weight/count is always visible somewhere in the
+    // export — never silently dropped. Kept as a fallback (not a second
+    // column) deliberately: adding 2 more columns would have blown this
+    // already-tight landscape PDF's width budget and forced other columns
+    // back into mid-word breaks; a value is never present in both field sets
+    // at once in practice (they're alternate ways of recording the same
+    // "what was received" fact), so merging loses nothing.
+    function rawLedgerWeightCell_(e){
+      if(e.weight) return e.weight;
+      if(typeof e.weightIn === 'number'){
+        const unit = rawmatWeightUnit_(e.stockName || '');
+        const val = rawmatNumInUnit_(e.weightIn, unit);
+        return e.stockName ? (val + ' (' + e.stockName + ')') : val;
+      }
+      return '';
+    }
+    function rawLedgerBundleCell_(e){
+      if(e.bundleCount) return e.bundleCount;
+      if(typeof e.itemsIn === 'number') return e.itemsIn;
+      return '';
+    }
     function rawLedgerRows_(dateFrom, dateTo, supplierName){
       const rows = [];
       (inventory.rawledger || []).forEach(s=>{
@@ -14783,12 +14845,12 @@
           if(e.chequeStatus !== 'bounced') running += (e.credit||0) - (e.debit||0);
           const d = parseDMY_(e.date);
           const inRange = (!dateFrom || !d || d >= dateFrom) && (!dateTo || !d || d <= dateTo);
-          if(inRange) rows.push([s.name, e.date, e.time, e.desc || '', e.weight || '', e.bundleCount || '', e.gaugeCount || '', e.sizeCount || '', e.debit || 0, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
+          if(inRange) rows.push([s.name, e.date, e.time, e.desc || '', rawLedgerWeightCell_(e), rawLedgerBundleCell_(e), e.gaugeCount || '', e.sizeCount || '', rawLedgerRateCell_(e), e.debit || 0, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
         });
       });
       return rows;
     }
-    const RAW_LEDGER_HEADERS = ['Supplier','Date','Time','Description','Weight','Bundle Count','Gauge','Size','Debit','Credit','Balance','Received By','Received In'];
+    const RAW_LEDGER_HEADERS = ['Supplier','Date','Time','Description','Weight','Bundle Count','Gauge','Size','Rate','Debit','Credit','Balance','Received By','Received In'];
     // FIX (2026-08-19): the widths below were STILL too narrow for real
     // content — user sent a real export screenshot showing "Basharat sb
     // Steel" splitting into "Basharat sb"/"Steel", "19/08/2026" splitting
@@ -14806,10 +14868,25 @@
     // wraps only at natural word boundaries (or not at all), never
     // mid-word/mid-number, while the whole row still fits one landscape
     // page (total 265mm, comfortably inside the ~268mm usable width).
+    //
+    // RE-TUNED (2026-08-26) to make room for the new Rate column above —
+    // shaved Description (free text, wraps fine — least risky place to
+    // trim), Bundle Count and Size (their body data is short; only their
+    // headers needed the width, and headers wrapping onto 2 lines at a
+    // word boundary is normal/expected here, unlike a data value breaking
+    // mid-word/mid-number). Weight/Gauge/Debit/Credit/Balance/Received By
+    // left untouched — real text-width measurements (jsPDF getTextWidth,
+    // same method as the original tuning) showed those already sitting at
+    // or near their minimum for real values (a 7-digit amount, "Muhammad",
+    // "1200kg" with no space to wrap on). Verified by rendering real
+    // multi-row test PDFs with this exact table shape (including a 4-digit
+    // rate, a 7-digit balance, and the longest real values above) and
+    // visually confirming zero mid-word/mid-number breaks before shipping.
     const RAW_LEDGER_PDF_COLUMN_STYLES = {
-      0:{cellWidth:30}, 1:{cellWidth:21}, 2:{cellWidth:14}, 3:{cellWidth:30},
-      4:{cellWidth:16}, 5:{cellWidth:17}, 6:{cellWidth:15}, 7:{cellWidth:21},
-      8:{cellWidth:18}, 9:{cellWidth:18}, 10:{cellWidth:18}, 11:{cellWidth:22}, 12:{cellWidth:25}
+      0:{cellWidth:30}, 1:{cellWidth:21}, 2:{cellWidth:14}, 3:{cellWidth:25},
+      4:{cellWidth:16}, 5:{cellWidth:15}, 6:{cellWidth:15}, 7:{cellWidth:19},
+      8:{cellWidth:22}, 9:{cellWidth:18}, 10:{cellWidth:18}, 11:{cellWidth:18},
+      12:{cellWidth:22}, 13:{cellWidth:17}
     };
     function exportRawLedgerCSVRows_(rows, name){
       const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows);
@@ -18223,6 +18300,26 @@
     });
 
     // ---- Export (rows + wiring into the shared export filter modal) ----
+    // ADD (2026-08-26, user report: "each ledger export and sheet doesn't
+    // have (rate per item or rate per weight)... if 1 item/1 kg rate isn't
+    // shown then how will other person understand his balance") — a
+    // worker's rate lives on the WORKER profile, not per-entry (w.rate for
+    // daily/hourly, or w.pieceRates[] keyed by size for piece work), so
+    // there's no single per-entry field to just read like Raw Ledger's
+    // rate. Mirrors the exact same lookup Code.gs's LabourLedger sheet tab
+    // already does (readTransactions_-adjacent labour row builder,
+    // "matchedRate = w.pieceRates.find(pr => pr.size === e.size)") so the
+    // app export and the sheet agree on what rate a given entry shows.
+    function labourEntryRateCell_(w, e){
+      if(w.rateType === 'piece'){
+        const matched = (w.pieceRates || []).find(pr => pr.size === e.size);
+        const rate = matched ? (matched.rate || 0) : (e.units ? (e.credit || 0) / e.units : 0);
+        return rate ? (Math.round(rate * 100) / 100) + '/pc' : '';
+      }
+      const rate = w.rate || 0;
+      if(!rate) return '';
+      return rate + (w.rateType === 'hourly' ? '/hr' : '/day');
+    }
     function labourLedgerRows_(dateFrom, dateTo, workerName){
       const rows = [];
       (inventory.labourledger || []).forEach(w=>{
@@ -18243,21 +18340,35 @@
           const paymentAmt = e.kind === 'payment' ? (e.debit || 0) : '';
           const advanceAmt = e.kind === 'advance' ? (e.debit || 0) : '';
           const loanAmt = e.kind === 'loan' ? (e.debit || 0) : '';
-          rows.push([w.name, e.date, e.time || '', kindTxt, e.size || '', e.units || '', e.note || '', paymentAmt, advanceAmt, loanAmt, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
+          rows.push([w.name, e.date, e.time || '', kindTxt, labourEntryRateCell_(w, e), e.size || '', e.units || '', e.note || '', paymentAmt, advanceAmt, loanAmt, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
         });
       });
       return rows;
     }
-    const LABOUR_LEDGER_HEADERS = ['Worker','Date','Time','Type','Size','Units','Note','Payment','Advance','Loan','Credit (Earned)','Balance (Dues)','Received By','Received In'];
+    const LABOUR_LEDGER_HEADERS = ['Worker','Date','Time','Type','Rate','Size','Units','Note','Payment','Advance','Loan','Credit (Earned)','Balance (Dues)','Received By','Received In'];
     // FIX: same header-text-breaks-mid-word issue as the Transactions PDF
     // (see TXN_PDF_COLUMN_STYLES) — no explicit widths here left every
     // column, including short headers like "Time" and "Size", to
     // autoTable's auto-sizing.
+    //
+    // RE-TUNED (2026-08-26) for the new Rate column above, AND to fix
+    // pre-existing mid-word/mid-number breaks this export already had
+    // before today (found while re-measuring: Date "19/08/2026" splitting
+    // into "19/08/20"/"26", Time "09:00" into "09:0"/"0", Type "Payment"
+    // into "Payme"/"nt", Received By "Muhammad" into "Muhamma"/"d" — all
+    // from column widths that were too narrow even for their own single-
+    // token values). Re-derived every width the same evidence-based way as
+    // RAW_LEDGER_PDF_COLUMN_STYLES: real jsPDF getTextWidth measurements at
+    // this table's actual font/size, then rendering real multi-row test
+    // PDFs (including a 7-digit amount, a long worker name, a long Note,
+    // and long Rate values like "9999/pc") and visually confirming zero
+    // mid-word/mid-number breaks — Note (free text) still wraps between
+    // words as expected, which is fine.
     const LABOUR_LEDGER_PDF_COLUMN_STYLES = {
-      0:{cellWidth:22}, 1:{cellWidth:18}, 2:{cellWidth:12}, 3:{cellWidth:16},
-      4:{cellWidth:14}, 5:{cellWidth:14}, 6:{cellWidth:40}, 7:{cellWidth:18},
-      8:{cellWidth:18}, 9:{cellWidth:16}, 10:{cellWidth:24}, 11:{cellWidth:24},
-      12:{cellWidth:20}, 13:{cellWidth:20}
+      0:{cellWidth:22}, 1:{cellWidth:21}, 2:{cellWidth:14}, 3:{cellWidth:18},
+      4:{cellWidth:18}, 5:{cellWidth:14}, 6:{cellWidth:14}, 7:{cellWidth:22},
+      8:{cellWidth:18}, 9:{cellWidth:18}, 10:{cellWidth:18}, 11:{cellWidth:18},
+      12:{cellWidth:18}, 13:{cellWidth:22}, 14:{cellWidth:18}
     };
     function exportLabourLedgerCSVRows_(rows, name){
       const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows);
@@ -21976,7 +22087,7 @@
           // Payment method with its detail folded right in — the cheque
           // number for Cheque, the account/Easypaisa number for Bank/Online
           // — instead of just the bare method name on its own.
-          const methodCell = e.method ? (e.method + (e.detail ? ' (' + e.detail + ')' : '')) : '';
+          let methodCell = e.method ? (e.method + (e.detail ? ' (' + e.detail + ')' : '')) : '';
           // FIX (2026-08-19): the exported receipt showed "Cheque (number)"
           // with no way to tell whether that cheque had actually cleared —
           // the on-screen ledger shows this via a coloured Pending/Overdue/
@@ -21996,26 +22107,81 @@
               chequeStatusCell = (due && due < today) ? ('Overdue (was due ' + (e.chequeDate || '') + ')') : ('Pending (due ' + (e.chequeDate || '') + ')');
             } else if(e.chequeStatus === 'cleared') chequeStatusCell = 'Cleared';
           }
+          // FIX (2026-08-26, second gap found while auditing every ledger
+          // export per the user's "check this for all" request) — this
+          // export never had Received By/Received In columns at all, even
+          // though a manual entry (e.method truthy) has always saved both
+          // (see cl-add-entry below). Worse, an order-linked row (created by
+          // getOrCreateCustomerLedgerEntry_ from a confirmed order) never
+          // carries e.method/receivedBy/receivedIn to begin with — the real
+          // payment method/receivedBy/receivedIn a person typed into
+          // "Record Payment" for that order only ever lives in the separate
+          // customerPayments array (see customerPayments.push above), so it
+          // never reached this ledger's export before now either. Falls
+          // back to summing/joining every customerPayments row for this
+          // order when the entry itself has no method (i.e. it's the
+          // auto-generated order row, not a manual entry) — if more than
+          // one payment was recorded against the same order (e.g. partial
+          // Cash + partial Cheque), all of them show, comma/semicolon-
+          // joined, rather than silently picking just one. Received By and
+          // Received In are combined into one column (same " · " join the
+          // on-screen badge already uses, see receivedBadge above) — kept
+          // this export from needing yet another column on an already-full
+          // landscape page.
+          let receivedCell = [e.receivedBy, e.receivedIn].filter(Boolean).join(' · ');
+          if(!e.method && t){
+            const pays = customerPayments.filter(p => p.txnId === t.id && (p.amount || 0) > 0);
+            if(pays.length){
+              methodCell = pays.map(p => p.method ? (p.method + (p.detail ? ' (' + p.detail + ')' : '')) : '').filter(Boolean).join(', ');
+              receivedCell = pays.map(p => [p.receivedBy, p.receivedIn].filter(Boolean).join(' · ')).filter(Boolean).join('; ');
+            }
+          }
 
-          rows.push([c.name, e.date, desc, itemsCell, sizeCell, colourCell, qtyCell, e.debit || 0, e.credit || 0, running, methodCell, paymentSeqLabel, chequeStatusCell]);
+          rows.push([c.name, e.date, e.time || '', desc, itemsCell, sizeCell, colourCell, qtyCell, e.debit || 0, e.credit || 0, running, methodCell, paymentSeqLabel, chequeStatusCell, receivedCell]);
         });
       });
       return rows;
     }
-    const CUSTOMER_LEDGER_HEADERS = ['Factory','Date','Description','Item(s)','Size','Colour','Qty','Debit - Billed','Credit - Received','Balance','Payment Method','Payment #','Cheque Status'];
+    // FIX (2026-08-26, user report with screenshots, "check this for all
+    // ledgers") — added 'Time' (every other ledger export has one; this one
+    // never did, even though every entry has always saved e.time) and
+    // 'Received By / In' (this ledger's manual entries have always saved
+    // receivedBy/receivedIn — see cl-add-entry — but had no export column;
+    // order-linked rows get theirs from customerPayments, see the fallback
+    // above). Kept Received By and Received In as ONE combined column
+    // (mirrors the on-screen badge's own " · " join) rather than two,
+    // deliberately — this ledger already has more columns than any other
+    // export, and two more separate columns would not have fit a landscape
+    // page without forcing other columns back into mid-word breaks (see the
+    // width re-tuning note below).
+    const CUSTOMER_LEDGER_HEADERS = ['Factory','Date','Time','Description','Item(s)','Size','Colour','Qty','Debit - Billed','Credit - Received','Balance','Payment Method','Payment #','Cheque Status','Received By / In'];
     // Same header-text-breaks-mid-word fix as the other ledger PDF exports
     // (see TXN_PDF_COLUMN_STYLES) — explicit widths instead of leaving them
     // to autoTable's auto-sizing.
+    //
+    // RE-TUNED (2026-08-26) for the new Time/Received By-In columns above.
+    // This ledger has more columns than any other export, so the original
+    // per-column widths (which already summed to well over this table's
+    // ~269mm usable landscape width) had to be re-derived from scratch
+    // rather than just adding two more on top — real jsPDF getTextWidth
+    // measurements (a 10-digit bank account number in Payment Method, an
+    // "Overdue (was due DD/MM/YYYY)" Cheque Status, a 7-digit amount, a
+    // full worker/factory name), then real rendered multi-row test PDFs,
+    // visually confirmed to have zero mid-word/mid-number breaks AND no
+    // page-edge clipping (an earlier wider candidate — before combining
+    // Received By/In into one column — measurably clipped the last 1-2
+    // columns off the page edge; this is the version that didn't).
     const CUSTOMER_LEDGER_PDF_COLUMN_STYLES = {
-      0:{cellWidth:20}, 1:{cellWidth:16}, 2:{cellWidth:30}, 3:{cellWidth:34},
-      4:{cellWidth:14}, 5:{cellWidth:18}, 6:{cellWidth:12}, 7:{cellWidth:20},
-      8:{cellWidth:20}, 9:{cellWidth:20}, 10:{cellWidth:26}, 11:{cellWidth:22},
-      12:{cellWidth:30}
+      0:{cellWidth:17}, 1:{cellWidth:21}, 2:{cellWidth:13}, 3:{cellWidth:21},
+      4:{cellWidth:18}, 5:{cellWidth:11}, 6:{cellWidth:15}, 7:{cellWidth:13},
+      8:{cellWidth:18}, 9:{cellWidth:18}, 10:{cellWidth:19}, 11:{cellWidth:25},
+      12:{cellWidth:19}, 13:{cellWidth:22}, 14:{cellWidth:22}
     };
     // Same idea as TXN_JPG_COL_WIDTHS — percentages sum to 100, with the
     // text-heavy Item(s)/Description columns given more room than short
     // ones like Qty/Date so ordinary words don't force-wrap one-per-line.
-    const CUSTOMER_LEDGER_JPG_COL_WIDTHS = [7,6,9,13,5,7,5,7,7,7,9,6,12];
+    // RE-TUNED (2026-08-26) for the 2 new columns (Time, Received By / In).
+    const CUSTOMER_LEDGER_JPG_COL_WIDTHS = [5,8,5,7,7,4,6,5,7,7,7,9,7,8,8];
 
     // ---------------- EXPORT SETTINGS: per-ledger column visibility ----------------
     // One stable key per column, positionally matching each ledger's own
@@ -22023,13 +22189,25 @@
     // hid (see exportColumnPrefs_) and to label the checkboxes in the
     // Export Settings card. Never sent anywhere; purely a local UI/export
     // concern, same column order the PDF/JPG/CSV already use.
+    // FIX (2026-08-26, user report with screenshots: "Even it's check mark
+    // but still data is missing in export columns") — when the Rate column
+    // was added to RAW_LEDGER_HEADERS/LABOUR_LEDGER_HEADERS above, the
+    // matching key wasn't added here. Since these keys are matched
+    // POSITIONALLY against each ledger's *_HEADERS array (see
+    // renderLedgerExportSettingsModal_/filterExportColumns_ below), that
+    // left the 'raw' and 'labour' arrays one entry short — every checkbox
+    // from "Rate" onward silently controlled the WRONG column (e.g.
+    // unchecking "Received In" actually hid nothing, since there was no key
+    // left for it), even though every box visually looked checked/correct.
+    // Fixed by inserting 'rate' at the same position 'Rate' sits at in each
+    // *_HEADERS array.
     const EXPORT_COLUMN_KEYS_ = {
       paint: ['painter','date','time','desc','colour','itemSize','itemType','itemFactory','itemCount','ratePerItem','debit','credit','balance','receivedBy','receivedIn'],
-      raw: ['supplier','date','time','desc','weight','bundleCount','gaugeCount','sizeCount','debit','credit','balance','receivedBy','receivedIn'],
+      raw: ['supplier','date','time','desc','weight','bundleCount','gaugeCount','sizeCount','rate','debit','credit','balance','receivedBy','receivedIn'],
       custom: ['ledger','date','time','desc','itemColour','weight','sizeCount','itemCount','ratePerItem','itemMethod','itemWeightStatus','selfWeightStock','weightPerItem','weightPerScrap','remainingWeight','debit','credit','balance','receivedBy','receivedIn'],
-      labour: ['worker','date','time','type','size','units','note','payment','advance','loan','credit','balance','receivedBy','receivedIn'],
+      labour: ['worker','date','time','type','rate','size','units','note','payment','advance','loan','credit','balance','receivedBy','receivedIn'],
       transactions: ['id','date','time','items','itemCount','rate','size','colour','total','factory','status','debit','credit','balance','paymentMode'],
-      customerledger: ['factory','date','desc','items','size','colour','qty','debit','credit','balance','method','paymentNum','chequeStatus'],
+      customerledger: ['factory','date','time','desc','items','size','colour','qty','debit','credit','balance','method','paymentNum','chequeStatus','receivedByIn'],
       expenses: ['date','desc','category','amount'],
       scrap: ['buyer','date','time','desc','itemName','type','weight','rate','debit','credit','balance','receivedBy','receivedIn'],
       withdrawal: ['date','desc','amount','method','detail','withdrawnBy','withdrawnIn']
@@ -22272,14 +22450,15 @@
       const filteredRows = rows.map(row => keepIdx.map(i => row[i]));
       return { headers: filteredHeaders, rows: filteredRows, hidden: true };
     }
-    // Balance column (index 9) of the LAST row is this export's actual
-    // current running balance — same figure the on-screen ledger and the
-    // last row's Balance cell both show. If a date/order filter is active,
-    // this is the balance as of the last row the filter let through, same
-    // as the Transactions export's total already works relative to its own
-    // filtered rows.
+    // Balance column (index 10 — shifted from 9 by the 2026-08-26 addition
+    // of the Time column at index 2, see CUSTOMER_LEDGER_HEADERS) of the
+    // LAST row is this export's actual current running balance — same
+    // figure the on-screen ledger and the last row's Balance cell both
+    // show. If a date/order filter is active, this is the balance as of the
+    // last row the filter let through, same as the Transactions export's
+    // total already works relative to its own filtered rows.
     function customerLedgerTotalBalance_(rows){
-      return rows.length ? (rows[rows.length - 1][9] || 0) : 0;
+      return rows.length ? (rows[rows.length - 1][10] || 0) : 0;
     }
     function customerLedgerFooterLines_(total){
       return [
