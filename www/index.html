@@ -5527,6 +5527,15 @@
     // and reconciles it — and the backend's own safeWriteRows_ guard still
     // blocks any accidental empty-overwrite regardless.
     const SYNC_SKIP_WINDOW_MS_ = 5000;
+    // FIX (2026-08-26, real report: a save stuck on "Syncing..." with no
+    // end in sight — see the AbortController wrapped around the save fetch
+    // below for the full story). Apps Script itself can legitimately take
+    // 10-20+ seconds on a normal save (more with several receipt photos in
+    // one payload — each is a separate Drive upload server-side), so this
+    // is deliberately generous rather than tight — long enough that a slow
+    // but genuinely-working save never gets cut off, short enough that a
+    // truly wedged request stops blocking the UI forever.
+    const SAVE_TIMEOUT_MS_ = 90000;
     // Keeps the Overview tab live: called from queueSync (itself called after
     // virtually every add/edit/delete throughout the app), so if the person
     // is sitting on the Overview tab while something changes elsewhere —
@@ -6593,11 +6602,36 @@
         // preflight, no special server config needed — so switching away
         // from no-cors just requires reading the response like the JSONP
         // loads already do, then genuinely checking it for {error:...}.
-        const response = await fetch(SHEET_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
+        // FIX (2026-08-26, real report: "stuck on Syncing... it might take
+        // 1 year"): this fetch had NO timeout at all, unlike jsonpRequest's
+        // loads (25s, see jsonpRequest above). A save that genuinely hung —
+        // a stalled mobile connection mid-upload, an Apps Script execution
+        // that got wedged processing a large payload (several receipt
+        // photos in one save can add real time server-side) — left the
+        // promise permanently pending. Nothing ever reached the catch block
+        // below, so the retry loop never kicked in, the UI stayed on
+        // "Syncing..." forever, and the ONLY way out was a full app
+        // restart. AbortController here guarantees this settles one way or
+        // the other within SAVE_TIMEOUT_MS_, same as every other request in
+        // this file already does.
+        const saveAbort_ = new AbortController();
+        const saveTimeoutTimer_ = setTimeout(()=> saveAbort_.abort(), SAVE_TIMEOUT_MS_);
+        let response;
+        try{
+          response = await fetch(SHEET_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload),
+            signal: saveAbort_.signal
+          });
+        } catch(fetchErr){
+          if(fetchErr && fetchErr.name === 'AbortError'){
+            throw new Error('Save timed out after ' + Math.round(SAVE_TIMEOUT_MS_/1000) + 's — the request never got a response. Will retry automatically.');
+          }
+          throw fetchErr;
+        } finally {
+          clearTimeout(saveTimeoutTimer_);
+        }
         const result = await response.json();
         if(result && result.error) throw new Error(result.error);
         expensesForSync.forEach(e=>{
@@ -10738,8 +10772,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2026.08.26.5";
-    const APP_VERSION_NOTE = "Fixed: a Customer/Factory Ledger entry linked to an order that's been permanently lost (not just temporarily out of sync — genuinely gone, no tombstone either) used to be impossible to remove — order-linked rows hide their delete button on purpose, since reconciliation normally manages them, but an order that never comes back left that row stuck forever, regenerating identically every time the ledger reopened. It now shows a delete button specifically when the linked order is verified completely absent from this device's order history, and deleting it also tombstones the order id itself so it can never resurrect the entry again. Also includes: the 2026.08.26.4 Notification Settings relocation, the 2026.08.26.3 self-healing sync fix, real push notifications (app-side @capacitor/push-notifications plugin), and the 2026.08.25.11 multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION = "2026.08.26.6";
+    const APP_VERSION_NOTE = "Fixed: a save could get stuck on \"Syncing...\" forever with no error and no retry — the save request had no timeout at all, so a genuinely stalled connection or a slow Apps Script run (several receipt photos in one save adds real time) left it hanging indefinitely, and the only way out was force-closing the app. Saves now time out after 90s and fall into the existing automatic retry-every-10s path instead of hanging. Also includes: the 2026.08.26.5 ghost order-linked ledger entry delete fix, the 2026.08.26.4 Notification Settings relocation, the 2026.08.26.3 self-healing sync fix, real push notifications (app-side @capacitor/push-notifications plugin), and the 2026.08.25.11 multi-device delete-sync fix — see status docs for full history.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
