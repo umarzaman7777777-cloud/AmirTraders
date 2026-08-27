@@ -2383,17 +2383,17 @@
             </div>
             <p data-i18n="rawledger_sub">Track payments (debit) and material received (credit) per supplier.</p>
           </div>
-          <div class="header-actions">
-            <div class="export-dropdown" data-export-dropdown>
-              <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-              <div class="export-dropdown-menu">
-                <button onclick="openExportFilterModal('rawledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
-                <button onclick="openExportFilterModal('rawledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
-                <button onclick="openExportFilterModal('rawledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
-              </div>
-            </div>
-            <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openRawExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
-          </div>
+          <!-- REMOVED (2026-08-27, user request: "no need of export button
+               and its settings outside at top right the ledgers, because
+               it's already in there") — this page-level Export dropdown +
+               Export Settings icon duplicated the ones added straight
+               inside each supplier's own Raw Material Ledger modal on
+               2026-08-27 (rl-export-btn / rl-export-settings-btn, see
+               openRawLedgerModal). Open any supplier row to export just
+               that supplier's ledger instead. openRawExportSettings_ and
+               the openExportFilterModal('rawledger', ...) wiring are left
+               in place (unused from here) in case a whole-ledger/all-
+               suppliers export is wanted back later. -->
         </div>
         <div class="stat-grid" id="rawledger-stats" style="margin-bottom:18px;"></div>
         <div class="overdue-cheque-banner-slot"></div>
@@ -5075,14 +5075,23 @@
       if(Array.isArray(snap.productWeights) && snap.productWeights.length) productWeights = snap.productWeights;
       if(Array.isArray(snap.productNames) && snap.productNames.length) productNames = snap.productNames;
       if(Array.isArray(snap.productSizes) && snap.productSizes.length) productSizes = snap.productSizes;
-      if(Array.isArray(snap.rawItemNames) && snap.rawItemNames.length) rawItemNames = snap.rawItemNames;
+      // FIX (2026-08-27, user report: "delete a Raw Material Name/entry and
+      // it comes back as 'Steel Taar' after restart"): the old `&& .length`
+      // guard here treated "list saved as empty" identically to "list was
+      // never saved at all", so deleting every item down to zero left this
+      // falling through to the hardcoded seed default (which starts with
+      // "Steel Taar") on the very next load. An array that IS present in
+      // the snapshot — even an empty one — means this device already saved
+      // its real (possibly now-empty) list, and should always win over the
+      // seed default. Same fix applied to rawLedgerDescriptions just below.
+      if(Array.isArray(snap.rawItemNames)) rawItemNames = snap.rawItemNames;
       if(Array.isArray(snap.rawWeights) && snap.rawWeights.length) rawWeights = snap.rawWeights;
       if(Array.isArray(snap.rawBundleCounts) && snap.rawBundleCounts.length) rawBundleCounts = snap.rawBundleCounts;
       if(Array.isArray(snap.rawGaugeCounts) && snap.rawGaugeCounts.length) rawGaugeCounts = snap.rawGaugeCounts;
       if(Array.isArray(snap.rawSizeCounts) && snap.rawSizeCounts.length) rawSizeCounts = snap.rawSizeCounts;
       if(snap.rawMaterialReorderLevels && typeof snap.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = snap.rawMaterialReorderLevels;
       if(snap.rawMaterialUnits && typeof snap.rawMaterialUnits === 'object') rawMaterialUnits = snap.rawMaterialUnits;
-      if(Array.isArray(snap.rawLedgerDescriptions) && snap.rawLedgerDescriptions.length) rawLedgerDescriptions = snap.rawLedgerDescriptions;
+      if(Array.isArray(snap.rawLedgerDescriptions)) rawLedgerDescriptions = snap.rawLedgerDescriptions;
       if(snap.rawMaterialResetAt && typeof snap.rawMaterialResetAt === 'object') rawMaterialResetAt = snap.rawMaterialResetAt;
       if(Array.isArray(snap.scrapDescriptions) && snap.scrapDescriptions.length) scrapDescriptions = snap.scrapDescriptions;
       if(Array.isArray(snap.scrapItemNames) && snap.scrapItemNames.length) scrapItemNames = snap.scrapItemNames;
@@ -7326,14 +7335,21 @@
           if(Array.isArray(d.productWeights) && d.productWeights.length > 0) productWeights = d.productWeights;
           if(Array.isArray(d.productNames) && d.productNames.length > 0) productNames = d.productNames;
           if(Array.isArray(d.productSizes) && d.productSizes.length > 0) productSizes = d.productSizes;
-          if(Array.isArray(d.rawItemNames) && d.rawItemNames.length > 0) rawItemNames = d.rawItemNames;
+          // FIX (2026-08-27, same "deleted entry regenerates on restart"
+          // report as applySnapshotToState_ above): identical `.length > 0`
+          // guard, same bug — a Sheet that genuinely has zero saved names
+          // (because every one was deleted) fell through to the hardcoded
+          // seed default instead of staying empty. An array being present
+          // at all means the Sheet has real (possibly empty) data that
+          // should win over the seed default.
+          if(Array.isArray(d.rawItemNames)) rawItemNames = d.rawItemNames;
           if(Array.isArray(d.rawWeights) && d.rawWeights.length > 0) rawWeights = d.rawWeights;
           if(Array.isArray(d.rawBundleCounts) && d.rawBundleCounts.length > 0) rawBundleCounts = d.rawBundleCounts;
           if(Array.isArray(d.rawGaugeCounts) && d.rawGaugeCounts.length > 0) rawGaugeCounts = d.rawGaugeCounts;
           if(Array.isArray(d.rawSizeCounts) && d.rawSizeCounts.length > 0) rawSizeCounts = d.rawSizeCounts;
           if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = d.rawMaterialReorderLevels;
           if(d.rawMaterialUnits && typeof d.rawMaterialUnits === 'object') rawMaterialUnits = d.rawMaterialUnits;
-          if(Array.isArray(d.rawLedgerDescriptions) && d.rawLedgerDescriptions.length > 0) rawLedgerDescriptions = d.rawLedgerDescriptions;
+          if(Array.isArray(d.rawLedgerDescriptions)) rawLedgerDescriptions = d.rawLedgerDescriptions;
           if(d.rawMaterialResetAt && typeof d.rawMaterialResetAt === 'object') rawMaterialResetAt = d.rawMaterialResetAt;
           if(typeof d.lastBackupEmailAt === 'string' && d.lastBackupEmailAt) lastBackupEmailAt = d.lastBackupEmailAt;
           if(Array.isArray(d.scrapDescriptions) && d.scrapDescriptions.length > 0) scrapDescriptions = d.scrapDescriptions;
@@ -7839,7 +7855,28 @@
       if(!plugin || pushListenersWired_) return;
       pushListenersWired_ = true;
       plugin.addListener('registration', (tokenResult)=>{
-        PUSH_TOKEN_ = (tokenResult && tokenResult.value) || '';
+        // FIX (2026-08-27, user report: "2 notifications for each missing
+        // item" — screenshot showed the exact same 'Missing Receipt' alert
+        // delivered twice at once): Firebase occasionally hands this same
+        // phone a NEW registration token (token rotation, app update,
+        // reinstall) without the OLD one ever becoming invalid on Google's
+        // side. Code.gs's PushTokens sheet has no way to know an old and
+        // new token both belong to the SAME physical phone (it only dedupes
+        // by exact token string — see upsertPushToken_), so once that
+        // happened this phone ended up with two live rows, and every push
+        // (checkAndSendPushNotifications_) went out to both — two separate
+        // Android notifications for one alert, back to back. This phone
+        // is the only place that ever knows both tokens belong to it (the
+        // OLD one is sitting right here in PUSH_TOKEN_ the instant a new
+        // one arrives) — so before overwriting it, ask the backend to
+        // delete that old row (same 'deletePushToken' action Settings'
+        // "Disable Push" already uses), then save the new token as before.
+        const oldToken = PUSH_TOKEN_;
+        const newToken = (tokenResult && tokenResult.value) || '';
+        if(oldToken && newToken && oldToken !== newToken){
+          postToBackend_('deletePushToken', { fcmToken: oldToken }).catch(()=>{});
+        }
+        PUSH_TOKEN_ = newToken;
         try{ localStorage.setItem('pos-push-token', PUSH_TOKEN_); }catch(e){}
         syncPushPrefsToBackend_();
         renderNotifPushStatus_();
