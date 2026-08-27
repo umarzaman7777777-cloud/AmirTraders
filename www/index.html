@@ -805,6 +805,20 @@
     .product-card-actions{
       position:absolute; top:8px; right:8px; display:flex; gap:6px; z-index:2;
     }
+    /* ADD (2026-08-27, user request: green/red tick showing whether every
+       raw material in this product's recipe is actually being received in
+       Raw Material Stock — see productRecipeTrackingBadge_/renderProducts).
+       Sits opposite corner from the Edit/Delete buttons so it never
+       overlaps them, even on the narrowest card width. */
+    .product-track-badge{
+      position:absolute; top:8px; left:8px; z-index:2;
+      width:20px; height:20px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:12px; font-weight:700; line-height:1;
+      background:rgba(28,31,34,0.85); border:1px solid var(--steel-line);
+    }
+    .product-track-badge.ok{ color:var(--green, #2ecc71); border-color:var(--green, #2ecc71); }
+    .product-track-badge.bad{ color:var(--red); border-color:var(--red); }
     /* FIX (2026-08-20): same widen-for-accidental-touch pass as the ledger
        row buttons — kept square (not the full rectangular treatment
        .factory-card .product-card-actions button gets below) since this
@@ -873,11 +887,18 @@
        replacing the old global Settings-tab cards of the same name. Kept
        visually quiet (same muted look as .btn-export) so they read as a
        secondary action, not competing with Export/Add for attention. */
+    /* ADD (2026-08-23): small icon buttons for the per-ledger Export
+       Settings (top-right, next to that ledger's Export button) and
+       Ledger Settings (top-left, next to that ledger's own title) —
+       replacing the old global Settings-tab cards of the same name.
+       WIDENED (2026-08-27, user report: too easy to miss-tap) — bigger
+       target + a visible-at-rest border tint instead of only on hover. */
     .ledger-icon-btn{
-      flex:none; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
-      background:none; border:1px solid var(--steel-line); color:var(--text-dim);
-      border-radius:6px; cursor:pointer; transition:all 0.15s; padding:0;
+      flex:none; width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+      background:none; border:1.5px solid color-mix(in srgb, var(--yellow) 40%, var(--steel-line)); color:var(--text-dim);
+      border-radius:7px; cursor:pointer; transition:all 0.15s; padding:0;
     }
+    .ledger-icon-btn svg{ width:16px; height:16px; }
     .ledger-icon-btn:hover{ border-color:var(--yellow); color:var(--yellow); }
     .ledger-settings-btn-row{ display:flex; align-items:center; gap:8px; margin:0 0 4px; }
     .ledger-settings-btn-row h2{ margin:0; }
@@ -1169,18 +1190,36 @@
       box-shadow:-8px 0 8px -6px rgba(0,0,0,0.35);
     }
     .inv-actions-th{ background:var(--bg); box-shadow:none; }
-    /* FIX (2026-08-20): same widen-for-accidental-touch pass as
-       .txn-row-actions above — this is the button family used by every
-       roster/list row across the app (painters, suppliers, workers, custom
-       ledgers, plain inventory items, labour rates, expenses). */
-    .inv-row-actions{ display:flex; gap:8px; justify-content:flex-end; }
+    /* FIX (2026-08-20, widened once already): same button family used by
+       every roster/list row across the app (painters, suppliers, workers,
+       custom ledgers, plain inventory items, labour rates, expenses).
+       WIDENED AGAIN (2026-08-27, user report: still too easy to hit the
+       wrong one, especially Edit vs Delete on adjacent suppliers) — bigger
+       target (44px, in line with standard mobile touch-target guidance),
+       and each action now has its own always-visible (not just on-hover —
+       hover doesn't exist on a touchscreen) colour-coded border/tint so
+       Edit/Delete/Export/Export-Settings are told apart by colour+shape
+       before you even read the tiny icon, not just by pixel position. */
+    .inv-row-actions{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
     .inv-row-actions button{
-      width:32px; height:32px; border-radius:6px; border:1px solid var(--steel-line);
+      width:44px; height:44px; border-radius:8px; border:1.5px solid var(--steel-line);
       background:var(--panel-raised); color:var(--text-dim); cursor:pointer;
       display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s;
+      flex-shrink:0;
     }
+    .inv-row-actions button svg{ width:16px; height:16px; }
     .inv-row-actions button:hover{ border-color:var(--yellow); color:var(--yellow); }
-    .inv-row-actions button.inv-row-delete:hover{ border-color:var(--red); color:var(--red); }
+    .inv-row-actions button.inv-row-edit{ border-color:color-mix(in srgb, var(--yellow) 55%, var(--steel-line)); color:var(--yellow); }
+    .inv-row-actions button.inv-row-delete{ border-color:color-mix(in srgb, var(--red) 55%, var(--steel-line)); color:var(--red); background:color-mix(in srgb, var(--red) 8%, var(--panel-raised)); }
+    .inv-row-actions button.inv-row-delete:hover{ border-color:var(--red); color:#fff; background:var(--red); }
+    .inv-row-actions button.inv-row-export{ border-color:color-mix(in srgb, var(--green) 55%, var(--steel-line)); color:var(--green); }
+    .inv-row-actions button.inv-row-export:hover{ border-color:var(--green); color:#fff; background:var(--green); }
+    .inv-row-actions button.inv-row-export-settings:hover{ border-color:var(--yellow); color:var(--yellow); }
+    /* Per-row Export dropdown menu (PDF/JPG/CSV) needs to escape the table
+       row's stacking context so it isn't clipped by .table-scroll's
+       overflow-x or hidden behind neighbouring rows. */
+    .inv-row-actions .export-dropdown{ position:relative; }
+    .inv-row-actions .export-dropdown-menu{ z-index:40; right:0; }
     .inv-total{ color:var(--yellow); font-family:var(--mono); font-weight:600; }
     .inv-add-row{
       display:flex; align-items:center; justify-content:center; gap:8px;
@@ -3357,7 +3396,30 @@
 <!-- ================= RAW MATERIAL LEDGER MODAL ================= -->
 <div class="modal-overlay" id="rawledger-modal">
   <div class="modal-box" style="max-width:560px;">
-    <h3 id="rl-title">Supplier</h3>
+    <!-- ADD (2026-08-27, user request): Export + Export Settings right
+         inside a supplier's own ledger too (not just from their row in the
+         outside list) — both locked/scoped to this one supplier, same as
+         the outside-list buttons (see openRawLedgerModal below, which sets
+         rl-export-settings-btn's handler and rl-export-btn's dropdown
+         targets to the currently open supplier's name each time it opens). -->
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px;">
+      <h3 id="rl-title" style="margin:0;">Supplier</h3>
+      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+        <div class="export-dropdown" data-export-dropdown>
+          <button type="button" class="ledger-icon-btn" id="rl-export-btn" title="Export" onclick="toggleExportDropdown(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <div class="export-dropdown-menu">
+            <button type="button" id="rl-export-pdf" data-i18n="export_pdf">PDF</button>
+            <button type="button" id="rl-export-jpg" data-i18n="export_jpg">JPG</button>
+            <button type="button" id="rl-export-csv" data-i18n="export_csv">CSV</button>
+          </div>
+        </div>
+        <button type="button" class="ledger-icon-btn" id="rl-export-settings-btn" title="Export Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+        </button>
+      </div>
+    </div>
     <div id="rl-balance-line" style="font-family:var(--mono); font-size:13px; margin:-8px 0 14px;"></div>
     <div id="rl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
     <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
@@ -3535,7 +3597,7 @@
         <button type="button" id="rl-receipt-remove" style="background:none; border:none; color:var(--red); cursor:pointer; font-family:var(--mono); font-size:11px; text-decoration:underline; padding:0;" data-i18n="remove">Remove</button>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" id="rawsupplier-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_supplier">Delete Supplier</button>
+        <button class="btn-cancel" id="rawsupplier-delete" style="border-color:var(--red) !important; color:var(--red); background:color-mix(in srgb, var(--red) 10%, transparent); font-weight:600;" data-i18n="delete_supplier">Delete Supplier</button>
         <button class="btn-confirm" id="rl-add-entry" data-i18n="add_entry">Add Entry</button>
       </div>
       <!-- ADD (2026-08-24, user request #2): quick stock top-up + reset,
@@ -7980,6 +8042,7 @@
         rl_items_reset_msg: "Remaining Items reset to 0 for this material — past entries are untouched.",
         confirm_pin_reset_rawstock_hint: "Enter your PIN to reset this material's Remaining — this can't be undone.",
         recipe_title: "Raw Material Used (per unit)", recipe_sub: "Optional — set once and every order of this product automatically deducts from Raw Material Stock.", recipe_add_row: "+ Add Material",
+        recipe_all_tracked: "All raw materials in this recipe are being tracked", recipe_not_tracked_prefix: "Not receiving stock for: ",
         recipe_material_placeholder: "Material name", recipe_weight_placeholder: "Weight/unit", recipe_items_placeholder: "Items/unit",
         notif_settings_title: "Notification Alerts", notif_settings_desc: "Choose which of the Notifications tab's alerts should also show outside the app (notification tray / lock screen), and how often the app checks for new ones.",
         notif_settings_pending_note: "Outside-app delivery isn't switched on yet — these preferences will start applying automatically as soon as it is.",
@@ -8343,6 +8406,7 @@
         rl_items_reset_msg: "اس خام مال کے لیے باقی آئٹمز 0 پر ری سیٹ ہو گئے — پرانی انٹریز محفوظ ہیں۔",
         confirm_pin_reset_rawstock_hint: "اس خام مال کی باقی مقدار ری سیٹ کرنے کے لیے اپنا پن درج کریں — یہ واپس نہیں ہو سکتا۔",
         recipe_title: "استعمال شدہ خام مال (فی یونٹ)", recipe_sub: "اختیاری — ایک بار سیٹ کریں اور اس پروڈکٹ کا ہر آرڈر خودکار طور پر خام مال اسٹاک سے منہا ہو جائے گا۔", recipe_add_row: "+ خام مال شامل کریں",
+        recipe_all_tracked: "اس ریسیپی کا ہر خام مال ٹریک ہو رہا ہے", recipe_not_tracked_prefix: "اسٹاک موصول نہیں ہو رہا: ",
         recipe_material_placeholder: "خام مال کا نام", recipe_weight_placeholder: "وزن/یونٹ", recipe_items_placeholder: "آئٹمز/یونٹ",
         notif_settings_title: "نوٹیفیکیشن الرٹس", notif_settings_desc: "منتخب کریں کہ اطلاعات ٹیب کے کون سے الرٹس ایپ سے باہر بھی دکھائے جائیں (نوٹیفیکیشن ٹرے / لاک اسکرین)، اور ایپ کتنی دیر بعد نئے الرٹس چیک کرے۔",
         notif_settings_pending_note: "ایپ سے باہر بھیجنا ابھی فعال نہیں ہوا — یہ ترجیحات فعال ہوتے ہی خود بخود لاگو ہو جائیں گی۔",
@@ -10396,6 +10460,32 @@
       }
       return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="6.3" y1="6.3" x2="17.7" y2="17.7"/><line x1="17.7" y1="6.3" x2="6.3" y2="17.7"/><path d="M12 12 C12 9 10.3 8 9.2 8.7 C8.1 9.4 9 12 12 12 Z"/><path d="M12 12 C15 12 16 10.3 15.3 9.2 C14.6 8.1 12 9 12 12 Z"/><path d="M12 12 C12 15 13.7 16 14.8 15.3 C15.9 14.6 15 12 12 12 Z"/></svg>`;
     }
+    // ADD (2026-08-27, user request: "green tick on each product that it's
+    // all materials are tracking if not then red tick on top of product
+    // box") — a material counts as "tracked" here if it's actually been
+    // RECEIVED at least once in Raw Material Stock (weightIn>0 or
+    // itemsIn>0 in computeRawMaterialStock_), i.e. the recipe's material
+    // name genuinely matches a real, stocked raw material. This is the
+    // same signal that explains a silently-stuck-at-0 Weight Used: if the
+    // name typed in a product's recipe doesn't exactly match the name
+    // used on the Raw Material Ledger side (a typo, extra space, different
+    // capitalization, or the material was simply never received), it shows
+    // up as weightIn/itemsIn = 0 for that key and this badge turns red.
+    // stockByName is computed ONCE per renderProducts() call (not once per
+    // card) since computeRawMaterialStock_() walks the whole ledger/order
+    // history — same data, reused across every card.
+    // Products with no recipe at all get no badge (nothing to track).
+    function productRecipeTrackingStatus_(p, stockByName){
+      if(!p || !Array.isArray(p.recipe) || !p.recipe.length) return null;
+      const missing = [];
+      p.recipe.forEach(r=>{
+        if(!r || !r.material) return;
+        const rec = stockByName[r.material];
+        const received = !!rec && (((rec.weightIn || 0) > 0) || ((rec.itemsIn || 0) > 0));
+        if(!received) missing.push(r.material);
+      });
+      return { ok: missing.length === 0, missing };
+    }
     function renderProducts(){
       productGrid.innerHTML = '';
       const list = PRODUCTS.filter(p=>{
@@ -10403,10 +10493,19 @@
         const matchSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
         return matchCat && matchSearch;
       });
+      const stockByName = {};
+      computeRawMaterialStock_().forEach(rec => { stockByName[rec.name] = rec; });
       list.forEach(p=>{
         const card = document.createElement('div');
         card.className = 'product-card';
+        const track = productRecipeTrackingStatus_(p, stockByName);
+        const trackBadgeHtml = track
+          ? `<div class="product-track-badge ${track.ok ? 'ok' : 'bad'}" title="${track.ok
+              ? escHtml_(tr('recipe_all_tracked'))
+              : escHtml_(tr('recipe_not_tracked_prefix') + track.missing.join(', '))}">${track.ok ? '✓' : '✓'}</div>`
+          : '';
         card.innerHTML = `
+          ${trackBadgeHtml}
           <div class="product-card-actions">
             <button class="pca-edit" data-act="edit" title="Edit">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -14164,11 +14263,24 @@
               <td class="num"><span class="${bl.cls}">${bl.text}</span></td>
               <td class="inv-actions-cell">
                 <div class="inv-row-actions">
+                  <div class="export-dropdown" data-export-dropdown>
+                    <button type="button" class="inv-row-export" data-idx="${idx}" title="${tr('export')}" onclick="toggleExportDropdown(this)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <div class="export-dropdown-menu">
+                      <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
+                      <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
+                    </div>
+                  </div>
+                  <button type="button" class="inv-row-export-settings" data-idx="${idx}" title="${tr('export_settings_title')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+                  </button>
                   <button class="inv-row-edit" data-idx="${idx}" title="${tr('view_ledger')}">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                   </button>
                   <button class="inv-row-delete" data-idx="${idx}" title="${tr('delete_supplier')}">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
                   </button>
                 </div>
               </td>
@@ -14188,6 +14300,23 @@
             <tbody>${rows}</tbody>
           </table></div>
         `;
+        // ADD (2026-08-27, user request): per-supplier Export (PDF/JPG/CSV,
+        // locked to that supplier via lockName) and Export Settings (that
+        // supplier's OWN column choices — see rawExportPrefsKey_) buttons,
+        // right on each supplier's own row in the outside list — no need
+        // to open the ledger first just to export or customize its columns.
+        wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'pdf', suppliers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'jpg', suppliers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-csv').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'csv', suppliers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-settings').forEach(btn=>{
+          btn.addEventListener('click', ()=> openRawSupplierExportSettings_(suppliers[parseInt(btn.dataset.idx,10)].name));
+        });
         wrap.querySelectorAll('.inv-row-edit').forEach(btn=>{
           btn.addEventListener('click', ()=> openRawLedgerModal(parseInt(btn.dataset.idx,10)));
         });
@@ -14329,6 +14458,15 @@
       const s = (inventory.rawledger || [])[currentRawSupplierIdx];
       if(!s){ rawLedgerModal.classList.remove('active'); return; }
       document.getElementById('rl-title').textContent = s.name;
+      // Re-bind every render (not just on open) since the same modal
+      // element is reused across suppliers and currentRawSupplierIdx can
+      // change without a full re-open — using .onclick= (not
+      // addEventListener) is deliberate so re-binding never stacks up
+      // duplicate handlers from earlier suppliers.
+      document.getElementById('rl-export-pdf').onclick = ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'pdf', s.name); };
+      document.getElementById('rl-export-jpg').onclick = ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'jpg', s.name); };
+      document.getElementById('rl-export-csv').onclick = ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'csv', s.name); };
+      document.getElementById('rl-export-settings-btn').onclick = ()=> openRawSupplierExportSettings_(s.name);
       const bal = rawSupplierBalance_(s);
       const bl = balanceLabel_(bal);
       document.getElementById('rl-balance-line').innerHTML = 'Balance: <span class="' + bl.cls + '">' + bl.text + '</span>';
@@ -14829,12 +14967,18 @@
     // back into mid-word breaks; a value is never present in both field sets
     // at once in practice (they're alternate ways of recording the same
     // "what was received" fact), so merging loses nothing.
+    // FIX (2026-08-27, user report: "mess in weight column showing weight
+    // with description/item name which is already a[ide] column of
+    // description") — this used to append "(stockName)" onto the Weight
+    // value itself (e.g. "500 (Steel Taar)"), duplicating text that's
+    // already shown in its own Description column, and making the Weight
+    // column impossible to read as a plain number. Now returns just the
+    // converted numeric weight — nothing else.
     function rawLedgerWeightCell_(e){
       if(e.weight) return e.weight;
       if(typeof e.weightIn === 'number'){
         const unit = rawmatWeightUnit_(e.stockName || '');
-        const val = rawmatNumInUnit_(e.weightIn, unit);
-        return e.stockName ? (val + ' (' + e.stockName + ')') : val;
+        return rawmatNumInUnit_(e.weightIn, unit);
       }
       return '';
     }
@@ -14852,12 +14996,22 @@
           if(e.chequeStatus !== 'bounced') running += (e.credit||0) - (e.debit||0);
           const d = parseDMY_(e.date);
           const inRange = (!dateFrom || !d || d >= dateFrom) && (!dateTo || !d || d <= dateTo);
-          if(inRange) rows.push([s.name, e.date, e.time, e.desc || '', rawLedgerWeightCell_(e), rawLedgerBundleCell_(e), e.gaugeCount || '', e.sizeCount || '', rawLedgerRateCell_(e), e.debit || 0, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
+          if(inRange) rows.push([s.name, e.date, e.time, e.desc || '', rawLedgerWeightCell_(e), rawLedgerBundleCell_(e), e.gaugeCount || '', e.sizeCount || '', rawLedgerRateCell_(e), rawLedgerMethodCell_(e), e.debit || 0, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
         });
       });
       return rows;
     }
-    const RAW_LEDGER_HEADERS = ['Supplier','Date','Time','Description','Weight','Bundle Count','Gauge','Size','Rate','Debit','Credit','Balance','Received By','Received In'];
+    // ADD (2026-08-27, user request: "Export setting also have option of
+    // payment methods too") — Raw Material Ledger entries already record
+    // a payment method (Cash/Online/Cheque/Item-Material, plus an optional
+    // detail like a cheque/account number — see rl-method/rl-method-detail
+    // above) but it was never exported anywhere. Added as its own column,
+    // same "Method (detail)" text format the on-screen ledger badge uses.
+    function rawLedgerMethodCell_(e){
+      if(!e.method) return '';
+      return e.detail ? (e.method + ' (' + e.detail + ')') : e.method;
+    }
+    const RAW_LEDGER_HEADERS = ['Supplier','Date','Time','Description','Weight','Bundle Count','Gauge','Size','Rate','Method','Debit','Credit','Balance','Received By','Received In'];
     // FIX (2026-08-19): the widths below were STILL too narrow for real
     // content — user sent a real export screenshot showing "Basharat sb
     // Steel" splitting into "Basharat sb"/"Steel", "19/08/2026" splitting
@@ -14889,23 +15043,36 @@
     // multi-row test PDFs with this exact table shape (including a 4-digit
     // rate, a 7-digit balance, and the longest real values above) and
     // visually confirming zero mid-word/mid-number breaks before shipping.
+    // RE-TUNED (2026-08-27) to make room for the new Method column
+    // (index 9) — reused the same per-column widths as before for every
+    // other column (just shifted down one slot from index 9 onward), and
+    // gave Method the same width as Rate since both hold short text of
+    // similar length ("Cheque (1234)" / "500/kg"). Not re-measured with
+    // real jsPDF test renders like the original tuning comment above
+    // describes — if a real export shows Method or a shifted column
+    // wrapping mid-word, re-measure that column the same way.
     const RAW_LEDGER_PDF_COLUMN_STYLES = {
       0:{cellWidth:30}, 1:{cellWidth:21}, 2:{cellWidth:14}, 3:{cellWidth:25},
       4:{cellWidth:16}, 5:{cellWidth:15}, 6:{cellWidth:15}, 7:{cellWidth:19},
-      8:{cellWidth:22}, 9:{cellWidth:18}, 10:{cellWidth:18}, 11:{cellWidth:18},
-      12:{cellWidth:22}, 13:{cellWidth:17}
+      8:{cellWidth:22}, 9:{cellWidth:22}, 10:{cellWidth:18}, 11:{cellWidth:18},
+      12:{cellWidth:18}, 13:{cellWidth:22}, 14:{cellWidth:17}
     };
+    // CHANGED (2026-08-27, per-supplier export settings): when `name` is a
+    // single supplier (not the "All" combined export), the exported
+    // columns now come from that supplier's OWN Export Settings
+    // (rawExportPrefsKey_) rather than the shared 'raw' default — see
+    // openRawSupplierExportSettings_ above.
     function exportRawLedgerCSVRows_(rows, name){
-      const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows, rawExportPrefsKey_(name));
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Raw-Material-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Raw-Material-Ledger');
     }
     function exportRawLedgerPDFRows_(rows, name){
-      const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows, rawExportPrefsKey_(name));
       exportPDF_('Raw Material Ledger', f.headers, f.rows, exportFilename_('Raw-Material-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : RAW_LEDGER_PDF_COLUMN_STYLES, 'Raw-Material-Ledger');
     }
     function exportRawLedgerJPGRows_(rows, name){
-      const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows, rawExportPrefsKey_(name));
       exportAsJPG_('Raw Material Ledger', f.headers, f.rows, exportFilename_('Raw-Material-Ledger', name, 'jpg'), true, undefined, undefined, 'Raw-Material-Ledger');
     }
 
@@ -17016,9 +17183,33 @@
     // Called fresh every time either modal opens rather than hooked into
     // every place rawItemNames can change, since a stale option list here is
     // low-stakes (native <datalist> is just a suggestion, never validated).
+    // FIX (2026-08-27, user report: "restrict only raw material names will
+    // be shown while tracking not the description names") — rawItemNames
+    // and rawLedgerDescriptions were split into two separate lists back on
+    // 2026-08-24/25 (see the comment above rawItemNames), but that fix only
+    // changed what a BRAND NEW install starts with — a device that was
+    // already syncing before the split kept whatever was already saved,
+    // which for some accounts means rawItemNames still has old
+    // description-shaped leftovers (e.g. "Advance Payment", "Balance
+    // Payment", "Purchase") mixed in alongside genuine raw material names.
+    // Those leftovers showed up as suggestions here — and in the Product
+    // recipe's own material picker, which shares this exact datalist —
+    // making it easy to accidentally type/select a description-shaped
+    // value into a recipe's material field. A material name typed that way
+    // can never exactly match a real Raw Material Ledger entry's stockName,
+    // so that material's usage silently never deducts (weight/items stuck
+    // at 0 in Raw Material Stock even though the recipe row looks fine).
+    // This filters anything that's ALSO present in rawLedgerDescriptions
+    // out of the suggestion list — it doesn't delete or touch the
+    // underlying rawItemNames data (still there to permanently clean up
+    // via the Raw Material Name "Manage" link), it just stops offering it
+    // as a suggestion while setting up tracking.
     function refreshRawMaterialDatalist_(){
       const el = document.getElementById('dl-rawmaterial');
-      if(el) el.innerHTML = rawItemNames.map(v => `<option value="${escHtml_(v)}">`).join('');
+      if(!el) return;
+      const descSet = new Set((rawLedgerDescriptions || []).map(d => String(d).trim().toLowerCase()));
+      const cleanNames = rawItemNames.filter(v => !descSet.has(String(v).trim().toLowerCase()));
+      el.innerHTML = cleanNames.map(v => `<option value="${escHtml_(v)}">`).join('');
     }
     // ADD (2026-08-26, user request): rebuilds the Product Editor's Colour
     // <select> options from the productColours list (plus a trailing
@@ -21233,7 +21424,13 @@
     // ---------------- EXPORT FILTER MODAL (date + name) ----------------
     const exportFilterModal = document.getElementById('export-filter-modal');
     let exportFilterCtx = null;
-    function openExportFilterModal(section, format){
+    // ADD (2026-08-27, user request): lockName lets a caller pre-select
+    // AND lock the Name dropdown to one specific supplier/party — used by
+    // the new per-supplier Export button on each Raw Material supplier's
+    // own row (renderRawLedger) and inside their ledger modal, so tapping
+    // "Export" there always exports just that supplier without an extra
+    // step of picking them from the "All" dropdown.
+    function openExportFilterModal(section, format, lockName){
       exportFilterCtx = { section, format };
       const isTxn = section === 'transactions';
       const isRawLedger = section === 'rawledger';
@@ -21256,6 +21453,9 @@
       document.getElementById('ef-name-label').textContent = isTxn ? 'Factory / Workshop' : (isRawLedger ? tr('supplier') : (isLabourLedger ? tr('labour_name') : (isScrapLedger ? tr('scrap_buyer') : tr('painter'))));
       const names = isTxn ? factories.map(f=>f.name) : (isRawLedger ? (inventory.rawledger||[]).map(s=>s.name) : (isLabourLedger ? (inventory.labourledger||[]).map(w=>w.name) : (isScrapLedger ? (inventory.scrapledger||[]).map(s=>s.name) : (inventory.paint||[]).map(p=>p.name))));
       document.getElementById('ef-name').innerHTML = '<option value="">All</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
+      const efNameSel = document.getElementById('ef-name');
+      if(lockName){ efNameSel.value = lockName; efNameSel.disabled = true; }
+      else { efNameSel.disabled = false; }
       document.getElementById('ef-order-label').style.display = (isTxn || isFactoryLedger) ? '' : 'none';
       document.getElementById('ef-order-number').style.display = (isTxn || isFactoryLedger) ? '' : 'none';
       document.getElementById('ef-order-number').value = '';
@@ -22229,7 +22429,7 @@
     // *_HEADERS array.
     const EXPORT_COLUMN_KEYS_ = {
       paint: ['painter','date','time','desc','colour','itemSize','itemType','itemFactory','itemCount','ratePerItem','debit','credit','balance','receivedBy','receivedIn'],
-      raw: ['supplier','date','time','desc','weight','bundleCount','gaugeCount','sizeCount','rate','debit','credit','balance','receivedBy','receivedIn'],
+      raw: ['supplier','date','time','desc','weight','bundleCount','gaugeCount','sizeCount','rate','method','debit','credit','balance','receivedBy','receivedIn'],
       custom: ['ledger','date','time','desc','itemColour','weight','sizeCount','itemCount','ratePerItem','itemMethod','itemWeightStatus','selfWeightStock','weightPerItem','weightPerScrap','remainingWeight','debit','credit','balance','receivedBy','receivedIn'],
       labour: ['worker','date','time','type','rate','size','units','note','payment','advance','loan','credit','balance','receivedBy','receivedIn'],
       transactions: ['id','date','time','items','itemCount','rate','size','colour','total','factory','status','debit','credit','balance','paymentMode'],
@@ -22286,12 +22486,25 @@
     // see ledgerExportRangeFor_/ledgerSortNewestFirstFor_ below.
     let ledgerExportSettingsCtx_ = null;
     const ledgerExportSettingsModal = document.getElementById('ledger-export-settings-modal');
+    // CHANGED (2026-08-27, user request: "export option and settings must
+    // be separated for each supplier so that export settings will be easy
+    // for customized for each") — ledgerExportSettingsCtx_ now holds
+    // { ledgerKey, prefsKey } instead of a bare ledgerKey string.
+    // ledgerKey still picks which column DEFINITIONS to show (headers/keys
+    // never differ per supplier), while prefsKey is the actual slot the
+    // on/off choices are read from and saved to in exportColumnPrefs_. For
+    // every ledger except per-supplier Raw Material exports, prefsKey ===
+    // ledgerKey exactly as before. For one specific Raw Material supplier,
+    // prefsKey is 'raw::<supplier name>' (see rawExportPrefsKey_) so each
+    // supplier's column choices are independent of every other supplier's
+    // and of the shop-wide "All Suppliers" default.
     function renderLedgerExportSettingsModal_(){
-      const ledgerKey = ledgerExportSettingsCtx_;
-      if(!ledgerKey) return;
+      const ctx = ledgerExportSettingsCtx_;
+      if(!ctx) return;
+      const ledgerKey = ctx.ledgerKey, prefsKey = ctx.prefsKey;
       const headers = EXPORT_LEDGER_HEADERS_[ledgerKey] || [];
       const keys = EXPORT_COLUMN_KEYS_[ledgerKey] || [];
-      const prefs = exportColumnPrefs_[ledgerKey] || {};
+      const prefs = exportColumnPrefs_[prefsKey] || {};
       const list = document.getElementById('les-columns-list');
       if(!list) return;
       list.innerHTML = headers.map((h, i) => {
@@ -22305,9 +22518,9 @@
       list.querySelectorAll('.les-col-check').forEach(cb=>{
         cb.addEventListener('change', ()=>{
           const key = cb.dataset.key;
-          if(!exportColumnPrefs_[ledgerKey]) exportColumnPrefs_[ledgerKey] = {};
-          if(cb.checked) delete exportColumnPrefs_[ledgerKey][key];
-          else exportColumnPrefs_[ledgerKey][key] = false;
+          if(!exportColumnPrefs_[prefsKey]) exportColumnPrefs_[prefsKey] = {};
+          if(cb.checked) delete exportColumnPrefs_[prefsKey][key];
+          else exportColumnPrefs_[prefsKey][key] = false;
           saveExportColumnPrefs_();
         });
       });
@@ -22317,14 +22530,29 @@
     // above (e.g. 'paint', 'raw', 'custom', 'labour', 'transactions',
     // 'customerledger', 'expenses'); titleText is that ledger's own display
     // name so the modal reads naturally ("Export Settings — Paint Ledger").
-    function openLedgerExportSettings_(ledgerKey, titleText){
-      ledgerExportSettingsCtx_ = ledgerKey;
+    // prefsKey (optional) is the exportColumnPrefs_ storage slot to use —
+    // pass this when the same ledgerKey's columns need independent
+    // per-entity settings (see rawExportPrefsKey_/openRawSupplierExportSettings_
+    // below for the per-supplier Raw Material case); defaults to ledgerKey
+    // itself, same behaviour as before this change.
+    function openLedgerExportSettings_(ledgerKey, titleText, prefsKey){
+      ledgerExportSettingsCtx_ = { ledgerKey, prefsKey: prefsKey || ledgerKey };
       const titleEl = document.getElementById('les-title');
       if(titleEl) titleEl.textContent = tr('export_settings_title') + (titleText ? (' — ' + titleText) : '');
       renderLedgerExportSettingsModal_();
       if(ledgerExportSettingsModal) ledgerExportSettingsModal.classList.add('active');
     }
     window.openLedgerExportSettings_ = openLedgerExportSettings_;
+    // ADD (2026-08-27): 'raw::<supplier name>' storage key used for
+    // per-supplier Export Settings/exports — falls back to the shared
+    // 'raw' slot when no supplier name is given (the "All Suppliers"
+    // combined export/settings from the Raw Material Ledger page header).
+    function rawExportPrefsKey_(supplierName){
+      return supplierName ? ('raw::' + supplierName) : 'raw';
+    }
+    window.openRawSupplierExportSettings_ = function(supplierName){
+      openLedgerExportSettings_('raw', supplierName, rawExportPrefsKey_(supplierName));
+    };
     const lesCloseBtn = document.getElementById('les-close');
     if(lesCloseBtn) lesCloseBtn.addEventListener('click', ()=> ledgerExportSettingsModal.classList.remove('active'));
 
@@ -22461,9 +22689,9 @@
     // of trying to reindex the hand-tuned *_PDF_COLUMN_STYLES /
     // *_JPG_COL_WIDTHS maps — safer than risking a wrong width landing on
     // the wrong (shifted) column.
-    function filterExportColumns_(ledgerKey, headers, rows){
+    function filterExportColumns_(ledgerKey, headers, rows, prefsKey){
       const keys = EXPORT_COLUMN_KEYS_[ledgerKey];
-      const prefs = exportColumnPrefs_[ledgerKey];
+      const prefs = exportColumnPrefs_[prefsKey || ledgerKey];
       if(!keys || !prefs) return { headers, rows, hidden: false };
       const keepIdx = [];
       for(let i = 0; i < headers.length; i++){
