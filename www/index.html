@@ -11250,10 +11250,28 @@
         // time this Stock page renders (renderStock() recomputes fully
         // from scratch every call) the box reflects it, no separate wiring
         // needed.
+        // FIX (2026-08-28, user request): a material tracked by only ONE of
+        // weight/items (the common case) was showing BOTH rows, with the
+        // untracked one stuck at a meaningless "0 kg" / "0" — an empty-
+        // looking extra line. Now: show the weight row only if weight has
+        // ever been received, the items row only if items have ever been
+        // received, and BOTH rows if a material genuinely has both (mixed
+        // tracking). If truly neither has ever been received, fall back to
+        // a single "0" weight row rather than showing nothing at all.
+        const hasWeightIn = !!rec.weightIn;
+        const hasItemsIn = !!rec.itemsIn;
+        const showWeightRow = hasWeightIn || !hasItemsIn;
+        const showItemsRow = hasItemsIn;
+        const weightRowHtml = showWeightRow
+          ? `<div class="rawmat-details-row"><span>${tr('rawmat_weight_received_till')}</span><b>${rawmatNumInUnit_(rec.weightIn, unit) || ('0 ' + unit)}</b></div>`
+          : '';
+        const itemsRowHtml = showItemsRow
+          ? `<div class="rawmat-details-row"><span>${tr('rawmat_items_received_till')}</span><b>${rawmatNum_(rec.itemsIn)}</b></div>`
+          : '';
         const detailsBoxHtml = `
           <div class="rawmat-details-box">
-            <div class="rawmat-details-row"><span>${tr('rawmat_weight_received_till')}</span><b>${rawmatNumInUnit_(rec.weightIn, unit) || ('0 ' + unit)}</b></div>
-            <div class="rawmat-details-row"><span>${tr('rawmat_items_received_till')}</span><b>${rec.itemsIn ? rawmatNum_(rec.itemsIn) : '0'}</b></div>
+            ${weightRowHtml}
+            ${itemsRowHtml}
           </div>`;
         return `
           <tr>
