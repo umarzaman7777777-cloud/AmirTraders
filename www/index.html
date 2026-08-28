@@ -6584,12 +6584,27 @@
       // after, so this only costs the extra round-trip on saves that
       // actually include a deletion, not every save forever after the
       // first one.
-      if(pendingDeletionSync_ || Date.now() - lastSyncConfirmedAt_ > SYNC_SKIP_WINDOW_MS_){
-        if(pendingDeletionSync_ || await remoteChangedSinceLastKnown_()){
-          await mergeLatestRemoteBeforeSave_();
-        }
-        pendingDeletionSync_ = false;
+      // FIX (2026-08-28, user report: "delete on device A, it syncs green,
+      // then a later sync brings it back"): this used to skip even the
+      // CHEAP remoteChangedSinceLastKnown_() check whenever this device's
+      // own lastSyncConfirmedAt_ was recent — but "this device is caught
+      // up" says nothing about whether ANOTHER device deleted something in
+      // the meantime. A device that didn't do any deleting itself
+      // (pendingDeletionSync_ false) and had synced moments ago would skip
+      // straight to writing its own in-memory state — which still contains
+      // whatever the other device just deleted — silently overwriting that
+      // deletion on the sheet with no error shown anywhere. The cheap
+      // version check now always runs before every save; only the
+      // EXPENSIVE full mergeLatestRemoteBeforeSave_ below is still gated
+      // (by pendingDeletionSync_, the skip-window, or the version check
+      // actually finding a change) — so this costs one lightweight
+      // "?action=version" call on every save instead of zero, but closes
+      // the exact race that let an unrelated device's save resurrect
+      // another device's deletion.
+      if(pendingDeletionSync_ || Date.now() - lastSyncConfirmedAt_ > SYNC_SKIP_WINDOW_MS_ || await remoteChangedSinceLastKnown_()){
+        await mergeLatestRemoteBeforeSave_();
       }
+      pendingDeletionSync_ = false;
       // FIX (2026-08-19): reconstruct real base64 data URLs for any
       // not-yet-uploaded receipt before building the *ForSync payloads
       // below — see resolveAllPendingReceiptSyncDataUrls_ for why this is
@@ -7447,6 +7462,24 @@
           // mergeRemoteTombstones_ above.
           mergeRemoteTombstones_(d.tombstones);
           applyOrderResetTokenIfChanged_(d);
+          // FIX (2026-08-28, user report: "delete on one device, it syncs
+          // green, then a LATER sync brings it back"): the comment right
+          // above this used to be true in theory ("the sheet is the source
+          // of truth, nothing to prune") but false in practice — the sheet
+          // CAN briefly hold a row that's genuinely already been deleted
+          // (e.g. another device's save raced in before learning about the
+          // deletion — see the matching fix on the skip-window check in
+          // saveStateToSheetInner_). Every array above was just assigned
+          // straight from `d`, completely unfiltered against this device's
+          // own tombstones, so a resurrected row on the sheet would sail
+          // straight back into local state here with nothing to stop it —
+          // exactly the bug reported. pruneLocalTombstoned_() strips
+          // anything tombstoned (this device's own deletions, or ones just
+          // learned about from mergeRemoteTombstones_ above) back out
+          // immediately after adopting the sheet's data, so this full
+          // reload can no longer silently undo a real deletion no matter
+          // how the sheet ended up with that row.
+          pruneLocalTombstoned_();
         }
         dataDirty = false;
         // Also a confirmed-fresh sync point (see SYNC_SKIP_WINDOW_MS_) — this
