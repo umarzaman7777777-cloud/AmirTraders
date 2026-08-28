@@ -819,6 +819,20 @@
     }
     .product-track-badge.ok{ color:var(--green, #2ecc71); border-color:var(--green, #2ecc71); }
     .product-track-badge.bad{ color:var(--red); border-color:var(--red); }
+    /* ADD (2026-08-27): green/red dot per row in the Raw Material Stock
+       table (see renderStock) — same ok/bad meaning as the product-card
+       badge above (genuinely received vs. only recipe-referenced so far),
+       just a plain dot since it sits inline with the material name rather
+       than floating over a card corner. */
+    .rawmat-track-dot{
+      display:inline-block; width:9px; height:9px; border-radius:50%;
+      flex:0 0 auto; margin-top:5px;
+    }
+    .rawmat-track-dot.ok{ background:var(--green, #2ecc71); }
+    .rawmat-track-dot.bad{ background:var(--red); }
+    .rawmat-name-sub{
+      font-size:10.5px; color:var(--text-dim); font-weight:400; margin-top:1px;
+    }
     /* FIX (2026-08-20): same widen-for-accidental-touch pass as the ledger
        row buttons — kept square (not the full rectangular treatment
        .factory-card .product-card-actions button gets below) since this
@@ -5031,7 +5045,7 @@
           dirty: dataDirty, savedAt: Date.now(),
           transactionsLog, customerPayments, inventory, factories,
           expenses, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
-          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawMaterialUnits, rawLedgerDescriptions, rawMaterialResetAt,
+          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawMaterialItemReorderLevels, rawMaterialUnits, rawLedgerDescriptions, rawMaterialResetAt,
           scrapDescriptions, scrapItemNames, scrapTypes,
           withdrawals, withdrawalDescriptions, withdrawalByList, withdrawalInList,
           paintItemSizes, paintItemTypes, paintFactoryNames,
@@ -5090,6 +5104,7 @@
       if(Array.isArray(snap.rawGaugeCounts) && snap.rawGaugeCounts.length) rawGaugeCounts = snap.rawGaugeCounts;
       if(Array.isArray(snap.rawSizeCounts) && snap.rawSizeCounts.length) rawSizeCounts = snap.rawSizeCounts;
       if(snap.rawMaterialReorderLevels && typeof snap.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = snap.rawMaterialReorderLevels;
+      if(snap.rawMaterialItemReorderLevels && typeof snap.rawMaterialItemReorderLevels === 'object') rawMaterialItemReorderLevels = snap.rawMaterialItemReorderLevels;
       if(snap.rawMaterialUnits && typeof snap.rawMaterialUnits === 'object') rawMaterialUnits = snap.rawMaterialUnits;
       if(Array.isArray(snap.rawLedgerDescriptions)) rawLedgerDescriptions = snap.rawLedgerDescriptions;
       if(snap.rawMaterialResetAt && typeof snap.rawMaterialResetAt === 'object') rawMaterialResetAt = snap.rawMaterialResetAt;
@@ -6249,6 +6264,12 @@
         if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object'){
           rawMaterialReorderLevels = Object.assign({}, d.rawMaterialReorderLevels, rawMaterialReorderLevels);
         }
+        // ADD (2026-08-27): rawMaterialItemReorderLevels — the items-side
+        // counterpart to rawMaterialReorderLevels (see its declaration
+        // comment), same small flat per-key-union merge for the same reason.
+        if(d.rawMaterialItemReorderLevels && typeof d.rawMaterialItemReorderLevels === 'object'){
+          rawMaterialItemReorderLevels = Object.assign({}, d.rawMaterialItemReorderLevels, rawMaterialItemReorderLevels);
+        }
         // ADD (2026-08-26): rawMaterialUnits — same small flat per-material
         // settings map, same per-key-union merge as rawMaterialReorderLevels
         // just above, for the same reason (a unit remembered on another
@@ -6591,9 +6612,10 @@
           out.receiptRemoved = true;
         } else {
           const rf = e.id ? expenseReceiptFiles[e.id] : null;
-          if(rf && e.id && !syncedReceiptIds.has(e.id)){
+          if(rf && e.id && !syncedReceiptIds.has(e.id) && !receiptUploadInFlight_.has('expense:'+e.id)){
             out.receiptData = rf.__syncDataUrl || rf.dataUrl;
             out.receiptName = rf.name;
+            receiptUploadInFlight_.add('expense:'+e.id);
           }
         }
         return out;
@@ -6620,9 +6642,10 @@
           entries: (p.entries || []).map(e=>{
             const out = Object.assign({}, e);
             const rf = e.id ? paintReceiptFiles[e.id] : null;
-            if(rf && e.id && !syncedPaintReceiptIds.has(e.id)){
+            if(rf && e.id && !syncedPaintReceiptIds.has(e.id) && !receiptUploadInFlight_.has('paint:'+e.id)){
               out.receiptData = rf.__syncDataUrl || rf.dataUrl;
               out.receiptName = rf.name;
+              receiptUploadInFlight_.add('paint:'+e.id);
             }
             return out;
           })
@@ -6632,9 +6655,10 @@
           entries: (s.entries || []).map(e=>{
             const out = Object.assign({}, e);
             const rf = e.id ? rawReceiptFiles[e.id] : null;
-            if(rf && e.id && !syncedRawReceiptIds.has(e.id)){
+            if(rf && e.id && !syncedRawReceiptIds.has(e.id) && !receiptUploadInFlight_.has('raw:'+e.id)){
               out.receiptData = rf.__syncDataUrl || rf.dataUrl;
               out.receiptName = rf.name;
+              receiptUploadInFlight_.add('raw:'+e.id);
             }
             return out;
           })
@@ -6643,9 +6667,10 @@
           entries: (w.entries || []).map(e=>{
             const out = Object.assign({}, e);
             const rf = e.id ? labourReceiptFiles[e.id] : null;
-            if(rf && e.id && !syncedLabourReceiptIds.has(e.id)){
+            if(rf && e.id && !syncedLabourReceiptIds.has(e.id) && !receiptUploadInFlight_.has('labour:'+e.id)){
               out.receiptData = rf.__syncDataUrl || rf.dataUrl;
               out.receiptName = rf.name;
+              receiptUploadInFlight_.add('labour:'+e.id);
             }
             return out;
           })
@@ -6666,9 +6691,10 @@
           const entriesWithReceipts = (c.entries || []).map(e=>{
             const out = Object.assign({}, e);
             const rf = e.id ? customerReceiptFiles[e.id] : null;
-            if(rf && e.id && !syncedCustomerReceiptIds.has(e.id)){
+            if(rf && e.id && !syncedCustomerReceiptIds.has(e.id) && !receiptUploadInFlight_.has('customer:'+e.id)){
               out.receiptData = rf.__syncDataUrl || rf.dataUrl;
               out.receiptName = rf.name;
+              receiptUploadInFlight_.add('customer:'+e.id);
             }
             return out;
           });
@@ -6689,9 +6715,10 @@
         entries: (cl.entries || []).map(e=>{
           const out = Object.assign({}, e);
           const rf = e.id ? customLedgerReceiptFiles[e.id] : null;
-          if(rf && e.id && !syncedCustomLedgerReceiptIds.has(e.id)){
+          if(rf && e.id && !syncedCustomLedgerReceiptIds.has(e.id) && !receiptUploadInFlight_.has('customledger:'+e.id)){
             out.receiptData = rf.__syncDataUrl || rf.dataUrl;
             out.receiptName = rf.name;
+            receiptUploadInFlight_.add('customledger:'+e.id);
           }
           return out;
         })
@@ -6702,9 +6729,10 @@
       const customerPaymentsForSync = customerPayments.map(p=>{
         const out = { txnId: p.txnId, id: p.id, date: p.date, time: p.time, amount: p.amount, method: p.method, detail: p.detail, receivedBy: p.receivedBy, receivedIn: p.receivedIn };
         const rf = p.id ? paymentReceiptFiles[p.id] : null;
-        if(rf && p.id && !syncedPaymentReceiptIds.has(p.id)){
+        if(rf && p.id && !syncedPaymentReceiptIds.has(p.id) && !receiptUploadInFlight_.has('payment:'+p.id)){
           out.receiptData = rf.__syncDataUrl || rf.dataUrl;
           out.receiptName = rf.name;
+          receiptUploadInFlight_.add('payment:'+p.id);
         }
         return out;
       });
@@ -6731,9 +6759,10 @@
       const transactionsForSync = transactionsLog.map(t=>{
         const out = Object.assign({}, t);
         const rf = t.id ? receiptFiles[t.id] : null;
-        if(rf && t.id && !syncedOrderReceiptIds.has(t.id)){
+        if(rf && t.id && !syncedOrderReceiptIds.has(t.id) && !receiptUploadInFlight_.has('order:'+t.id)){
           out.receiptData = rf.__syncDataUrl || rf.dataUrl;
           out.receiptName = rf.name;
+          receiptUploadInFlight_.add('order:'+t.id);
         }
         return out;
       });
@@ -6765,7 +6794,7 @@
           transactionsLog: transactionsForSync, customerPayments: customerPaymentsForSync, inventory: inventoryForSync, factories,
           confirmedEmpty,
           expenses: expensesForSync, expenseCategories, workTypes, guardSizes, guardWeights, stickCounts, productWeights, productNames, productSizes,
-          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawMaterialUnits, rawLedgerDescriptions, rawMaterialResetAt,
+          rawItemNames, rawWeights, rawBundleCounts, rawGaugeCounts, rawSizeCounts, rawMaterialReorderLevels, rawMaterialItemReorderLevels, rawMaterialUnits, rawLedgerDescriptions, rawMaterialResetAt,
           scrapDescriptions, scrapItemNames, scrapTypes,
           withdrawals, withdrawalDescriptions, withdrawalByList, withdrawalInList,
           paintItemSizes, paintItemTypes, paintFactoryNames,
@@ -7062,6 +7091,23 @@
         // Best-effort — if this check itself fails (network blip, etc.), we
         // simply haven't confirmed anything, so nothing gets marked synced
         // and the next save tries again on its own. Nothing to do here.
+      } finally {
+        // Whether or not the checks above actually confirmed a real link,
+        // this verification cycle for these ids is over — clear their
+        // receiptUploadInFlight_ guard (see where it's set in
+        // saveStateToSheetInner_'s *ForSync builders) so a genuinely later
+        // save can retry attaching/uploading if it's still not marked
+        // synced, without a save that merely overlapped THIS verification
+        // window being able to sneak in an extra duplicate upload first.
+        const clear = (ids, prefix) => (ids || []).forEach(id => receiptUploadInFlight_.delete(prefix + ':' + id));
+        clear(pendingExpenseIds, 'expense');
+        clear(pendingRawIds, 'raw');
+        clear(pendingPaymentIds, 'payment');
+        clear(pendingPaintIds, 'paint');
+        clear(pendingLabourIds, 'labour');
+        clear(pendingCustomerIds, 'customer');
+        clear(pendingOrderIds, 'order');
+        clear(pendingCustomLedgerIds, 'customledger');
       }
     }
 
@@ -7348,6 +7394,7 @@
           if(Array.isArray(d.rawGaugeCounts) && d.rawGaugeCounts.length > 0) rawGaugeCounts = d.rawGaugeCounts;
           if(Array.isArray(d.rawSizeCounts) && d.rawSizeCounts.length > 0) rawSizeCounts = d.rawSizeCounts;
           if(d.rawMaterialReorderLevels && typeof d.rawMaterialReorderLevels === 'object') rawMaterialReorderLevels = d.rawMaterialReorderLevels;
+          if(d.rawMaterialItemReorderLevels && typeof d.rawMaterialItemReorderLevels === 'object') rawMaterialItemReorderLevels = d.rawMaterialItemReorderLevels;
           if(d.rawMaterialUnits && typeof d.rawMaterialUnits === 'object') rawMaterialUnits = d.rawMaterialUnits;
           if(Array.isArray(d.rawLedgerDescriptions)) rawLedgerDescriptions = d.rawLedgerDescriptions;
           if(d.rawMaterialResetAt && typeof d.rawMaterialResetAt === 'object') rawMaterialResetAt = d.rawMaterialResetAt;
@@ -8060,6 +8107,7 @@
         rawmat_name: "Raw Material", rawmat_weight_in: "Weight In", rawmat_weight_used: "Weight Used", rawmat_weight_remaining: "Weight Remaining",
         rawmat_items_in: "Items In (pcs)", rawmat_items_used: "Items Used (pcs)", rawmat_items_remaining: "Items Remaining (pcs)",
         rawmat_threshold: "Low Stock At", rawmat_threshold_placeholder: "Not set", no_raw_material_stock: "No raw material stock yet — add a Raw Material Ledger entry with a Raw Material Name and weight/items received, or link a product's recipe, to see it here.",
+        rawmat_item_threshold: "Low Stock At (Items)", rawmat_tracking_ok: "Genuinely tracked — stock has been received under this name", rawmat_tracking_none: "Not tracked yet — only referenced in a product recipe, nothing received under this name so far", rawmat_also_seen_as: "Also recorded as:",
         rl_stock_name: "Raw Material Name (for stock tracking, optional)", rl_stock_name_placeholder: "e.g. Steel Taar",
         rl_weight_in: "Weight Received", rl_items_in: "Items Received (pcs)",
         // ADD (2026-08-24, user request #2): Raw Material Ledger — Remaining
@@ -8426,6 +8474,7 @@
         rawmat_name: "خام مال", rawmat_weight_in: "وزن آیا", rawmat_weight_used: "وزن استعمال ہوا", rawmat_weight_remaining: "باقی وزن",
         rawmat_items_in: "آئٹمز آئے (عدد)", rawmat_items_used: "آئٹمز استعمال ہوئے (عدد)", rawmat_items_remaining: "باقی آئٹمز (عدد)",
         rawmat_threshold: "کم اسٹاک حد", rawmat_threshold_placeholder: "سیٹ نہیں", no_raw_material_stock: "ابھی تک کوئی خام مال اسٹاک نہیں — خام مال لیجر میں خام مال کا نام اور وزن/آئٹمز درج کریں، یا کسی پروڈکٹ کی ریسیپی سے لنک کریں۔",
+        rawmat_item_threshold: "کم اسٹاک حد (آئٹمز)", rawmat_tracking_ok: "حقیقی طور پر ٹریک ہو رہا ہے — اس نام کے تحت اسٹاک موصول ہوا ہے", rawmat_tracking_none: "ابھی تک ٹریک نہیں ہو رہا — صرف پروڈکٹ ریسیپی میں موجود ہے، اس نام کے تحت کچھ موصول نہیں ہوا", rawmat_also_seen_as: "یہ نام بھی ریکارڈ ہوا:",
         rl_stock_name: "خام مال کا نام (اسٹاک ٹریکنگ کے لیے، اختیاری)", rl_stock_name_placeholder: "مثلاً اسٹیل تار",
         rl_weight_in: "وزن موصول ہوا", rl_items_in: "آئٹمز موصول ہوئے (عدد)",
         rl_remaining_items: "باقی آئٹمز",
@@ -9063,6 +9112,28 @@
     // receipts sync too, but they're kept local-first the same way every
     // other ledger's receipt is (see LOCAL_ORDER_RECEIPTS_KEY above).
     const syncedOrderReceiptIds = new Set();
+    // FIX (2026-08-27, user report + Drive screenshot: a single photo
+    // attached once ended up as TWO identical files uploaded to Drive):
+    // saveStateToSheet has a mutex (saveInProgress) so two saves never run
+    // at the LITERAL same time — but it also has `saveAgainNeeded`, which
+    // fires a brand new save the INSTANT the first one's `finally` block
+    // finishes, with no wait at all. A receipt only gets marked "already
+    // uploaded" (syncedRawReceiptIds etc.) after verifyReceiptUploads_
+    // confirms it via a real read-back — which deliberately waits 2.5s
+    // first (see the comment there). Any small change elsewhere (even
+    // something unrelated to the receipt) during that ~2.5s window sets
+    // saveAgainNeeded, and that immediate next save still sees the id
+    // missing from syncedRawReceiptIds — so it attached the exact same
+    // receiptData a second time, and Code.gs's uploadReceiptToDrive_ has
+    // no way to know it had already just uploaded that same photo
+    // moments earlier, so it created a second Drive file. This set is
+    // marked the instant a receipt is attached to an outgoing save
+    // (before the request even goes out) and only cleared once
+    // verifyReceiptUploads_ finishes checking it — so an overlapping save
+    // that starts in between skips re-attaching, while a genuinely later
+    // save (after verification concludes, success or not) can still retry
+    // normally. Keyed 'ledgerKey:id' so ids can't collide across ledgers.
+    const receiptUploadInFlight_ = new Set();
     // Locally attached receipt files for expenses, keyed by expense id. Also
     // synced to the sheet (see saveStateToSheet) as a Drive-hosted link.
     const expenseReceiptFiles = {};
@@ -9226,6 +9297,59 @@
     // selector still said "kg" got stored as 85 kg, not 0.085 kg — see
     // renderPeRecipeRows_ and the Raw Material Stock table below).
     let rawMaterialUnits = {};
+    // ADD (2026-08-27, user report: "showing low stock track all in kg
+    // (weight) but also some items are in as per items too") — a material
+    // can be received/used BOTH by weight (kg) and by item count at once
+    // (e.g. a recipe row can set weightPerUnit AND itemsPerUnit for the
+    // same material). Before this, there was only ONE threshold per
+    // material (rawMaterialReorderLevels, always stored in kg) and it was
+    // compared against BOTH rec.weightRemaining AND rec.itemsRemaining in
+    // computeRawMaterialStock_ — so a threshold typed for "5kg left" was
+    // also silently being compared against a completely different scale
+    // ("5 pieces left"), firing/missing the Low Stock flag for the wrong
+    // reason. This is now a fully separate, independently-set threshold
+    // for the item-count side only, same key convention (material name ->
+    // number, blank/unset = never flagged low on items) and same Meta-tab
+    // sync pattern as rawMaterialReorderLevels above.
+    let rawMaterialItemReorderLevels = {};
+    // ADD (2026-08-27, user report: "check tracking system and merge it
+    // with raw material name and with description... verify stock
+    // tracking genuinely"): a raw material's identity across the ledger
+    // and every product recipe was previously matched by EXACT string
+    // equality only (rec.name / r.material used directly as an object
+    // key) — so "Ribit", "ribit", " Ribit" and "Ribit " were silently
+    // treated as four different materials, each accumulating its own
+    // slice of the real weight/items received. That's exactly how a
+    // material that actually received 5g total could show "1g" on one of
+    // those split rows while the other 4g sat invisibly under a
+    // differently-cased/spaced duplicate — and how a product's recipe
+    // could point at a name that "looks" identical to a ledger entry's
+    // stockName but never actually match, leaving that material's
+    // Weight/Items Used stuck at 0 even though it genuinely is being
+    // tracked. normMatKey_ gives every lookup a single, forgiving,
+    // case/whitespace-insensitive identity to group by, while the raw
+    // (as-typed) name is still what's stored/displayed everywhere, so
+    // nothing about existing data has to change.
+    function normMatKey_(name){
+      return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+    // Looks a material name up in one of the small flat name->value
+    // settings maps (rawMaterialUnits, rawMaterialReorderLevels,
+    // rawMaterialItemReorderLevels, rawMaterialResetAt) — exact match
+    // first (fast path, and guarantees a value SET under today's exact
+    // spelling always wins), falling back to a normMatKey_-equal key if
+    // no exact match exists, so a setting saved under a slightly
+    // different casing/spacing of the same material name is still found
+    // instead of silently ignored.
+    function findMatSetting_(map, name){
+      if(!map || !name) return undefined;
+      if(map[name] !== undefined) return map[name];
+      const key = normMatKey_(name);
+      for(const k in map){
+        if(Object.prototype.hasOwnProperty.call(map, k) && normMatKey_(k) === key) return map[k];
+      }
+      return undefined;
+    }
     // ADD (2026-08-24, user request #2): "Reset Weight"/"Reset Items" on the
     // Raw Material Ledger — since Remaining is computed fresh every time
     // from real history (ledger entries + recipe usage on booked orders,
@@ -10512,12 +10636,21 @@
     // card) since computeRawMaterialStock_() walks the whole ledger/order
     // history — same data, reused across every card.
     // Products with no recipe at all get no badge (nothing to track).
+    // FIX (2026-08-27): stockByName is now expected to be keyed by
+    // normMatKey_(rec.name) (see renderProducts below), not the raw name —
+    // so a recipe's material field is looked up the same forgiving,
+    // case/whitespace-insensitive way computeRawMaterialStock_ itself now
+    // groups materials by. This is the actual fix for a recipe row that
+    // "looks" correctly typed but silently never matched its ledger entry
+    // (e.g. "Ribit" recipe vs "ribit " received) — before, that showed as a
+    // red badge / stuck-at-0 Weight Used even though the material really is
+    // being tracked; now it correctly reads as tracked.
     function productRecipeTrackingStatus_(p, stockByName){
       if(!p || !Array.isArray(p.recipe) || !p.recipe.length) return null;
       const missing = [];
       p.recipe.forEach(r=>{
         if(!r || !r.material) return;
-        const rec = stockByName[r.material];
+        const rec = stockByName[normMatKey_(r.material)];
         const received = !!rec && (((rec.weightIn || 0) > 0) || ((rec.itemsIn || 0) > 0));
         if(!received) missing.push(r.material);
       });
@@ -10530,16 +10663,21 @@
         const matchSearch = !searchTerm || p.name.toLowerCase().includes(searchTerm);
         return matchCat && matchSearch;
       });
+      // FIX (2026-08-27): keyed by normMatKey_(rec.name) now — see
+      // productRecipeTrackingStatus_'s comment above for why.
       const stockByName = {};
-      computeRawMaterialStock_().forEach(rec => { stockByName[rec.name] = rec; });
+      computeRawMaterialStock_().forEach(rec => { stockByName[normMatKey_(rec.name)] = rec; });
       list.forEach(p=>{
         const card = document.createElement('div');
         card.className = 'product-card';
         const track = productRecipeTrackingStatus_(p, stockByName);
+        // FIX (2026-08-27, real bug: the bad/red case rendered '✓' too —
+        // only the CSS color class differed, so the badge never actually
+        // read as a warning at a glance the way it was designed to).
         const trackBadgeHtml = track
           ? `<div class="product-track-badge ${track.ok ? 'ok' : 'bad'}" title="${track.ok
               ? escHtml_(tr('recipe_all_tracked'))
-              : escHtml_(tr('recipe_not_tracked_prefix') + track.missing.join(', '))}">${track.ok ? '✓' : '✓'}</div>`
+              : escHtml_(tr('recipe_not_tracked_prefix') + track.missing.join(', '))}">${track.ok ? '✓' : '✗'}</div>`
           : '';
         card.innerHTML = `
           ${trackBadgeHtml}
@@ -10690,10 +10828,26 @@
       return d.getTime() + mins*60000;
     }
     function computeRawMaterialStock_(){
-      const byName = {};
-      function getRec_(name){
-        if(!byName[name]) byName[name] = { name, weightIn:0, weightUsed:0, itemsIn:0, itemsUsed:0 };
-        return byName[name];
+      // FIX (2026-08-27): keyed by normMatKey_(name) now, not the raw name
+      // itself — see normMatKey_'s comment above. Every ledger entry/recipe
+      // reference to "the same" material (modulo case/spacing) now lands in
+      // ONE record instead of silently splitting across lookalike rows. The
+      // first name actually encountered is kept as the display name; any
+      // other spelling variant seen along the way is remembered too (as
+      // rec.aliases) purely so it can be surfaced to the user for cleanup,
+      // never used to change what's stored.
+      const byKey = {};
+      function getRec_(rawName){
+        const name = String(rawName || '').trim();
+        if(!name) return null;
+        const key = normMatKey_(name);
+        let rec = byKey[key];
+        if(!rec){
+          rec = byKey[key] = { name, key, aliases:[], weightIn:0, weightUsed:0, itemsIn:0, itemsUsed:0 };
+        } else if(rec.name !== name && rec.aliases.indexOf(name) === -1){
+          rec.aliases.push(name);
+        }
+        return rec;
       }
       // ADD (2026-08-24, user request #2): "Reset Weight"/"Reset Items" —
       // any ledger entry or order dated at/before that material's reset
@@ -10708,8 +10862,11 @@
       // over. Deliberate tradeoff: a reset that's supposed to zero
       // everything but silently doesn't would be far more confusing than
       // this.
+      // FIX (2026-08-27): looked up via findMatSetting_ now (normMatKey_-
+      // aware), so a Reset saved under a slightly different casing/spacing
+      // of the material name is still honored instead of silently ignored.
       function resetTs_(name, kind){
-        const r = rawMaterialResetAt[name];
+        const r = findMatSetting_(rawMaterialResetAt, name);
         const mark = r && r[kind];
         return mark ? rawStockTs_(mark.date, mark.time) : -Infinity;
       }
@@ -10717,9 +10874,16 @@
         (s.entries || []).forEach(e=>{
           if(!e || !e.stockName) return;
           const rec = getRec_(e.stockName);
+          if(!rec) return;
           const ts = rawStockTs_(e.date, e.time);
           if(typeof e.weightIn === 'number' && ts > resetTs_(e.stockName,'weight')) rec.weightIn += e.weightIn;
           if(typeof e.itemsIn === 'number' && ts > resetTs_(e.stockName,'items')) rec.itemsIn += e.itemsIn;
+          // "merge raw material name with description" — keep the most
+          // recent ledger description seen for this material so the Raw
+          // Material Stock table can show it alongside the name, letting
+          // the person visually confirm two similarly-named rows really
+          // are (or aren't) the same real-world material.
+          if(e.desc && (!rec.lastDescTs || ts >= rec.lastDescTs)){ rec.lastDesc = e.desc; rec.lastDescTs = ts; }
         });
       });
       transactionsLog.forEach(t=>{
@@ -10735,6 +10899,7 @@
           p.recipe.forEach(r=>{
             if(!r || !r.material) return;
             const rec = getRec_(r.material);
+            if(!rec) return;
             if(typeof r.weightPerUnit === 'number' && ts > resetTs_(r.material,'weight')) rec.weightUsed += qty * r.weightPerUnit;
             if(typeof r.itemsPerUnit === 'number' && ts > resetTs_(r.material,'items')) rec.itemsUsed += qty * r.itemsPerUnit;
           });
@@ -10744,15 +10909,39 @@
       // received yet, a useful "you'll need to buy this" signal) even if no
       // ledger entry has named it yet.
       PRODUCTS.forEach(p=>{ (p.recipe || []).forEach(r=>{ if(r && r.material) getRec_(r.material); }); });
-      return Object.values(byName).map(rec=>{
-        rec.weightRemaining = rec.weightIn - rec.weightUsed;
+      return Object.values(byKey).map(rec=>{
+        // Precise to the gram (and beyond): plain float subtraction here can
+        // leave a value like 0.0049999999999998 instead of 0.005 after many
+        // additions — rounded to 6 decimal places (still finer than a
+        // milligram once expressed in kg) before anything downstream reads
+        // it, so a material that genuinely has 5g left never gets displayed,
+        // compared against a threshold, or flagged low as "0" or "1g" due to
+        // leftover floating-point noise.
+        rec.weightIn = Math.round(rec.weightIn * 1e6) / 1e6;
+        rec.weightUsed = Math.round(rec.weightUsed * 1e6) / 1e6;
+        rec.weightRemaining = Math.round((rec.weightIn - rec.weightUsed) * 1e6) / 1e6;
         rec.itemsRemaining = rec.itemsIn - rec.itemsUsed;
-        const threshold = rawMaterialReorderLevels[rec.name];
-        rec.threshold = (typeof threshold === 'number') ? threshold : undefined;
-        rec.isLow = (rec.threshold !== undefined) && (
-          (rec.weightIn > 0 && rec.weightRemaining <= rec.threshold) ||
-          (rec.itemsIn > 0 && rec.itemsRemaining <= rec.threshold)
-        );
+        // FIX (2026-08-27, user report: "showing low stock track all in kg
+        // (weight) but also some items are in as per items too"): weight and
+        // items now each have their OWN threshold (rawMaterialReorderLevels
+        // for weight-in-kg, rawMaterialItemReorderLevels for item count) and
+        // are only ever compared against the matching side — a weight
+        // threshold can never trip an items-only material low and vice
+        // versa. Both looked up via findMatSetting_ for the same
+        // case/spacing-forgiving reason as resetTs_ above.
+        const weightThreshold = findMatSetting_(rawMaterialReorderLevels, rec.name);
+        const itemsThreshold = findMatSetting_(rawMaterialItemReorderLevels, rec.name);
+        rec.threshold = (typeof weightThreshold === 'number') ? weightThreshold : undefined;
+        rec.itemsThreshold = (typeof itemsThreshold === 'number') ? itemsThreshold : undefined;
+        const weightLow = (rec.threshold !== undefined) && rec.weightIn > 0 && rec.weightRemaining <= rec.threshold;
+        const itemsLow = (rec.itemsThreshold !== undefined) && rec.itemsIn > 0 && rec.itemsRemaining <= rec.itemsThreshold;
+        rec.isLow = weightLow || itemsLow;
+        // Whether this material is genuinely tracked at all — i.e. it's
+        // actually been received (weightIn/itemsIn > 0). Feeds the
+        // green/red dot on the Raw Material Stock table (see renderStock)
+        // and is the same signal productRecipeTrackingStatus_ uses for the
+        // product-card badge, so both places agree with each other.
+        rec.isReceived = (rec.weightIn > 0) || (rec.itemsIn > 0);
         return rec;
       }).sort((a,b)=> a.name.localeCompare(b.name));
     }
@@ -10771,12 +10960,19 @@
     // and appends the unit so a table with some materials in kg and others
     // in grams is never ambiguous about which is which.
     function rawmatWeightUnit_(name){
-      return (name && rawMaterialUnits[name]) || 'kg';
+      return findMatSetting_(rawMaterialUnits, name) || 'kg';
     }
+    // FIX (2026-08-27, "calculations must be precise even very low"):
+    // rounded to 3 decimals now (was 2) and never silently drops a
+    // genuinely non-zero amount to '' — a material tracked in grams with,
+    // say, 0.4g remaining used to round to 0.00 and disappear from the
+    // table exactly like "0", which is precisely the case a low-stock
+    // table most needs to surface correctly.
     function rawmatNumInUnit_(kgValue, unit){
       if(!(kgValue || kgValue === 0)) return '';
       const n = unit === 'g' ? kgValue * 1000 : kgValue;
-      return (Math.round(n * 100) / 100).toLocaleString('en-PK') + ' ' + unit;
+      if(n !== 0 && Math.abs(n) < 0.001) return '<0.001 ' + unit;
+      return (Math.round(n * 1000) / 1000).toLocaleString('en-PK', {maximumFractionDigits:3}) + ' ' + unit;
     }
     let stockSearchTerm_ = '';
     function renderStock(){
@@ -10804,11 +11000,43 @@
         // in the material's own remembered unit for consistency with the
         // Weight In/Used/Remaining cells right next to it.
         const threshDisplay = rec.threshold !== undefined
-          ? (unit === 'g' ? Math.round(rec.threshold * 1000 * 100) / 100 : Math.round(rec.threshold * 100) / 100)
+          ? (unit === 'g' ? Math.round(rec.threshold * 1000 * 1000) / 1000 : Math.round(rec.threshold * 1000) / 1000)
+          : '';
+        const itemsThreshDisplay = rec.itemsThreshold !== undefined ? rec.itemsThreshold : '';
+        // ADD (2026-08-27, user request: "show green/red dot in stock
+        // tracking in materials so that it will show that with this order
+        // these items are tracking") — a small dot per material row: green
+        // once ANY weight/items has actually been received for it (rec.
+        // isReceived, the same real signal the product-card badge uses),
+        // red if it only exists here because a product recipe references
+        // it but nothing has ever been received under that name yet — the
+        // exact "this material isn't really being tracked" case the person
+        // asked to see at a glance.
+        const dotTitle = rec.isReceived ? tr('rawmat_tracking_ok') : tr('rawmat_tracking_none');
+        const dotHtml = `<span class="rawmat-track-dot ${rec.isReceived ? 'ok' : 'bad'}" title="${escHtml_(dotTitle)}"></span>`;
+        // "merge it with raw material name and with description" — the most
+        // recent ledger description recorded under this material sits as a
+        // small dim subtitle under the name, and any differently-cased/
+        // spaced spelling that got merged into this same row (see
+        // computeRawMaterialStock_'s aliases) is called out too, so two
+        // rows that LOOK different but are really the same material (or
+        // vice versa) are easy to catch at a glance.
+        const descHtml = rec.lastDesc ? `<div class="rawmat-name-sub">${escHtml_(rec.lastDesc)}</div>` : '';
+        const aliasHtml = (rec.aliases && rec.aliases.length)
+          ? `<div class="rawmat-name-sub" style="color:var(--yellow);">${escHtml_(tr('rawmat_also_seen_as'))} ${rec.aliases.map(escHtml_).join(', ')}</div>`
           : '';
         return `
           <tr>
-            <td class="inv-name">${rec.name}</td>
+            <td class="inv-name">
+              <div style="display:flex; align-items:flex-start; gap:6px;">
+                ${dotHtml}
+                <div>
+                  <div>${escHtml_(rec.name)}</div>
+                  ${descHtml}
+                  ${aliasHtml}
+                </div>
+              </div>
+            </td>
             <td class="num">${rawmatNumInUnit_(rec.weightIn, unit)}</td>
             <td class="num">${rawmatNumInUnit_(rec.weightUsed, unit)}</td>
             <td class="num" style="${lowStyle}">${(rec.weightIn || rec.weightUsed) ? rawmatNumInUnit_(rec.weightRemaining, unit) : ''}</td>
@@ -10819,9 +11047,14 @@
               <div style="display:flex; align-items:center; gap:4px; justify-content:flex-end;">
                 <input type="number" class="field-input rawmat-threshold-input" data-name="${escHtml_(rec.name)}" data-unit="${unit}" min="0" step="any"
                   value="${threshDisplay}" placeholder="${tr('rawmat_threshold_placeholder')}"
-                  style="width:90px; text-align:right; margin-bottom:0;">
+                  style="width:80px; text-align:right; margin-bottom:0;">
                 <span style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">${unit}</span>
               </div>
+            </td>
+            <td class="num">
+              <input type="number" class="field-input rawmat-item-threshold-input" data-name="${escHtml_(rec.name)}" min="0" step="1"
+                value="${itemsThreshDisplay}" placeholder="${tr('rawmat_threshold_placeholder')}"
+                style="width:80px; text-align:right; margin-bottom:0;">
             </td>
             <td>${rec.isLow ? `<span style="color:var(--red); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('low_stock')}</span>` : ''}</td>
           </tr>`;
@@ -10839,6 +11072,7 @@
               <th class="num">${tr('rawmat_items_used')}</th>
               <th class="num">${tr('rawmat_items_remaining')}</th>
               <th class="num">${tr('rawmat_threshold')}</th>
+              <th class="num">${tr('rawmat_item_threshold')}</th>
               <th></th>
             </tr>
           </thead>
@@ -10855,7 +11089,7 @@
           // same display unit) on a blank clear or invalid entry — mirrors
           // the pre-fix behavior, just unit-aware now.
           const revertDisplay = ()=> (rawMaterialReorderLevels[name] !== undefined)
-            ? (unit === 'g' ? Math.round(rawMaterialReorderLevels[name] * 1000 * 100) / 100 : Math.round(rawMaterialReorderLevels[name] * 100) / 100)
+            ? (unit === 'g' ? Math.round(rawMaterialReorderLevels[name] * 1000 * 1000) / 1000 : Math.round(rawMaterialReorderLevels[name] * 1000) / 1000)
             : '';
           if(raw === ''){
             delete rawMaterialReorderLevels[name];
@@ -10866,6 +11100,27 @@
             // since computeRawMaterialStock_ compares this against weightRemaining
             // (always kg) unchanged.
             rawMaterialReorderLevels[name] = unit === 'g' ? n / 1000 : n;
+          }
+          queueSync();
+          renderStock();
+        });
+      });
+      // ADD (2026-08-27): the items-count threshold — a plain number in the
+      // material's own item units (pieces, pins, rivets...), no kg/gram
+      // conversion involved at all, stored in rawMaterialItemReorderLevels
+      // (see its declaration comment for why this had to be separate from
+      // the weight threshold above).
+      wrap.querySelectorAll('.rawmat-item-threshold-input').forEach(inp=>{
+        inp.addEventListener('change', ()=>{
+          const name = inp.dataset.name;
+          const raw = inp.value.trim();
+          const revertDisplay = ()=> (rawMaterialItemReorderLevels[name] !== undefined) ? rawMaterialItemReorderLevels[name] : '';
+          if(raw === ''){
+            delete rawMaterialItemReorderLevels[name];
+          } else {
+            const n = parseFloat(raw);
+            if(!(n >= 0)){ inp.value = revertDisplay(); return; }
+            rawMaterialItemReorderLevels[name] = n;
           }
           queueSync();
           renderStock();
@@ -11311,7 +11566,7 @@
       // that's genuinely tracked in grams shows grams, not a kg value that
       // looks fine at a glance but is quietly wrong.
       wrap.innerHTML = list.map((r,i)=>{
-        const unit = (r.material && rawMaterialUnits[r.material]) || 'kg';
+        const unit = (r.material && findMatSetting_(rawMaterialUnits, r.material)) || 'kg';
         const hasWeight = (r.weightPerUnit || r.weightPerUnit === 0);
         const displayWeight = hasWeight
           ? (unit === 'g' ? Math.round(r.weightPerUnit * 1000 * 1e6) / 1e6 : r.weightPerUnit)
