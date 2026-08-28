@@ -54,6 +54,12 @@
       --orange:#E8590C;
       --green:#4C9A5A;
       --red:#D14343;
+      /* ADD (2026-08-28, user request "More brighten" on the Order Booked
+         Delivered mark): a vivid, saturated red used ONLY for that
+         tick/text/strikethrough — kept separate from --red (which also
+         drives delete buttons, unpaid tags, negative balances etc. app-wide)
+         so brightening the Delivered mark doesn't wash those out too. */
+      --red-bright:#FF3B30;
       --radius:10px;
       --display: 'Oswald', sans-serif;
       --logo: 'Playfair Display', serif;
@@ -84,6 +90,7 @@
       --orange:#C94E0E;
       --green:#3D7A48;
       --red:#B83232;
+      --red-bright:#FF2D20;
       /* Same idea as dark's --card-shadow above, tuned much softer for a
          white/near-white panel — the dark theme's values would look like
          dirty smudges here instead of a subtle lift. */
@@ -833,6 +840,26 @@
     .rawmat-name-sub{
       font-size:10.5px; color:var(--text-dim); font-weight:400; margin-top:1px;
     }
+    /* ADD (2026-08-28, user request): "each raw material should have its
+       own details box of weight received/items received till now" — a
+       compact standalone box under each material's name in the Raw
+       Material Stock table (see renderStock), separate from the plain
+       numeric Weight In/Items In table cells further along the same row,
+       so the all-time received totals for THIS material are easy to spot
+       at a glance instead of just being two of many columns in a wide
+       scrollable table. white-space:nowrap is overridden here since the
+       parent .inv-table td sets it, but this box's own text should wrap
+       normally at narrow widths. */
+    .rawmat-details-box{
+      margin-top:6px; padding:7px 10px; border:1px solid var(--steel-line); border-radius:8px;
+      background:var(--panel-raised); display:flex; flex-direction:column; gap:3px;
+      white-space:normal; max-width:220px;
+    }
+    .rawmat-details-row{
+      display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+      font-family:var(--mono); font-size:10px; color:var(--text-dim); white-space:nowrap;
+    }
+    .rawmat-details-row b{ color:var(--yellow); font-size:12px; font-weight:600; }
     /* FIX (2026-08-20): same widen-for-accidental-touch pass as the ledger
        row buttons — kept square (not the full rectangular treatment
        .factory-card .product-card-actions button gets below) since this
@@ -1119,9 +1146,29 @@
        and should add one more line that is order is delivered" — a second
        line under the order number, shown once its gate receipt/pass is
        attached (see the .txn-id markup in renderTransactions()). */
+    /* ADD (2026-08-24, user request): "order number should be double line
+       and should add one more line that is order is delivered" — a second
+       line under the order number, shown once its gate receipt/pass is
+       attached (see the .txn-id markup in renderTransactions()).
+       CHANGED (2026-08-28, user request): "mark the order booked as
+       Delivered with Red line across and a writing and red tick too" —
+       switched from green to red, and this tag now carries its own
+       checkmark icon (was text-only before); the "red line across" part
+       is the .txn-items-delivered strikethrough below, applied to the
+       order's item text in the same row. */
     .txn-id-delivered{
-      font-family:var(--display); font-size:9px; font-weight:600; text-transform:uppercase;
-      letter-spacing:0.4px; color:var(--green); margin-top:3px;
+      font-family:var(--display); font-size:9.5px; font-weight:800; text-transform:uppercase;
+      letter-spacing:0.5px; color:var(--red-bright); margin-top:3px;
+      display:flex; align-items:center; gap:3px;
+      text-shadow:0 0 8px color-mix(in srgb, var(--red-bright) 55%, transparent);
+    }
+    .txn-id-delivered svg{ width:11px; height:11px; flex-shrink:0; filter:drop-shadow(0 0 3px color-mix(in srgb, var(--red-bright) 70%, transparent)); }
+    /* Strikes a red line through the order's item text once its gate
+       pass/receipt is attached — the "Red line across" the user asked
+       for, right alongside the red DELIVERED tag + tick above. */
+    .txn-items-delivered > div:first-child{
+      text-decoration:line-through; text-decoration-color:var(--red-bright); text-decoration-thickness:2.5px;
+      color:var(--text-dim);
     }
     .txn-row .txn-when{ font-family:var(--mono); font-size:11.5px; color:var(--text-dim); width:150px; flex-shrink:0; }
     .txn-row .txn-items{ flex:1; font-size:12.5px; color:var(--text-dim); min-width:0; }
@@ -8244,6 +8291,7 @@
         // ADD (2026-08-24, user request): Raw Material Stock table + forms
         rawmat_total_materials: "Materials Tracked", rawmat_low_count: "Low Stock",
         rawmat_name: "Raw Material", rawmat_weight_in: "Weight In", rawmat_weight_used: "Weight Used", rawmat_weight_remaining: "Weight Remaining",
+        rawmat_weight_received_till: "Weight Received (Till Now)", rawmat_items_received_till: "Items Received (Till Now)",
         rawmat_items_in: "Items In (pcs)", rawmat_items_used: "Items Used (pcs)", rawmat_items_remaining: "Items Remaining (pcs)",
         rawmat_threshold: "Low Stock At", rawmat_threshold_placeholder: "Not set", no_raw_material_stock: "No raw material stock yet — add a Raw Material Ledger entry with a Raw Material Name and weight/items received, or link a product's recipe, to see it here.",
         rawmat_item_threshold: "Low Stock At (Items)", rawmat_tracking_ok: "Genuinely tracked — stock has been received under this name", rawmat_tracking_none: "Not tracked yet — only referenced in a product recipe, nothing received under this name so far", rawmat_also_seen_as: "Also recorded as:",
@@ -8612,6 +8660,7 @@
         stock_product_search_placeholder: "پروڈکٹ کے نام سے تلاش کریں…",
         rawmat_total_materials: "ٹریک شدہ خام مال", rawmat_low_count: "کم اسٹاک",
         rawmat_name: "خام مال", rawmat_weight_in: "وزن آیا", rawmat_weight_used: "وزن استعمال ہوا", rawmat_weight_remaining: "باقی وزن",
+        rawmat_weight_received_till: "وصول شدہ وزن (اب تک)", rawmat_items_received_till: "وصول شدہ آئٹمز (اب تک)",
         rawmat_items_in: "آئٹمز آئے (عدد)", rawmat_items_used: "آئٹمز استعمال ہوئے (عدد)", rawmat_items_remaining: "باقی آئٹمز (عدد)",
         rawmat_threshold: "کم اسٹاک حد", rawmat_threshold_placeholder: "سیٹ نہیں", no_raw_material_stock: "ابھی تک کوئی خام مال اسٹاک نہیں — خام مال لیجر میں خام مال کا نام اور وزن/آئٹمز درج کریں، یا کسی پروڈکٹ کی ریسیپی سے لنک کریں۔",
         rawmat_item_threshold: "کم اسٹاک حد (آئٹمز)", rawmat_tracking_ok: "حقیقی طور پر ٹریک ہو رہا ہے — اس نام کے تحت اسٹاک موصول ہوا ہے", rawmat_tracking_none: "ابھی تک ٹریک نہیں ہو رہا — صرف پروڈکٹ ریسیپی میں موجود ہے، اس نام کے تحت کچھ موصول نہیں ہوا", rawmat_also_seen_as: "یہ نام بھی ریکارڈ ہوا:",
@@ -11189,6 +11238,23 @@
         const aliasHtml = (rec.aliases && rec.aliases.length)
           ? `<div class="rawmat-name-sub" style="color:var(--yellow);">${escHtml_(tr('rawmat_also_seen_as'))} ${rec.aliases.map(escHtml_).join(', ')}</div>`
           : '';
+        // ADD (2026-08-28, user request): "Each raw material should have
+        // it's own details box of weight received/items received till now
+        // based on weight added in" — a small standalone box per material
+        // (not just plain table cells further along this row) surfacing
+        // its own all-time received totals. Reads rec.weightIn/itemsIn —
+        // the same running totals computeRawMaterialStock_() above builds
+        // by summing every ledger entry's weightIn/itemsIn under this
+        // material's name — so it's always live: the moment a new Raw
+        // Material Ledger entry is saved under this material, the next
+        // time this Stock page renders (renderStock() recomputes fully
+        // from scratch every call) the box reflects it, no separate wiring
+        // needed.
+        const detailsBoxHtml = `
+          <div class="rawmat-details-box">
+            <div class="rawmat-details-row"><span>${tr('rawmat_weight_received_till')}</span><b>${rawmatNumInUnit_(rec.weightIn, unit) || ('0 ' + unit)}</b></div>
+            <div class="rawmat-details-row"><span>${tr('rawmat_items_received_till')}</span><b>${rec.itemsIn ? rawmatNum_(rec.itemsIn) : '0'}</b></div>
+          </div>`;
         return `
           <tr>
             <td class="inv-name">
@@ -11198,6 +11264,7 @@
                   <div>${escHtml_(rec.name)}</div>
                   ${descHtml}
                   ${aliasHtml}
+                  ${detailsBoxHtml}
                 </div>
               </div>
             </td>
@@ -21012,10 +21079,10 @@
                  further along the row (title="Receipt Attached"); now it's
                  the order number's own second line, since receiving the
                  gate pass/receipt is what marks an order delivered. -->
-            ${hasReceipt ? `<div class="txn-id-delivered" title="${tr('receipt_attached')}">${tr('order_delivered_tag')}</div>` : ''}
+            ${hasReceipt ? `<div class="txn-id-delivered" title="${tr('receipt_attached')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>${tr('order_delivered_tag')}</div>` : ''}
           </div>
           <div class="txn-when">${t.date} · ${formatTime12_(t.time)}</div>
-          <div class="txn-items">
+          <div class="txn-items${hasReceipt ? ' txn-items-delivered' : ''}">
             <div>${t.itemsSummary}${t.factory ? ` <span class="txn-factory-tag">${t.factory}</span>` : ''}</div>
             ${chips.length ? `<div class="txn-meta-chips">${chips.join('')}</div>` : ''}
           </div>
