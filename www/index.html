@@ -5069,7 +5069,7 @@
         // actionable of the two when both happen to be set at once — it
         // means the automatic self-heal push queued by the load guard
         // below is itself failing for its own reason and needs attention.
-        el.textContent = tr('sync_status_error').replace('{detail}', lastSyncErrorDetail_ || lastLoadGuardDetail_ || syncLabel.textContent);
+        el.textContent = tr('sync_status_error').replace('{detail}', lastSyncErrorDetail_ || lastLoadGuardDetail_ || lastLoadErrorDetail_ || syncLabel.textContent);
       } else if(dataDirty){
         el.textContent = timeStr ? tr('sync_status_pending_synced').replace('{time}', timeStr) : tr('sync_status_pending_never');
       } else if(timeStr){
@@ -5693,6 +5693,19 @@
     // the person waiting forever on a promise the app wasn't keeping. Kept
     // separate so each dialog says something true.
     let lastLoadGuardDetail_ = '';
+    // ADD (2026-08-28, user report: Settings > Sync just says "Sync problem:
+    // Load failed" with no way to tell what actually went wrong): a plain
+    // loadStateFromSheet() failure (bad connection, JSONP script blocked/
+    // timed out, a thrown json.error from the backend, etc. — see its catch
+    // block below) was never written into EITHER lastSyncErrorDetail_ or
+    // lastLoadGuardDetail_, so renderSyncSettingsCard_'s fallback chain had
+    // nothing real to show and fell all the way back to the generic status
+    // text ("Load failed") instead of the actual error message. This is a
+    // third, distinct case from both of those (nothing is mid-retry the way
+    // a stuck save is, and it isn't the data-loss guard refusing a
+    // suspicious response) so it gets its own variable rather than being
+    // folded into either existing one and losing their specific meanings.
+    let lastLoadErrorDetail_ = '';
     // SPEED: the backend now tracks a single cheap "data version" number
     // (bumped only when something real actually changes — see
     // DATA_VERSION_PROP_/getDataVersion_ in Code.gs) that this device can
@@ -7635,6 +7648,7 @@
           pruneLocalTombstoned_();
         }
         dataDirty = false;
+        lastLoadErrorDetail_ = ''; // a load just genuinely succeeded — any earlier failure is stale, don't keep surfacing it
         // Also a confirmed-fresh sync point (see SYNC_SKIP_WINDOW_MS_) — this
         // was a full pull, so local now matches the sheet exactly.
         lastSyncConfirmedAt_ = Date.now();
@@ -7648,7 +7662,8 @@
         return true;
       } catch(err){
         console.error('[sheet-sync] load failed:', err);
-        setSyncStatus('error', 'Load failed', err && err.message ? err.message : String(err));
+        lastLoadErrorDetail_ = err && err.message ? err.message : String(err);
+        setSyncStatus('error', 'Load failed', lastLoadErrorDetail_);
         return false;
       }
     }
