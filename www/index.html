@@ -5835,6 +5835,66 @@
       });
       if(changed) saveTombstones_();
     }
+    // ROOT-CAUSE FIX (2026-08-28, real report: "add a labour, it syncs,
+    // then another device syncs, and the labour I just added vanishes"):
+    // mergeRemoteTombstones_ above is deliberately UNION-only — a device's
+    // local tombstone cache only ever grows, never shrinks, which is
+    // exactly right for one-shot deletions (an order, an expense, a single
+    // ledger entry — an id that's gone is gone for good). But a ROSTER
+    // NAME (painter/supplier/worker/scrap buyer/factory) can legitimately
+    // be reused later — a worker leaves and gets rehired, a new hire
+    // shares a name with someone let go months ago, a factory/customer
+    // relationship lapses and later resumes under the same name. When
+    // that happens, Code.gs's clearStaleRosterTombstonesForSave_ already
+    // clears the SERVER's copy of that stale tombstone the moment the
+    // reused name reappears in any real save — but THIS device's own
+    // local cache (deletedIds_, persisted to localStorage) never finds
+    // out, because mergeRemoteTombstones_ only ever adds. A device that
+    // cached "Ali = deleted" weeks ago keeps believing it forever, which
+    // means:
+    //   - mergeRosterWithEntries_/mergeByName_'s isDeleted_ check silently
+    //     refuses to pull the re-added name in from another device's
+    //     fresh sync, and
+    //   - pruneLocalTombstoned_ (called right after this, every merge)
+    //     actively strips it back out of THIS device's own local copy
+    //     even if it just got added here.
+    // Either way, this device's very next save overwrites the whole tab
+    // with the name missing, permanently erasing everything just logged
+    // for it with no error anywhere — first reported on the Labour tab,
+    // since workers turn over far more than suppliers/painters/scrap
+    // buyers/factories, but the same bug applies to any of them.
+    //
+    // Fix: once the server confirms (by NOT including it in this fresh
+    // `remoteTombstones` snapshot) that a given roster name's tombstone no
+    // longer exists there, drop this device's own local memory of it too
+    // — for these ROSTER-NAME buckets only (an ENTRY id, unlike a roster
+    // name, is never reused, so there's nothing to reconcile there; same
+    // reason Products/PRODUCTS is excluded — its ids are millisecond
+    // timestamps, never reused, see nextProductId()).
+    // Skipped entirely while pendingDeletionSync_ is true (some delete —
+    // possibly in a completely different bucket — hasn't reached the
+    // server from THIS device yet): reconciling mid-flight risks dropping
+    // this device's own not-yet-sent deletion tombstone before it's had a
+    // chance to actually reach the server. That only delays the
+    // reconciliation by one save cycle in the rare case they overlap —
+    // never a correctness problem, just occasionally one cycle slower.
+    const ROSTER_TOMBSTONE_BUCKETS_ = ['paintRoster', 'rawledgerRoster', 'scrapledgerRoster', 'labourledgerRoster', 'factories'];
+    function reconcileRosterTombstones_(remoteTombstones){
+      if(pendingDeletionSync_) return; // an unsent local deletion is in flight — don't risk it, see comment above
+      if(!remoteTombstones || typeof remoteTombstones !== 'object') return;
+      let changed = false;
+      ROSTER_TOMBSTONE_BUCKETS_.forEach(bucket=>{
+        const local = deletedIds_[bucket];
+        if(!Array.isArray(local) || !local.length) return;
+        const remoteSet = new Set(Array.isArray(remoteTombstones[bucket]) ? remoteTombstones[bucket] : []);
+        const kept = local.filter(key => remoteSet.has(key));
+        if(kept.length !== local.length){
+          deletedIds_[bucket] = kept;
+          changed = true;
+        }
+      });
+      if(changed) saveTombstones_();
+    }
     // ADD (2026-08-26, order-numbering reset feature): resetOrdersFresh_()
     // in Code.gs renumbers whatever real order(s) survive down to a clean
     // #0001-up sequence and clears every 'transactionsLog' tombstone on the
@@ -6190,6 +6250,12 @@
         // Must run before those merges so a deletion from elsewhere can't
         // get merged back in first and then survive the prune.
         mergeRemoteTombstones_(d.tombstones);
+        // See reconcileRosterTombstones_'s own comment for why this must
+        // run AFTER mergeRemoteTombstones_ (needs the fresh server list to
+        // compare against) but BEFORE pruneLocalTombstoned_ just below (so
+        // a roster name whose stale tombstone this just cleared doesn't
+        // get incorrectly stripped back out by that very next step).
+        reconcileRosterTombstones_(d.tombstones);
         applyOrderResetTokenIfChanged_(d);
         pruneLocalTombstoned_();
         transactionsLog = mergeById_(transactionsLog, (d.transactionsLog || []).map(migrateTxnPayment_), 'transactionsLog');
@@ -7308,6 +7374,13 @@
           // load. See looksLikeDataLoss_'s own comment for the bug this
           // closes.
           mergeRemoteTombstones_(d.tombstones);
+          // See reconcileRosterTombstones_'s own comment (declared next to
+          // mergeRemoteTombstones_ above) — keeps this device's local
+          // roster-tombstone cache in sync with the server even on a plain
+          // load, not just the merge-before-save path, so a device that
+          // rarely saves its own changes still self-heals from an old
+          // reused-name tombstone.
+          reconcileRosterTombstones_(d.tombstones);
           const suspiciousArea = looksLikeDataLoss_(d);
           if(suspiciousArea){
             console.error('[sheet-sync] refused to apply load — would have zeroed out: ' + suspiciousArea, d);
