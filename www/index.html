@@ -939,7 +939,12 @@
        room between them; only scoped to factory cards since they're the
        only ones with all three actions (and their own row layout, unlike
        the absolutely-positioned 2-button overlay on plain product cards). */
-    .factory-card .product-card-actions{ gap:10px; }
+    /* WIDENED (2026-08-28, user request): two more buttons (Export,
+       Export Settings) joined ledger/edit/delete here — wrapping lets them
+       flow onto a second line on narrow cards instead of overflowing,
+       same "stacks vertically when the row runs out of room" behavior
+       .inv-row-actions already has on every table-based ledger list. */
+    .factory-card .product-card-actions{ gap:10px; flex-wrap:wrap; justify-content:flex-end; }
     .factory-card .product-card-actions button{
       width:auto; min-width:40px; height:32px; padding:0 10px;
     }
@@ -12583,6 +12588,19 @@
         const bl = balanceLabel_(customerLedgerBalance_(c));
         card.innerHTML = `
           <div class="product-card-actions">
+            <div class="export-dropdown" data-export-dropdown>
+              <button type="button" class="pca-export" title="${tr('export')}" onclick="toggleExportDropdown(this)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+              <div class="export-dropdown-menu">
+                <button type="button" data-act="export-pdf" data-i18n="export_pdf">PDF</button>
+                <button type="button" data-act="export-jpg" data-i18n="export_jpg">JPG</button>
+                <button type="button" data-act="export-csv" data-i18n="export_csv">CSV</button>
+              </div>
+            </div>
+            <button class="pca-export-settings" data-act="export-settings" title="${tr('export_settings_title')}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+            </button>
             <button class="pca-ledger" data-act="ledger" title="${tr('view_ledger')}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </button>
@@ -12604,6 +12622,17 @@
           </div>
           <div class="frow"><span class="${bl.cls}">${bl.text}</span></div>
         `;
+        // ADD (2026-08-28, user request): per-factory Export (PDF/JPG/CSV)
+        // and Export Settings, right on the Factories card grid — same
+        // pattern as every other ledger's own list. currentCustomerName is
+        // pointed at this factory first since 'factoryledger' export reads
+        // from it directly (see openExportFilterModal) rather than a lockable
+        // name field — same approach the Custom Ledgers list row buttons use
+        // via currentCustomLedgerIdx.
+        card.querySelector('[data-act="export-pdf"]').addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomerName = f.name; openExportFilterModal('factoryledger', 'pdf'); });
+        card.querySelector('[data-act="export-jpg"]').addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomerName = f.name; openExportFilterModal('factoryledger', 'jpg'); });
+        card.querySelector('[data-act="export-csv"]').addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomerName = f.name; openExportFilterModal('factoryledger', 'csv'); });
+        card.querySelector('[data-act="export-settings"]').addEventListener('click', ()=> openFactoryCardExportSettings_(f.name));
         card.querySelector('[data-act="ledger"]').addEventListener('click', ()=> openCustomerLedgerModal(f.name));
         card.querySelector('[data-act="edit"]').addEventListener('click', ()=> openFactoryModal(idx));
         card.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
@@ -13749,6 +13778,19 @@
               <td class="num"><span class="${bl.cls}">${bl.text}</span></td>
               <td class="inv-actions-cell">
                 <div class="inv-row-actions">
+                  <div class="export-dropdown" data-export-dropdown>
+                    <button type="button" class="inv-row-export" data-idx="${idx}" title="${tr('export')}" onclick="toggleExportDropdown(this)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <div class="export-dropdown-menu">
+                      <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
+                      <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
+                    </div>
+                  </div>
+                  <button type="button" class="inv-row-export-settings" data-idx="${idx}" title="${tr('export_settings_title')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+                  </button>
                   <button class="inv-row-edit" data-idx="${idx}" title="${tr('view_ledger')}">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                   </button>
@@ -13773,6 +13815,23 @@
             <tbody>${rows}</tbody>
           </table></div>
         `;
+        // ADD (2026-08-28, user request): per-painter Export (PDF/JPG/CSV,
+        // locked to that painter via lockName) and Export Settings (that
+        // painter's own column choices — see entityExportPrefsKey_) buttons,
+        // right on each painter's own row — same pattern as the Raw Material
+        // Ledger's per-supplier row actions.
+        wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('paint', 'pdf', painters[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('paint', 'jpg', painters[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-csv').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('paint', 'csv', painters[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-settings').forEach(btn=>{
+          btn.addEventListener('click', ()=> openPainterExportSettings_(painters[parseInt(btn.dataset.idx,10)].name));
+        });
         wrap.querySelectorAll('.inv-row-edit').forEach(btn=>{
           btn.addEventListener('click', ()=> openPainterLedgerModal(parseInt(btn.dataset.idx,10)));
         });
@@ -15495,6 +15554,19 @@
               <td class="num"><span class="${bl.cls}">${bl.text}</span></td>
               <td class="inv-actions-cell">
                 <div class="inv-row-actions">
+                  <div class="export-dropdown" data-export-dropdown>
+                    <button type="button" class="inv-row-export" data-idx="${idx}" title="${tr('export')}" onclick="toggleExportDropdown(this)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <div class="export-dropdown-menu">
+                      <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
+                      <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
+                    </div>
+                  </div>
+                  <button type="button" class="inv-row-export-settings" data-idx="${idx}" title="${tr('export_settings_title')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+                  </button>
                   <button class="inv-row-edit" data-idx="${idx}" title="${tr('view_ledger')}">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                   </button>
@@ -15519,6 +15591,20 @@
             <tbody>${rows}</tbody>
           </table></div>
         `;
+        // ADD (2026-08-28, user request): per-buyer Export/Export Settings —
+        // same pattern as Raw Material/Paint Ledger row actions.
+        wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('scrapledger', 'pdf', buyers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('scrapledger', 'jpg', buyers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-csv').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('scrapledger', 'csv', buyers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-settings').forEach(btn=>{
+          btn.addEventListener('click', ()=> openScrapBuyerExportSettings_(buyers[parseInt(btn.dataset.idx,10)].name));
+        });
         wrap.querySelectorAll('.inv-row-edit').forEach(btn=>{
           btn.addEventListener('click', ()=> openScrapLedgerModal(parseInt(btn.dataset.idx,10)));
         });
@@ -16568,6 +16654,19 @@
               <td class="num"><span class="${bl.cls}">${bl.text}</span></td>
               <td class="inv-actions-cell">
                 <div class="inv-row-actions">
+                  <div class="export-dropdown" data-export-dropdown>
+                    <button type="button" class="inv-row-export" data-idx="${idx}" title="${tr('export')}" onclick="toggleExportDropdown(this)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <div class="export-dropdown-menu">
+                      <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
+                      <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
+                    </div>
+                  </div>
+                  <button type="button" class="inv-row-export-settings" data-idx="${idx}" title="${tr('export_settings_title')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+                  </button>
                   <button class="inv-row-edit" data-idx="${idx}" title="${tr('view_ledger')}">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                   </button>
@@ -16592,6 +16691,25 @@
             <tbody>${rows}</tbody>
           </table></div>
         `;
+        // ADD (2026-08-28, user request): per-ledger Export/Export Settings.
+        // Unlike raw/paint/scrap/labour, the 'customledger' export branch
+        // reads the currently-open ledger from currentCustomLedgerIdx rather
+        // than a locked name (it has no separate "All Custom Ledgers"
+        // combined export) — so these row buttons point currentCustomLedgerIdx
+        // at this row before opening the export modal, same as opening the
+        // ledger itself would.
+        wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomLedgerIdx = parseInt(btn.dataset.idx,10); openExportFilterModal('customledger', 'pdf'); });
+        });
+        wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomLedgerIdx = parseInt(btn.dataset.idx,10); openExportFilterModal('customledger', 'jpg'); });
+        });
+        wrap.querySelectorAll('.inv-row-export-csv').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomLedgerIdx = parseInt(btn.dataset.idx,10); openExportFilterModal('customledger', 'csv'); });
+        });
+        wrap.querySelectorAll('.inv-row-export-settings').forEach(btn=>{
+          btn.addEventListener('click', ()=> openCustomLedgerListExportSettings_(customLedgers[parseInt(btn.dataset.idx,10)].name));
+        });
         wrap.querySelectorAll('.inv-row-edit').forEach(btn=>{
           btn.addEventListener('click', ()=> openCustomLedgerModal(parseInt(btn.dataset.idx,10)));
         });
@@ -17462,6 +17580,19 @@
               <td class="num"><span class="${bl.cls}">${bl.text}</span></td>
               <td class="inv-actions-cell">
                 <div class="inv-row-actions">
+                  <div class="export-dropdown" data-export-dropdown>
+                    <button type="button" class="inv-row-export" data-idx="${idx}" title="${tr('export')}" onclick="toggleExportDropdown(this)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <div class="export-dropdown-menu">
+                      <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
+                      <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
+                    </div>
+                  </div>
+                  <button type="button" class="inv-row-export-settings" data-idx="${idx}" title="${tr('export_settings_title')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+                  </button>
                   <button class="inv-row-edit" data-idx="${idx}" title="${tr('view_ledger')}">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                   </button>
@@ -17491,6 +17622,20 @@
             <tbody>${rows}</tbody>
           </table></div>
         `;
+        // ADD (2026-08-28, user request): per-worker Export/Export Settings —
+        // same pattern as Raw Material/Paint/Scrap Ledger row actions.
+        wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('labourledger', 'pdf', workers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('labourledger', 'jpg', workers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-csv').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('labourledger', 'csv', workers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-settings').forEach(btn=>{
+          btn.addEventListener('click', ()=> openWorkerExportSettings_(workers[parseInt(btn.dataset.idx,10)].name));
+        });
         wrap.querySelectorAll('.inv-row-edit').forEach(btn=>{
           btn.addEventListener('click', ()=> openWorkerLedgerModal(parseInt(btn.dataset.idx,10)));
         });
@@ -22915,6 +23060,27 @@
     window.openRawSupplierExportSettings_ = function(supplierName){
       openLedgerExportSettings_('raw', supplierName, rawExportPrefsKey_(supplierName));
     };
+    // ADD (2026-08-28, user request: "these buttons and vertical pattern on
+    // all ledgers"): generalizes rawExportPrefsKey_'s per-supplier idea to
+    // every entity-keyed ledger (painter, scrap buyer, custom ledger,
+    // worker), same 'ledgerKey::entityName' shape, falling back to the
+    // shared ledgerKey slot when no name is given (the "All X" combined
+    // export/settings case, same fallback raw already has).
+    function entityExportPrefsKey_(ledgerKey, entityName){
+      return entityName ? (ledgerKey + '::' + entityName) : ledgerKey;
+    }
+    window.openPainterExportSettings_ = function(painterName){
+      openLedgerExportSettings_('paint', painterName, entityExportPrefsKey_('paint', painterName));
+    };
+    window.openScrapBuyerExportSettings_ = function(buyerName){
+      openLedgerExportSettings_('scrap', buyerName, entityExportPrefsKey_('scrap', buyerName));
+    };
+    window.openCustomLedgerListExportSettings_ = function(ledgerName){
+      openLedgerExportSettings_('custom', ledgerName, entityExportPrefsKey_('custom', ledgerName));
+    };
+    window.openWorkerExportSettings_ = function(workerName){
+      openLedgerExportSettings_('labour', workerName, entityExportPrefsKey_('labour', workerName));
+    };
     const lesCloseBtn = document.getElementById('les-close');
     if(lesCloseBtn) lesCloseBtn.addEventListener('click', ()=> ledgerExportSettingsModal.classList.remove('active'));
 
@@ -23016,7 +23182,20 @@
       const cl = customLedgers[currentCustomLedgerIdx];
       openLedgerSettings_('custom', cl ? cl.name : tr('custom_ledgers_title'));
     };
-    window.openCustomerLedgerModalExportSettings_ = () => openLedgerExportSettings_('customerledger', currentCustomerName || '');
+    // CHANGED (2026-08-28, user request: "these buttons ... on all ledgers"):
+    // was a single shared 'customerledger' slot for every factory — now
+    // per-factory (entityExportPrefsKey_), matching the Raw Material Ledger's
+    // per-supplier settings and the new per-entity settings just added to
+    // Paint/Scrap/Custom/Labour, so one factory's column choices never
+    // affect another's. Also used directly by the Factories page's own
+    // row-level Export Settings button (openFactoryCardExportSettings_
+    // below), so both the outside list and the inside ledger modal always
+    // point at the same slot for a given factory.
+    function openFactoryCardExportSettings_(factoryName){
+      openLedgerExportSettings_('customerledger', factoryName, entityExportPrefsKey_('customerledger', factoryName));
+    }
+    window.openFactoryCardExportSettings_ = openFactoryCardExportSettings_;
+    window.openCustomerLedgerModalExportSettings_ = () => openFactoryCardExportSettings_(currentCustomerName || '');
     window.openCustomerLedgerModalLedgerSettings_ = () => openLedgerSettings_('customerledger', currentCustomerName || '');
     function renderOverviewModulesSettingsList_(){
       const list = document.getElementById('settings-overview-modules-list');
