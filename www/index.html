@@ -948,6 +948,34 @@
     .factory-card .product-card-actions button{
       width:auto; min-width:40px; height:32px; padding:0 10px;
     }
+    /* WIDENED + shinier (2026-08-28, user request): "make edit/delete
+       wider and shiny like other button outside of ledgers" — after the
+       Export/Export Settings buttons were removed from this card (now
+       redundant with the ones already inside each ledger, see
+       renderFactories), Edit/Delete got extra room to become proper
+       touch targets instead of small icon squares: wider, a permanently
+       visible tinted border (not just on :hover) and a soft gradient
+       fill for a bit of shine, matching the confident look of the
+       Ledger button and this app's other outside-the-ledger action
+       buttons (e.g. .btn-export "+ Add Factory"). */
+    .factory-card .product-card-actions button.factory-card-btn-wide{
+      min-width:64px; height:34px; padding:0 14px; gap:6px;
+      border-width:1.5px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
+      box-shadow:0 1px 3px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .factory-card .product-card-actions button.pca-edit.factory-card-btn-wide{
+      border-color:color-mix(in srgb, var(--yellow) 45%, var(--steel-line)); color:var(--yellow);
+    }
+    .factory-card .product-card-actions button.pca-delete.factory-card-btn-wide{
+      border-color:color-mix(in srgb, var(--red) 45%, var(--steel-line)); color:var(--red);
+    }
+    .factory-card .product-card-actions button.pca-edit.factory-card-btn-wide:hover{
+      border-color:var(--yellow); box-shadow:0 0 0 1px var(--yellow), 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .factory-card .product-card-actions button.pca-delete.factory-card-btn-wide:hover{
+      border-color:var(--red); box-shadow:0 0 0 1px var(--red), 0 2px 6px rgba(0,0,0,0.3);
+    }
     .factory-card .fname{ font-size:14px; font-weight:600; padding-right:0; }
     .factory-card .frow{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-dim); }
     .factory-card .frow svg{ flex-shrink:0; color:var(--yellow); }
@@ -8195,7 +8223,7 @@
         brand: "Amir Traders", brand_loc: "Fan Accessories · Gujrat",
         nav_overview: "Overview", nav_products: "Products", nav_fan_guards: "Fan Guards",
         nav_notifications: "Notifications", notifications_title: "Notifications", notifications_sub: "Unconfirmed orders, cheques awaiting clearance, and entries missing a receipt.",
-        pending_inquiries: "Pending Inquiries", pending_cheque_clearances: "Pending Cheque Clearances", pending_slips: "Pending Slips",
+        pending_inquiries: "Pending Inquiries", pending_cheque_clearances: "Pending Cheque Clearances", pending_slips: "Pending Slips", notif_total: "Total Pending",
         no_pending_inquiries: "No unconfirmed orders right now.", no_pending_cheques: "No cheques waiting on clearance.", no_pending_slips: "No entries missing a receipt.",
         pending: "Pending", overdue: "Overdue", missing_receipt: "Missing Receipt", cheque_date_short: "Due", cheque_number_short: "Cheque #",
         low_stock_alerts: "Low Stock Alerts", no_low_stock: "Nothing low on stock right now.", depleted: "Depleted", stock_depleted_sub: "Had {weight}kg — none remaining",
@@ -8565,7 +8593,7 @@
         brand: "امیر ٹریڈرز", brand_loc: "فین ایکسیسریز · گجرات",
         nav_overview: "جائزہ", nav_products: "پروڈکٹس", nav_fan_guards: "فین گارڈز",
         nav_notifications: "اطلاعات", notifications_title: "اطلاعات", notifications_sub: "غیر تصدیق شدہ آرڈرز، کلیئرنس کے منتظر چیک، اور بغیر رسید کی اندراجات۔",
-        pending_inquiries: "زیر التوا انکوائریز", pending_cheque_clearances: "زیر التوا چیک کلیئرنس", pending_slips: "زیر التوا سلپس",
+        pending_inquiries: "زیر التوا انکوائریز", pending_cheque_clearances: "زیر التوا چیک کلیئرنس", pending_slips: "زیر التوا سلپس", notif_total: "کل زیر التوا",
         no_pending_inquiries: "فی الحال کوئی غیر تصدیق شدہ آرڈر نہیں۔", no_pending_cheques: "کلیئرنس کے منتظر کوئی چیک نہیں۔", no_pending_slips: "بغیر رسید کوئی اندراج نہیں۔",
         pending: "زیر التوا", overdue: "میعاد گزشتہ", missing_receipt: "رسید موجود نہیں", cheque_date_short: "تاریخ", cheque_number_short: "چیک نمبر",
         low_stock_alerts: "کم اسٹاک الرٹس", no_low_stock: "فی الحال کوئی اسٹاک کم نہیں ہے۔", depleted: "ختم", stock_depleted_sub: "{weight} کلوگرام تھا — اب کچھ باقی نہیں",
@@ -12661,27 +12689,14 @@
         const bl = balanceLabel_(customerLedgerBalance_(c));
         card.innerHTML = `
           <div class="product-card-actions">
-            <div class="export-dropdown" data-export-dropdown>
-              <button type="button" class="pca-export" title="${tr('export')}" onclick="toggleExportDropdown(this)">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </button>
-              <div class="export-dropdown-menu">
-                <button type="button" data-act="export-pdf" data-i18n="export_pdf">PDF</button>
-                <button type="button" data-act="export-jpg" data-i18n="export_jpg">JPG</button>
-                <button type="button" data-act="export-csv" data-i18n="export_csv">CSV</button>
-              </div>
-            </div>
-            <button class="pca-export-settings" data-act="export-settings" title="${tr('export_settings_title')}">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
-            </button>
             <button class="pca-ledger" data-act="ledger" title="${tr('view_ledger')}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </button>
-            <button class="pca-edit" data-act="edit" title="Edit">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <button class="pca-edit factory-card-btn-wide" data-act="edit" title="Edit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
             </button>
-            <button class="pca-delete" data-act="delete" title="Delete">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            <button class="pca-delete factory-card-btn-wide" data-act="delete" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
             </button>
           </div>
           <div class="fname">${f.name}</div>
@@ -12695,17 +12710,12 @@
           </div>
           <div class="frow"><span class="${bl.cls}">${bl.text}</span></div>
         `;
-        // ADD (2026-08-28, user request): per-factory Export (PDF/JPG/CSV)
-        // and Export Settings, right on the Factories card grid — same
-        // pattern as every other ledger's own list. currentCustomerName is
-        // pointed at this factory first since 'factoryledger' export reads
-        // from it directly (see openExportFilterModal) rather than a lockable
-        // name field — same approach the Custom Ledgers list row buttons use
-        // via currentCustomLedgerIdx.
-        card.querySelector('[data-act="export-pdf"]').addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomerName = f.name; openExportFilterModal('factoryledger', 'pdf'); });
-        card.querySelector('[data-act="export-jpg"]').addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomerName = f.name; openExportFilterModal('factoryledger', 'jpg'); });
-        card.querySelector('[data-act="export-csv"]').addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomerName = f.name; openExportFilterModal('factoryledger', 'csv'); });
-        card.querySelector('[data-act="export-settings"]').addEventListener('click', ()=> openFactoryCardExportSettings_(f.name));
+        // REMOVED (2026-08-28, user request): the per-factory Export
+        // (PDF/JPG/CSV) and Export Settings buttons that used to sit here
+        // were dropped — both already live inside each factory's own
+        // ledger (openCustomerLedgerModal), so having them duplicated on
+        // this outer card was redundant. Ledger/Edit/Delete are the only
+        // actions left on this card now.
         card.querySelector('[data-act="ledger"]').addEventListener('click', ()=> openCustomerLedgerModal(f.name));
         card.querySelector('[data-act="edit"]').addEventListener('click', ()=> openFactoryModal(idx));
         card.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
@@ -19889,7 +19899,12 @@
         display: x.val,
         color: ringMetricColor_(x, m.color, i)
       }));
-      const headline = segments[0];
+      // FIX (2026-08-28): modules can now supply an explicit ringTotal
+      // (see the 'notifications' module in renderOverview) to override the
+      // default "just use the first metric" headline — used where the
+      // grand total across every metric is more meaningful than whichever
+      // category happens to be listed first.
+      const headline = m.ringTotal ? { label: m.ringTotal.label, display: m.ringTotal.val, color: m.color } : segments[0];
       let headDisplay = headline ? ringValueHead_(headline.display) : '';
       if(headDisplay.length > 13) headDisplay = headDisplay.slice(0,12) + '…';
       const centerHtml = headline ? `
@@ -20225,7 +20240,17 @@
           { label:tr('summary_payables'), val: fmt(summaryReport.payables), cls: summaryReport.payables > 0 ? 'neg' : '' },
           { label:tr('summary_net_position'), val: fmt(summaryReport.receivables - summaryReport.payables), cls: (summaryReport.receivables - summaryReport.payables) >= 0 ? 'pos' : 'neg' },
         ]},
-        { key:'notifications', color:'var(--red)', title:tr('nav_notifications'), icon:ICONS.notifications, metrics:[
+        // FIX (2026-08-28, user report: "Notifications widget isn't showing
+        // total notifications number") — the donut center used to just
+        // echo the FIRST metric (Pending Inquiries), so it could sit at
+        // "0" even while other categories below it had real pending counts
+        // and the header bell showed a nonzero badge (see
+        // updateNotificationsBadge_). `ringTotal` is read by
+        // moduleMetricsRingHtml_ below and, when present, overrides the
+        // ring center with this grand total instead of metrics[0].
+        { key:'notifications', color:'var(--red)', title:tr('nav_notifications'), icon:ICONS.notifications,
+          ringTotal: { label: tr('notif_total'), val: String(getPendingInquiries_().length + getPendingCheques_().length + getPendingSlips_().length + getPendingOrderReceipts_().length + getLowStockAlerts_().length + getBackupOverdueAlert_().length) },
+          metrics:[
           { label:tr('pending_inquiries'), val: String(getPendingInquiries_().length), cls: getPendingInquiries_().length>0 ? 'neg' : '' },
           { label:tr('pending_cheque_clearances'), val: String(getPendingCheques_().length), cls: getPendingCheques_().length>0 ? 'neg' : '' },
           { label:tr('pending_slips'), val: String(getPendingSlips_().length), cls: getPendingSlips_().length>0 ? 'neg' : '' },
