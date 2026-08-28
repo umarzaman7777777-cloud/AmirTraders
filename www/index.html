@@ -8429,6 +8429,7 @@
         no_suppliers_yet: "No suppliers yet", delete_supplier: "Delete Supplier",
         confirm_delete_supplier: "Delete {name} and their whole ledger?",
         overall_balance: "Overall Balance (Till)",
+        total_weight_received: "Total Weight Received (Till)", total_items_received: "Total Items Received (Till)",
         // ADD (2026-08-25, user request): Scrap Ledger.
         nav_scrapledger: "Scrap Ledger",
         scrapledger_title: "Scrap Ledger", scrapledger_sub: "Track scrap sold by weight (debit) and payments received (credit) per buyer.",
@@ -8794,6 +8795,7 @@
         no_suppliers_yet: "ابھی تک کوئی سپلائر نہیں", delete_supplier: "سپلائر حذف کریں",
         confirm_delete_supplier: "{name} اور ان کا پورا لیجر حذف کریں؟",
         overall_balance: "مجموعی بیلنس (ٹِل)",
+        total_weight_received: "کل وصول شدہ وزن (ٹِل)", total_items_received: "کل وصول شدہ آئٹمز (ٹِل)",
         // ADD (2026-08-25, user request): Scrap Ledger.
         nav_scrapledger: "سکریپ لیجر",
         scrapledger_title: "سکریپ لیجر", scrapledger_sub: "وزن کے حساب سے فروخت ہونے والا سکریپ (ڈیبٹ) اور ہر خریدار سے موصول ہونے والی ادائیگیاں (کریڈٹ) کا ریکارڈ رکھیں۔",
@@ -14732,6 +14734,25 @@
         credit: entries.reduce((sum,e)=> sum + (e.credit||0), 0)
       };
     }
+    // ADD (2026-08-28, user request): "box of Total weight and Total Items
+    // received all the time till, outside of ledgers on top of supplier
+    // name" — an all-time (never period-filtered) grand total across every
+    // supplier's entries, summing the same weightIn/itemsIn fields the
+    // per-entry "Weight Received"/"Items Received (pcs)" fields save (see
+    // rl-weightin/rl-itemsin above). Lives in renderRawLedger's existing
+    // stats grid so it re-renders — i.e. stays in sync — every time that
+    // function runs, which already happens after every add/edit/delete of
+    // a raw ledger entry (commitRlEntrySave_ etc. below).
+    function rawLedgerGrandWeightItems_(suppliers){
+      let weight = 0, items = 0;
+      suppliers.forEach(sup=>{
+        (sup.entries || []).forEach(e=>{
+          if(e.weightIn) weight += e.weightIn;
+          if(e.itemsIn) items += e.itemsIn;
+        });
+      });
+      return { weight, items };
+    }
     function renderRawLedger(){
       const wrap = document.getElementById('rawledger-table');
       if(!wrap) return;
@@ -14744,10 +14765,13 @@
         const grandCredit = suppliers.reduce((s,sup)=> s + rawSupplierTotals_(sup).credit, 0);
         const grandBal = grandCredit - grandDebit;
         const grandBl = balanceLabel_(grandBal);
+        const grandWI = rawLedgerGrandWeightItems_(suppliers);
         statsGrid.innerHTML = `
           <div class="stat-card"><div class="stat-label">${tr('total_paid_debit')}</div><div class="stat-val">${fmt(grandDebit)}</div></div>
           <div class="stat-card"><div class="stat-label">${tr('total_received_credit')}</div><div class="stat-val">${fmt(grandCredit)}</div></div>
           <div class="stat-card"><div class="stat-label">${tr('overall_balance')}</div><div class="stat-val"><span class="${grandBl.cls}">${grandBl.text}</span></div></div>
+          <div class="stat-card"><div class="stat-label">${tr('total_weight_received')}</div><div class="stat-val">${(Math.round(grandWI.weight * 1000) / 1000).toLocaleString('en-PK', {maximumFractionDigits:3})} kg</div></div>
+          <div class="stat-card"><div class="stat-label">${tr('total_items_received')}</div><div class="stat-val">${grandWI.items.toLocaleString('en-PK', {maximumFractionDigits:0})}</div></div>
         `;
       }
 
