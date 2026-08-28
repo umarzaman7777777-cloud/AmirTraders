@@ -9096,7 +9096,7 @@
         const da = parseDMY_(a.date), db = parseDMY_(b.date);
         const ta = da ? da.getTime() : 0, tb = db ? db.getTime() : 0;
         if(ta !== tb) return ta - tb;
-        return String(a.time||'').localeCompare(String(b.time||''));
+        return parseTimeMinutes_(a.time) - parseTimeMinutes_(b.time);
       });
       return merged;
     }
@@ -9214,6 +9214,29 @@
       h = h % 12;
       if(h === 0) h = 12;
       return h + ':' + min + ' ' + ampm;
+    }
+    // Turns either time format this app stores ("7:15 AM"/"07:15 AM" — order
+    // rows, via formatTime12_; or "07:15" 24-hour — manual ledger entries,
+    // via toLocaleTimeString('en-GB',...)) into minutes-since-midnight, so
+    // same-day ledger entries can be ordered correctly regardless of which
+    // format produced them. A raw string compare of the two formats isn't
+    // just wrong for the missing-time case above — it's wrong in general:
+    // "10:15 AM" sorts before "09:00" lexicographically even though 9:00 is
+    // earlier. Returns -1 for empty/unparseable input so those sort first,
+    // same as the old ''-before-anything behavior.
+    function parseTimeMinutes_(s){
+      s = String(s || '').trim();
+      if(!s) return -1;
+      const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(s);
+      if(!m) return -1;
+      let h = parseInt(m[1],10);
+      const min = parseInt(m[2],10);
+      const ampm = m[3] ? m[3].toUpperCase() : null;
+      if(ampm){
+        h = h % 12;
+        if(ampm === 'PM') h += 12;
+      }
+      return h * 60 + min;
     }
     let expenses = [];
     let expenseCategories = ["Raw Material","Labour","Paint","Electricity","Gas","Sanitation","Factory Cleaner","Rickshaw Rent","Rent","Transport"];
@@ -12940,12 +12963,26 @@
           .reduce((s,p)=> s + (p.amount || 0), 0);
         const existing = c.entries.find(e => orderIdOf(e) === t.id);
         if(!existing){
-          c.entries.push({ id: 'order-' + t.id, date: t.date, desc: buildOrderLedgerDesc_(t), debit: t.total, credit: directPaid, txnId: t.id });
+          // FIX (2026-08-28): this used to omit `time` entirely, leaving every
+          // auto-debit order row with no time at all. Same-day entries are
+          // then only orderable by time, so two timeless order rows tied and
+          // fell back to insertion order (newest order first, since
+          // confirmedOrders is built with unshift) — scrambling the
+          // chronological sort right above and producing a running balance
+          // that stacked orders in the wrong sequence (see the "where did
+          // this 900 come from" report: Order #0004 processed before the
+          // earlier Order #0003, with the Rs150 payment pushed to the end
+          // instead of its real place between them). Carrying the order's
+          // own t.time through fixes the sort at its source.
+          c.entries.push({ id: 'order-' + t.id, date: t.date, time: t.time || '', desc: buildOrderLedgerDesc_(t), debit: t.total, credit: directPaid, txnId: t.id });
           changed = true;
         } else {
           if(existing.debit !== t.total){ existing.debit = t.total; changed = true; }
           if(existing.credit !== directPaid){ existing.credit = directPaid; changed = true; }
           if(!existing.txnId){ existing.txnId = t.id; changed = true; }
+          // Self-heal entries created before the fix above, which are still
+          // sitting in local/synced data with no time at all.
+          if(!existing.time && t.time){ existing.time = t.time; changed = true; }
           const newDesc = buildOrderLedgerDesc_(t);
           if(existing.desc !== newDesc){ existing.desc = newDesc; changed = true; }
         }
@@ -12995,7 +13032,7 @@
         const da = parseDMY_(a.date), db = parseDMY_(b.date);
         const ta = da ? da.getTime() : 0, tb = db ? db.getTime() : 0;
         if(ta !== tb) return ta - tb;
-        return String(a.time||'').localeCompare(String(b.time||''));
+        return parseTimeMinutes_(a.time) - parseTimeMinutes_(b.time);
       });
       if(c.entries.map(e=>e.id).join(',') !== beforeOrder) changed = true;
       if(changed) queueSync();
@@ -18194,7 +18231,7 @@
         const da = parseDMY_(a.date), db = parseDMY_(b.date);
         const ta = da ? da.getTime() : 0, tb = db ? db.getTime() : 0;
         if(ta !== tb) return ta - tb;
-        return String(a.time||'').localeCompare(String(b.time||''));
+        return parseTimeMinutes_(a.time) - parseTimeMinutes_(b.time);
       });
       const entries = w.entries || [];
       // FIX: this used to be a from/to RANGE filter (two date boxes) that
