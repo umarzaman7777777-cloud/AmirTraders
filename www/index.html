@@ -538,6 +538,14 @@
         flex-wrap:wrap;
         gap:8px;
       }
+      /* FIX (2026-08-29 v2): pushes the mic button (now in .brand-controls,
+         see the header markup) to the right end of its row — the same row
+         as the sync widget — so it lines up visually under the EN/اردو
+         toggle in .top-right above it, instead of sitting left-packed next
+         to update-overview/search/theme like the rest of that row. Phones
+         only; on wider screens (Tab included) it stays inline right after
+         sync-widget with no special positioning. */
+      .brand-controls #voice-command-btn{ margin-left:auto; }
     }
     .sync-widget{
       display:flex; align-items:center; gap:8px;
@@ -2224,6 +2232,28 @@
           <span class="sync-dot" id="sync-dot"></span>
           <span id="sync-label">Saved on device</span>
         </div>
+        <!-- MOVED (2026-08-29 v2, user report: mic icon was "hovering on
+             name" and header was too tall on phones, though fine on the
+             Tab) — voice-command-btn used to live in .top-right alongside
+             header-notifications-btn + lang-toggle. On narrow phones those
+             three don't fit on one line, so .top-right's flex-wrap (see
+             mobile media query below) stacked a second row *inside that
+             absolutely-positioned box*, which landed on top of the
+             "Amir Traders" name and made the whole header taller. The Tab
+             is wide enough that they always fit on one line there, which
+             is why it looked fine on that device already.
+             Moving the button here — into .brand-controls, right next to
+             the sync widget — puts it "in row of Syncing" per the user's
+             request, and lets .top-right go back to just two items
+             (notifications + EN/اردو) that always fit on one line on any
+             phone. See the mobile media query below for the extra
+             margin-left:auto that pushes it to the right end of this row
+             (visually under EN/اردو) on phones only; on wider screens
+             (including the Tab) it just sits inline here, immediately
+             after the sync widget. -->
+        <button type="button" class="theme-toggle" id="voice-command-btn" data-i18n-title="voice_btn_title" title="Voice Command (English / Urdu)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
       </div>
     </div>
     <div class="top-right">
@@ -2253,10 +2283,9 @@
            reachable from any screen, same reasoning as
            header-notifications-btn just below. See VOICE COMMANDS block
            near speechRecognitionPlugin_ for the actual logic; this button
-           only opens #voice-command-modal. -->
-      <button type="button" class="theme-toggle" id="voice-command-btn" data-i18n-title="voice_btn_title" title="Voice Command (English / Urdu)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-      </button>
+           only opens #voice-command-modal. MOVED (2026-08-29 v2) out of
+           this .top-right group into .brand-controls next to sync-widget
+           — see that button definition up in .brand-controls for why. -->
       <button type="button" class="theme-toggle header-notif-btn" id="header-notifications-btn" title="Notifications">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="header-notif-badge" id="header-notifications-badge" style="display:none;"></span>
@@ -9927,18 +9956,16 @@
     // Code.gs (a new 'transcribe' action holding the key server-side)
     // instead of hitting Google directly from here.
     const GOOGLE_STT_API_KEY = "";
-    // FIX (2026-08-29, user request: "Urdu is first language, change it to
-    // second... and understanding in English") — English is now the
-    // primary/main recognition language, Urdu the secondary/alternate.
-    // This flips which language each engine is tuned toward first:
-    //  - ONLINE: languageCode (primary) vs alternativeLanguageCodes
-    //    (secondary) below.
-    //  - OFFLINE: single-locale, so this is now the ONLY locale it uses
-    //    (see VOICE_LANG_PRIMARY_ in transcribeOffline_) — meaning English
-    //    commands get the device's full-quality English model instead of
-    //    being heard through an Urdu-tuned recognizer.
-    const VOICE_LANG_PRIMARY_ = 'en-US';   // English — main
-    const VOICE_LANG_SECONDARY_ = 'ur-PK'; // Urdu — secondary
+    // FIX (2026-08-29 v3, user decision: "use only English language, then
+    // there will be best offline") — English-only now, on both engines,
+    // full stop. Both engines get their best possible accuracy from a
+    // single well-supported locale rather than juggling two languages —
+    // see transcribeOnline_/transcribeOffline_ below, neither of which
+    // reference a second language anymore. VOICE_LANG_SECONDARY_ was
+    // Urdu's locale code for the old dual-language attempt; left here
+    // unused (harmless) in case Urdu support is revisited later.
+    const VOICE_LANG_PRIMARY_ = 'en-US';   // English — the only recognition language now
+    const VOICE_LANG_SECONDARY_ = 'ur-PK'; // unused — kept for a possible future revisit
 
     function speechRecognitionPlugin_(){ return capacitorPlugin_('SpeechRecognition'); }
 
@@ -9984,10 +10011,15 @@
 
     let voiceMediaRecorder_ = null;
     // ONLINE engine: records a short clip, sends it to Google Cloud
-    // Speech-to-Text with English as the primary language and Urdu as the
-    // alternate (alternativeLanguageCodes) — the closest a REST call like
-    // this gets to "understanding both", since the service picks whichever
-    // language best matches each utterance rather than forcing one.
+    // Speech-to-Text as English only. FIX (2026-08-29 v3, user decision:
+    // "use only English language, then there will be best offline") —
+    // dropped alternativeLanguageCodes/Urdu entirely, on- and off-line
+    // both. A single, well-supported locale gives noticeably better
+    // accuracy than asking either engine to juggle two languages at once,
+    // and English is by far the best-supported locale for both this REST
+    // API and Android's own on-device recognizer. VOICE_LANG_SECONDARY_
+    // is unused now but left defined in case Urdu support is revisited
+    // later.
     function transcribeOnline_(){
       return new Promise((resolve, reject)=>{
         if(!GOOGLE_STT_API_KEY){ reject(new Error('no-api-key')); return; }
@@ -10008,7 +10040,6 @@
                   config:{
                     encoding:'WEBM_OPUS',
                     languageCode: VOICE_LANG_PRIMARY_,
-                    alternativeLanguageCodes:[VOICE_LANG_SECONDARY_],
                     // FIX (2026-08-29, user request: "understanding in
                     // English") — 'command_and_search' is Google's model
                     // tuned for short spoken commands/queries (exactly
@@ -10043,6 +10074,13 @@
     // NativeBiometric — silently unavailable (rejects) until the actual
     // native project has @capacitor-community/speech-recognition installed
     // and synced, exactly like those two.
+    // FIX (2026-08-29 v3, user decision: "use only English language, then
+    // there will be best offline") — reverted the brief English/Urdu
+    // dual-locale retry (v2) since it's pointless overhead once every
+    // command is spoken in English only: single-locale English already
+    // gets Android's best-supported on-device (and free server-side,
+    // when online) accuracy, so there's nothing left to gain from a
+    // second pass in Urdu, just wasted seconds on a miss.
     async function transcribeOffline_(){
       const plugin = speechRecognitionPlugin_();
       if(!plugin) throw new Error('plugin-unavailable');
@@ -16647,7 +16685,7 @@
           if(e.chequeStatus !== 'bounced') running += (e.debit||0) - (e.credit||0);
           const d = parseDMY_(e.date);
           const inRange = (!dateFrom || !d || d >= dateFrom) && (!dateTo || !d || d <= dateTo);
-          if(inRange) rows.push([cl.name, e.date, e.time, e.desc || '', e.itemColour || '', e.weight || '', e.sizeCount || '', e.itemCount || '', e.ratePerItem || '', e.itemMethod || '', e.itemWeightStatus || '', e.selfWeightStock || '', e.weightPerItem || 0, e.weightPerScrap || 0, (e.remainingWeight !== undefined ? e.remainingWeight : ''), e.debit || 0, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
+          if(inRange) rows.push([cl.name, e.date, e.time, e.desc || '', e.itemColour || '', e.weight || '', e.sizeCount || '', e.itemCount || '', e.ratePerItem || '', e.itemMethod || '', e.itemWeightStatus || '', e.selfWeightStock || '', e.weightPerItem || 0, e.weightPerScrap || 0, culFormatRemainingWeightForDisplay_(e.remainingWeight), e.debit || 0, e.credit || 0, running, e.receivedBy || '', e.receivedIn || '']);
         });
       });
       return rows;
@@ -16823,6 +16861,36 @@
     function culGetLedgerStock_(cl){
       return culGetStock_(cl, '');
     }
+    // FIX (2026-08-29, user report: exported Remaining Weight column
+    // showing something like "0.1000000000000009" instead of "0.1") —
+    // plain JS float subtraction/addition (e.g. 2 - 1.9) leaves tiny
+    // binary-representation noise past a certain decimal place. The Raw
+    // Material Ledger already guards against this the same way (see
+    // rec.weightRemaining a bit above); Custom Ledger's shared stock pool
+    // just never had the same rounding applied to it. Rounding to 6
+    // decimal places keeps genuine fractional weights (0.03, 1.9, etc.)
+    // intact while discarding the noise past what any real-world weight
+    // entry needs.
+    function culRoundWeight_(n){
+      return Math.round((n || 0) * 1e6) / 1e6;
+    }
+    // FIX (2026-08-29, same report as culRoundWeight_ above): rounds
+    // Remaining Weight for DISPLAY/export too, not just when it's written.
+    // culRoundWeight_ alone only prevents the noise in NEW entries — data
+    // already saved before this fix (like the "0.1000000000000009" in the
+    // exported PDF that was reported) still has the raw unrounded number
+    // sitting in it. Re-rounding here cleans that up on every export/view
+    // without needing to re-save every old entry. Handles the multi-line
+    // form (one value per item block, newline-joined) the same as the
+    // single-value form.
+    function culFormatRemainingWeightForDisplay_(val){
+      if(val === undefined || val === null || val === '') return '';
+      return String(val).split('\n').map(line=>{
+        if(line === '') return '';
+        const n = parseFloat(line);
+        return isNaN(n) ? line : culRoundWeight_(n);
+      }).join('\n');
+    }
     // Strips weightStock down to just the '' key — the ledger-wide shared
     // pool, the only one any current code path reads or writes (see
     // culGetLedgerStock_ above). Older versions of this feature kept a
@@ -16910,7 +16978,7 @@
       const weightPerItem = stock.weightPerItem || 0;
       const orig = culEditingOriginalItems[idx];
       const already = (editingCulEntryIdx !== null && orig) ? orig.itemCount : 0;
-      const preview = Math.max(0, Math.min(stock.weight || 0, (stock.remaining || 0) - Math.max(0, itemCount - already) * weightPerItem));
+      const preview = culRoundWeight_(Math.max(0, Math.min(stock.weight || 0, (stock.remaining || 0) - Math.max(0, itemCount - already) * weightPerItem)));
       remEl.value = preview;
       const selfEl = culEl_('cul-selfweightstock', idx);
       const methodEl = culEl_('cul-itemmethod', idx);
@@ -16965,10 +17033,10 @@
       if(selfOwed > 0){
         const paidToSelf = Math.min(selfOwed, amount);
         const rest = amount - paidToSelf;
-        previewEl.textContent = tr('self_weight_stock') + ': ' + selfOwed + ' − ' + paidToSelf + ' = ' + (selfOwed - paidToSelf)
-          + ' · ' + tr('remaining_weight') + ': ' + remaining + (rest > 0 ? ' + ' + rest + ' = ' + (remaining + rest) : '');
+        previewEl.textContent = tr('self_weight_stock') + ': ' + selfOwed + ' − ' + paidToSelf + ' = ' + culRoundWeight_(selfOwed - paidToSelf)
+          + ' · ' + tr('remaining_weight') + ': ' + remaining + (rest > 0 ? ' + ' + rest + ' = ' + culRoundWeight_(remaining + rest) : '');
       } else {
-        previewEl.textContent = tr('remaining_weight') + ': ' + remaining + ' + ' + amount + ' = ' + (remaining + amount);
+        previewEl.textContent = tr('remaining_weight') + ': ' + remaining + ' + ' + amount + ' = ' + culRoundWeight_(remaining + amount);
       }
     }
     function culRefreshAllWeightUI_(){
@@ -17427,7 +17495,7 @@
           if(it.ratePerItem) specParts.push(tr('rate_per_item') + ': ' + fmt(it.ratePerItem));
           if(it.weightPerItem) specParts.push(tr('weight_per_item') + ': ' + it.weightPerItem);
           if(it.weightPerScrap) specParts.push(tr('weight_per_scrap') + ': ' + it.weightPerScrap);
-          if(it.remainingWeight !== undefined && it.remainingWeight !== '') specParts.push(tr('remaining_weight') + ': ' + it.remainingWeight);
+          if(it.remainingWeight !== undefined && it.remainingWeight !== '') specParts.push(tr('remaining_weight') + ': ' + culRoundWeight_(it.remainingWeight));
           if(it.itemMethod) specParts.push(tr('payment_method') + ': ' + it.itemMethod);
           if(it.itemMethod === 'SteelWeight' && it.selfWeightStock !== undefined && it.selfWeightStock !== '') specParts.push(tr('self_weight_stock') + ': ' + it.selfWeightStock);
           if(!specParts.length) return '';
@@ -17540,7 +17608,7 @@
                   return;
                 }
                 const stock = culGetLedgerStock_(cl);
-                stock.remaining = (stock.remaining || 0) + (parseFloat(it.itemCount) || 0) * (parseFloat(it.weightPerItem) || 0);
+                stock.remaining = culRoundWeight_((stock.remaining || 0) + (parseFloat(it.itemCount) || 0) * (parseFloat(it.weightPerItem) || 0));
                 if(stock.weight) stock.remaining = Math.min(stock.remaining, stock.weight);
               });
             }
@@ -17650,7 +17718,7 @@
       if(amount > 0){
         const stock = culGetLedgerStock_(cl);
         stock.weight = (stock.weight || 0) + amount;
-        stock.remaining = (stock.remaining || 0) + amount;
+        stock.remaining = culRoundWeight_((stock.remaining || 0) + amount);
       }
       amountEl.value = '';
       culRefreshWeightUI_();
@@ -17871,7 +17939,7 @@
         const wasSteelWeight = orig && orig.itemMethod === 'SteelWeight';
         const already = (editingCulEntryIdx !== null && orig && !wasSteelWeight) ? orig.itemCount : 0;
         const newCount = parseFloat(b.itemCount) || 0;
-        ledgerStock.remaining = Math.max(0, (ledgerStock.remaining || 0) - (newCount - already) * b.weightPerItem);
+        ledgerStock.remaining = culRoundWeight_(Math.max(0, (ledgerStock.remaining || 0) - (newCount - already) * b.weightPerItem));
         b.remainingWeight = ledgerStock.remaining;
       });
       // Join every block's fields into one newline-per-item string per
