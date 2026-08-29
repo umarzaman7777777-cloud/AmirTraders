@@ -849,16 +849,19 @@
     }
     /* ADD (2026-08-28, user request): "each raw material should have its
        own details box of weight received/items received till now" — a
-       compact standalone box under each material's name in the Raw
-       Material Stock table (see renderStock), separate from the plain
-       numeric Weight In/Items In table cells further along the same row,
-       so the all-time received totals for THIS material are easy to spot
-       at a glance instead of just being two of many columns in a wide
-       scrollable table. white-space:nowrap is overridden here since the
-       parent .inv-table td sets it, but this box's own text should wrap
-       normally at narrow widths. */
+       compact standalone box per material in the Raw Material Stock table
+       (see renderStock), separate from the plain numeric Weight In/Items
+       In table cells further along the same row, so the all-time received
+       totals for THIS material are easy to spot at a glance instead of
+       just being two of many columns in a wide scrollable table.
+       MOVED (2026-08-28, user request "On top left of its own name
+       above"): now renders BEFORE the material name (top-left of the name
+       block) rather than below it — margin flipped from margin-top to
+       margin-bottom accordingly. white-space:nowrap is overridden here
+       since the parent .inv-table td sets it, but this box's own text
+       should wrap normally at narrow widths. */
     .rawmat-details-box{
-      margin-top:6px; padding:7px 10px; border:1px solid var(--steel-line); border-radius:8px;
+      margin-bottom:6px; padding:7px 10px; border:1px solid var(--steel-line); border-radius:8px;
       background:var(--panel-raised); display:flex; flex-direction:column; gap:3px;
       white-space:normal; max-width:220px;
     }
@@ -2251,7 +2254,7 @@
            header-notifications-btn just below. See VOICE COMMANDS block
            near speechRecognitionPlugin_ for the actual logic; this button
            only opens #voice-command-modal. -->
-      <button type="button" class="theme-toggle" id="voice-command-btn" data-i18n-title="voice_btn_title" title="Voice Command (Urdu / English)">
+      <button type="button" class="theme-toggle" id="voice-command-btn" data-i18n-title="voice_btn_title" title="Voice Command (English / Urdu)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
       </button>
       <button type="button" class="theme-toggle header-notif-btn" id="header-notifications-btn" title="Notifications">
@@ -8714,7 +8717,7 @@
         // show a proper name instead of the raw view key.
         nav_stock: "Stock", nav_backup: "Backup",
         // ---------------- VOICE COMMANDS (ADD 2026-08-29) ----------------
-        voice_btn_title: "Voice Command (Urdu / English)",
+        voice_btn_title: "Voice Command (English / Urdu)",
         voice_modal_title: "Voice Command",
         voice_listening: "Listening… speak your command",
         voice_online_mode: "Online — cloud recognition",
@@ -9072,7 +9075,7 @@
         confirm_nil_all: "باقی رقم والے تمام {n} آرڈرز کی باقی رقم — کل {amount} — معاف کر کے انہیں مکمل ادا شدہ نشان زد کریں؟ اسے واپس نہیں کیا جا سکتا۔",
         all_orders_nilled_toast: "{n} آرڈرز مکمل ادا شدہ نشان زد — {amount} معاف کر دیے گئے۔",
         nav_stock: "اسٹاک", nav_backup: "بیک اپ",
-        voice_btn_title: "صوتی کمانڈ (اردو / انگریزی)",
+        voice_btn_title: "صوتی کمانڈ (انگریزی / اردو)",
         voice_modal_title: "صوتی کمانڈ",
         voice_listening: "سن رہا ہے… اپنی کمانڈ بولیں",
         voice_online_mode: "آن لائن — کلاؤڈ شناخت",
@@ -9924,8 +9927,18 @@
     // Code.gs (a new 'transcribe' action holding the key server-side)
     // instead of hitting Google directly from here.
     const GOOGLE_STT_API_KEY = "";
-    const VOICE_LANG_PRIMARY_ = 'ur-PK';   // Urdu — main
-    const VOICE_LANG_SECONDARY_ = 'en-US'; // English — secondary
+    // FIX (2026-08-29, user request: "Urdu is first language, change it to
+    // second... and understanding in English") — English is now the
+    // primary/main recognition language, Urdu the secondary/alternate.
+    // This flips which language each engine is tuned toward first:
+    //  - ONLINE: languageCode (primary) vs alternativeLanguageCodes
+    //    (secondary) below.
+    //  - OFFLINE: single-locale, so this is now the ONLY locale it uses
+    //    (see VOICE_LANG_PRIMARY_ in transcribeOffline_) — meaning English
+    //    commands get the device's full-quality English model instead of
+    //    being heard through an Urdu-tuned recognizer.
+    const VOICE_LANG_PRIMARY_ = 'en-US';   // English — main
+    const VOICE_LANG_SECONDARY_ = 'ur-PK'; // Urdu — secondary
 
     function speechRecognitionPlugin_(){ return capacitorPlugin_('SpeechRecognition'); }
 
@@ -9971,7 +9984,7 @@
 
     let voiceMediaRecorder_ = null;
     // ONLINE engine: records a short clip, sends it to Google Cloud
-    // Speech-to-Text with Urdu as the primary language and English as the
+    // Speech-to-Text with English as the primary language and Urdu as the
     // alternate (alternativeLanguageCodes) — the closest a REST call like
     // this gets to "understanding both", since the service picks whichever
     // language best matches each utterance rather than forcing one.
@@ -9996,7 +10009,14 @@
                     encoding:'WEBM_OPUS',
                     languageCode: VOICE_LANG_PRIMARY_,
                     alternativeLanguageCodes:[VOICE_LANG_SECONDARY_],
-                    model:'default'
+                    // FIX (2026-08-29, user request: "understanding in
+                    // English") — 'command_and_search' is Google's model
+                    // tuned for short spoken commands/queries (exactly
+                    // what VOICE_COMMANDS_ above is), rather than 'default'
+                    // which is tuned for longer dictation — should improve
+                    // recognition of short English phrases like "open
+                    // paint ledger".
+                    model:'command_and_search'
                   },
                   audio:{ content: base64 }
                 })
@@ -10009,10 +10029,11 @@
           };
           voiceMediaRecorder_ = recorder;
           recorder.start();
-          // Fixed ~4s listening window keeps v1 simple (no manual stop
-          // button yet) — enough for a short command like "raw material
-          // ledger kholo" without dragging every use out.
-          setTimeout(()=>{ if(recorder.state !== 'inactive') recorder.stop(); }, 4000);
+          // FIX (2026-08-29, user report: "mic time too short to listen") —
+          // was a fixed ~4s window, which cut off longer commands mid-
+          // sentence. Extended to 8s to give a full command room to finish
+          // (still no manual stop button in this first version).
+          setTimeout(()=>{ if(recorder.state !== 'inactive') recorder.stop(); }, 8000);
         }).catch(reject);
       });
     }
@@ -10035,6 +10056,13 @@
           throw new Error('permission-denied');
         }
       }
+      // Note on "mic time too short" for THIS (offline) engine: unlike the
+      // online path's fixed recording window above (now extended to 8s),
+      // this plugin hands listening off to Android's own SpeechRecognizer,
+      // which uses the OS's own silence-detection timeout — there's no
+      // duration option exposed here to extend. In practice the online
+      // path is used whenever there's a connection, so this mostly matters
+      // when offline.
       const result = await plugin.start({
         language: VOICE_LANG_PRIMARY_,
         maxResults: 1,
@@ -11609,10 +11637,10 @@
               <div style="display:flex; align-items:flex-start; gap:6px;">
                 ${dotHtml}
                 <div>
+                  ${detailsBoxHtml}
                   <div>${escHtml_(rec.name)}</div>
                   ${descHtml}
                   ${aliasHtml}
-                  ${detailsBoxHtml}
                 </div>
               </div>
             </td>
@@ -15111,29 +15139,42 @@
       12:{cellWidth:16}, 13:{cellWidth:20}, 14:{cellWidth:20}
     };
     function exportPaintLedgerCSV(dateFrom, dateTo, painterName){
-      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, paintLedgerRows_(dateFrom, dateTo, painterName));
+      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, paintLedgerRows_(dateFrom, dateTo, painterName), entityExportPrefsKey_('paint', painterName));
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Paint-Ledger', painterName, 'csv'), withCompanyHeader_(csv), 'Paint-Ledger');
     }
     function exportPaintLedgerPDF(dateFrom, dateTo, painterName){
-      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, paintLedgerRows_(dateFrom, dateTo, painterName));
+      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, paintLedgerRows_(dateFrom, dateTo, painterName), entityExportPrefsKey_('paint', painterName));
       exportPDF_('Paint Ledger', f.headers, f.rows, exportFilename_('Paint-Ledger', painterName, 'pdf'), undefined, undefined, undefined, 'Paint-Ledger');
     }
     function exportPaintLedgerJPG(dateFrom, dateTo, painterName){
-      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, paintLedgerRows_(dateFrom, dateTo, painterName));
+      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, paintLedgerRows_(dateFrom, dateTo, painterName), entityExportPrefsKey_('paint', painterName));
       exportAsJPG_('Paint Ledger', f.headers, f.rows, exportFilename_('Paint-Ledger', painterName, 'jpg'), undefined, undefined, undefined, 'Paint-Ledger');
     }
+    // FIX (2026-08-29, user report: "check/uncheck export file settings ...
+    // doesn't take effect, keeps all columns"). Same bug class already
+    // fixed for Customer/Factory Ledger (see exportCustomerLedgerCSVRows_
+    // below) — Paint Ledger's Export Settings icon (both the per-painter
+    // one inside a painter's ledger modal, openPainterModalExportSettings_,
+    // and the shared one on the Paint Ledger list page, openPaintExportSettings_)
+    // saves under entityExportPrefsKey_('paint', name) (falling back to the
+    // shared 'paint' slot when name is blank/"All"), but these three export
+    // functions were reading the shared 'paint' slot unconditionally — so a
+    // painter-specific toggle visibly saved (stayed unchecked next time you
+    // reopened Export Settings for that painter) but never actually reached
+    // that painter's own PDF/JPG/CSV. Passing the matching prefsKey now
+    // makes the two agree.
     function exportPaintLedgerCSVRows_(rows, name){
-      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, rows, entityExportPrefsKey_('paint', name));
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Paint-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Paint-Ledger');
     }
     function exportPaintLedgerPDFRows_(rows, name, printMode){
-      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, rows, entityExportPrefsKey_('paint', name));
       exportPDF_('Paint Ledger', f.headers, f.rows, exportFilename_('Paint-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : PAINT_LEDGER_PDF_COLUMN_STYLES, 'Paint-Ledger', printMode ? 'print' : 'save');
     }
     function exportPaintLedgerJPGRows_(rows, name){
-      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, rows, entityExportPrefsKey_('paint', name));
       exportAsJPG_('Paint Ledger', f.headers, f.rows, exportFilename_('Paint-Ledger', name, 'jpg'), true, undefined, undefined, 'Paint-Ledger');
     }
     window.exportPaintLedgerCSV = exportPaintLedgerCSV;
@@ -16534,17 +16575,22 @@
       return rows;
     }
     const SCRAP_LEDGER_HEADERS = ['Buyer','Date','Time','Description','Item Name','Type','Weight','Rate per kg','Debit','Credit','Balance','Received By','Received In'];
+    // FIX (2026-08-29, user report: "check/uncheck export file settings ...
+    // doesn't take effect, keeps all columns"). Same bug class as
+    // Paint/Custom Ledger just above — openScrapBuyerExportSettings_ saves
+    // per-buyer choices under entityExportPrefsKey_('scrap', name), but
+    // these three were reading the shared 'scrap' slot instead.
     function exportScrapLedgerCSVRows_(rows, name){
-      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows, entityExportPrefsKey_('scrap', name));
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Scrap-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Scrap-Ledger');
     }
     function exportScrapLedgerPDFRows_(rows, name, printMode){
-      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows, entityExportPrefsKey_('scrap', name));
       exportPDF_('Scrap Ledger', f.headers, f.rows, exportFilename_('Scrap-Ledger', name, 'pdf'), 'l', null, undefined, 'Scrap-Ledger', printMode ? 'print' : 'save');
     }
     function exportScrapLedgerJPGRows_(rows, name){
-      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows, entityExportPrefsKey_('scrap', name));
       exportAsJPG_('Scrap Ledger', f.headers, f.rows, exportFilename_('Scrap-Ledger', name, 'jpg'), true, undefined, undefined, 'Scrap-Ledger');
     }
 
@@ -16616,17 +16662,29 @@
     // are the same proportions scaled to landscape's usable page width.
     const CUSTOM_LEDGER_JPG_COL_WIDTHS = [7,5,4,10,5,4,4,4,5,6,6,6,5,5,6,6,6,6,6,6];
     const CUSTOM_LEDGER_PDF_COLUMN_STYLES = { 0:{cellWidth:19}, 1:{cellWidth:13}, 2:{cellWidth:11}, 3:{cellWidth:27}, 4:{cellWidth:13}, 5:{cellWidth:11}, 6:{cellWidth:11}, 7:{cellWidth:11}, 8:{cellWidth:13}, 9:{cellWidth:16}, 10:{cellWidth:16}, 11:{cellWidth:16}, 12:{cellWidth:13}, 13:{cellWidth:13}, 14:{cellWidth:16}, 15:{cellWidth:16}, 16:{cellWidth:16}, 17:{cellWidth:16}, 18:{cellWidth:16}, 19:{cellWidth:16} };
+    // FIX (2026-08-29, user report: "check/uncheck export file settings ...
+    // doesn't take effect, keeps all columns"). Same bug class already
+    // fixed for Customer/Factory Ledger (see exportCustomerLedgerCSVRows_
+    // below) — this ledger's Export Settings icon saves per-ledger-entry
+    // choices under entityExportPrefsKey_('custom', name) (see
+    // openCustomLedgerModalExportSettings_/openCustomLedgerListExportSettings_),
+    // but these three export functions were reading the shared 'custom'
+    // slot instead, which is never the slot a per-entry toggle actually
+    // wrote to — so unchecking a column here visibly saved (the checkbox
+    // stayed unchecked next time you opened the modal) but silently never
+    // affected any actual PDF/JPG/CSV. Passing the matching prefsKey now
+    // makes the two actually agree.
     function exportCustomLedgerCSVRows_(rows, name){
-      const f = filterExportColumns_('custom', CUSTOM_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('custom', CUSTOM_LEDGER_HEADERS, rows, entityExportPrefsKey_('custom', name));
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Custom-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Custom-Ledger');
     }
     function exportCustomLedgerPDFRows_(rows, name, printMode){
-      const f = filterExportColumns_('custom', CUSTOM_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('custom', CUSTOM_LEDGER_HEADERS, rows, entityExportPrefsKey_('custom', name));
       exportPDF_('Custom Ledger', f.headers, f.rows, exportFilename_('Custom-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : CUSTOM_LEDGER_PDF_COLUMN_STYLES, 'Custom-Ledger', printMode ? 'print' : 'save');
     }
     function exportCustomLedgerJPGRows_(rows, name){
-      const f = filterExportColumns_('custom', CUSTOM_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('custom', CUSTOM_LEDGER_HEADERS, rows, entityExportPrefsKey_('custom', name));
       exportAsJPG_('Custom Ledger', f.headers, f.rows, exportFilename_('Custom-Ledger', name, 'jpg'), true, null, f.hidden ? undefined : CUSTOM_LEDGER_JPG_COL_WIDTHS, 'Custom-Ledger');
     }
     // ---------------- LOCAL CUSTOM LEDGER RECEIPT SAFETY NET ----------------
@@ -19618,17 +19676,22 @@
       8:{cellWidth:18}, 9:{cellWidth:18}, 10:{cellWidth:18}, 11:{cellWidth:18},
       12:{cellWidth:18}, 13:{cellWidth:22}, 14:{cellWidth:18}
     };
+    // FIX (2026-08-29, user report: "check/uncheck export file settings ...
+    // doesn't take effect, keeps all columns"). Same bug class as
+    // Paint/Custom/Scrap Ledger above — openWorkerExportSettings_ saves
+    // per-worker choices under entityExportPrefsKey_('labour', name), but
+    // these three were reading the shared 'labour' slot instead.
     function exportLabourLedgerCSVRows_(rows, name){
-      const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows, entityExportPrefsKey_('labour', name));
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Labour-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Labour-Ledger');
     }
     function exportLabourLedgerPDFRows_(rows, name, printMode){
-      const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows, entityExportPrefsKey_('labour', name));
       exportPDF_('Labour Ledger', f.headers, f.rows, exportFilename_('Labour-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : LABOUR_LEDGER_PDF_COLUMN_STYLES, 'Labour-Ledger', printMode ? 'print' : 'save');
     }
     function exportLabourLedgerJPGRows_(rows, name){
-      const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows, entityExportPrefsKey_('labour', name));
       exportAsJPG_('Labour Ledger', f.headers, f.rows, exportFilename_('Labour-Ledger', name, 'jpg'), true, undefined, undefined, 'Labour-Ledger');
     }
 
@@ -23108,8 +23171,19 @@
       }
       if(!qr) return null;
       const count = qr.getModuleCount();
-      const cell = Math.max(1, Math.floor(sizePx / count));
-      const canvasSize = cell * count;
+      // FIX (2026-08-29): bake a proper quiet zone (blank margin) into the
+      // image itself, rather than relying on whatever whitespace happens
+      // to surround the QR wherever it's placed in the PDF/JPG. Verified
+      // empirically (rendered + decoded through OpenCV's QR reader): with
+      // zero built-in margin, decoding is unreliable — real phone cameras
+      // are pickier still. The ISO/IEC 18004 spec calls for a quiet zone
+      // of at least 4 modules on every side; QUIET_ZONE_MODULES below
+      // matches that.
+      const QUIET_ZONE_MODULES = 4;
+      const totalModules = count + QUIET_ZONE_MODULES * 2;
+      const cell = Math.max(1, Math.floor(sizePx / totalModules));
+      const canvasSize = cell * totalModules;
+      const offset = QUIET_ZONE_MODULES * cell;
       const canvas = document.createElement('canvas');
       canvas.width = canvasSize; canvas.height = canvasSize;
       const ctx = canvas.getContext('2d');
@@ -23118,7 +23192,7 @@
       ctx.fillStyle = '#000000';
       for(let r = 0; r < count; r += 1){
         for(let c = 0; c < count; c += 1){
-          if(qr.isDark(r, c)) ctx.fillRect(c * cell, r * cell, cell, cell);
+          if(qr.isDark(r, c)) ctx.fillRect(offset + c * cell, offset + r * cell, cell, cell);
         }
       }
       return canvas.toDataURL('image/png');
@@ -23183,7 +23257,13 @@
       const hasOwnSignatureImages = (footerLines || []).some(l => l && l.row && l.row.some(item => item.images && item.images.length));
       const effectiveFooterLines = footerLines ? footerLines.slice() : [];
       if(!hasOwnSignatureImages && sigStampImg){
-        effectiveFooterLines.push(signatureFooterRow_());
+        // FIX (2026-08-29, user request): previously this was
+        // signatureFooterRow_() with no text at all, so every ledger that
+        // doesn't build its own footerLines (Paint, Raw Material, Scrap,
+        // Withdrawal, Custom, Labour Ledgers) exported with a bare stamp
+        // and no "Thank you" note — inconsistent with Customer/Factory
+        // Ledger, which already adds one. Now they all get the same note.
+        effectiveFooterLines.push(signatureFooterRow_('Thank you for your business with us.'));
       }
       // ADD (2026-08-29, QR follow-up to voice commands): tracked outside
       // the if-block below (was previously local to it) so the QR-code
@@ -23191,6 +23271,23 @@
       // position everything else finished at, and can never overlap it —
       // see qrFooterY_ use just below.
       let qrFooterY_ = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 48) + 10;
+      // FIX (2026-08-29, user report: "QR code is very lowly placed to
+      // stamp... alignment will be perfect" if moved/centered) — the QR
+      // used to be generated AFTER all footer lines were drawn, then
+      // placed in its own block well below the stamp/signature, so the
+      // two ended up several lines apart vertically even though they
+      // belong together as one "sign-off" line. Generating it here, up
+      // front, lets the row-rendering loop just below draw it directly
+      // INTO the same row as the stamp (see qrEmbedded_ further down),
+      // so QR, the "Thank you" note, and the stamp/signature all sit
+      // level with each other on one line instead of stacked.
+      let qrDataUrl_ = null, exportId_ = null;
+      if(window.qrcode){
+        exportId_ = generateExportId_();
+        const qrText = buildExportQrText_(title, footerLines, exportId_);
+        qrDataUrl_ = renderQrPngDataUrl_(qrText, 240);
+      }
+      let qrEmbedded_ = false;
       if(effectiveFooterLines.length){
         let y = qrFooterY_;
         const maxWidth = pageWidth - 28;
@@ -23202,33 +23299,75 @@
             // and can optionally carry one or more small images (uploaded
             // signature/stamp) drawn above its text.
             doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30);
-            let maxItemBottom = y;
-            line.row.forEach(item=>{
-              const alignRight = item.align === 'right';
-              let itemY = y;
-              if(item.images && item.images.length){
-                const gap = 2;
-                const totalW = item.images.reduce((s,im)=>s+im.w,0) + gap * (item.images.length - 1);
-                let x = alignRight ? (pageWidth - 14 - totalW) : 14;
-                const maxH = Math.max(...item.images.map(im=>im.h));
-                item.images.forEach(im=>{
-                  doc.addImage(im.dataUrl, 'PNG', x, itemY, im.w, im.h);
-                  x += im.w + gap;
-                });
-                itemY += maxH + 2;
+            const imageItem = line.row.find(item => item.images && item.images.length);
+            if(imageItem && qrDataUrl_ && !qrEmbedded_){
+              // FIX (2026-08-29, alignment): QR (left) + the row's other
+              // text item centered in the gap + stamp/signature (right),
+              // all starting at the same y — see qrDataUrl_ note above for
+              // why this replaced the old "QR as its own block" approach.
+              qrEmbedded_ = true;
+              const qrSize = 24;
+              doc.addImage(qrDataUrl_, 'PNG', 14, y, qrSize, qrSize);
+              doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120);
+              doc.text('Scan for export details', 14, y + qrSize + 4);
+              doc.text('ID: ' + exportId_, 14, y + qrSize + 8);
+              const gap = 2;
+              const totalW = imageItem.images.reduce((s,im)=>s+im.w,0) + gap * (imageItem.images.length - 1);
+              let x = pageWidth - 14 - totalW;
+              const maxH = Math.max(...imageItem.images.map(im=>im.h));
+              let stampBottom = y + maxH + 2;
+              imageItem.images.forEach(im=>{
+                doc.addImage(im.dataUrl, 'PNG', x, y, im.w, im.h);
+                x += im.w + gap;
+              });
+              if(imageItem.text){
+                doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30);
+                const wrappedStamp = doc.splitTextToSize(imageItem.text, maxWidth/2 - 6);
+                doc.text(wrappedStamp, pageWidth - 14, stampBottom, { align: 'right' });
+                stampBottom += wrappedStamp.length * 5.5;
               }
-              if(item.text){
-                const wrapped = doc.splitTextToSize(item.text, maxWidth/2 - 6);
-                if(alignRight){
-                  doc.text(wrapped, pageWidth - 14, itemY, { align: 'right' });
-                } else {
-                  doc.text(wrapped, 14, itemY);
+              const otherItem = line.row.find(item => item !== imageItem);
+              const rowHeight = Math.max(qrSize + 8, maxH + (imageItem.text ? 10 : 2));
+              if(otherItem && otherItem.text){
+                const centerLeft = 14 + qrSize + 10;
+                const centerRight = pageWidth - 14 - totalW - 10;
+                const centerWidth = Math.max(20, centerRight - centerLeft);
+                doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(30);
+                const wrapped = doc.splitTextToSize(otherItem.text, centerWidth);
+                const blockHeight = wrapped.length * 5.5;
+                const textY = y + rowHeight / 2 - blockHeight / 2 + 4;
+                doc.text(wrapped, (centerLeft + centerRight) / 2, textY, { align: 'center' });
+              }
+              y = Math.max(y + rowHeight, stampBottom) + 2;
+            } else {
+              let maxItemBottom = y;
+              line.row.forEach(item=>{
+                const alignRight = item.align === 'right';
+                let itemY = y;
+                if(item.images && item.images.length){
+                  const gap = 2;
+                  const totalW = item.images.reduce((s,im)=>s+im.w,0) + gap * (item.images.length - 1);
+                  let x = alignRight ? (pageWidth - 14 - totalW) : 14;
+                  const maxH = Math.max(...item.images.map(im=>im.h));
+                  item.images.forEach(im=>{
+                    doc.addImage(im.dataUrl, 'PNG', x, itemY, im.w, im.h);
+                    x += im.w + gap;
+                  });
+                  itemY += maxH + 2;
                 }
-                itemY += wrapped.length * 5.5;
-              }
-              maxItemBottom = Math.max(maxItemBottom, itemY);
-            });
-            y = maxItemBottom + 2;
+                if(item.text){
+                  const wrapped = doc.splitTextToSize(item.text, maxWidth/2 - 6);
+                  if(alignRight){
+                    doc.text(wrapped, pageWidth - 14, itemY, { align: 'right' });
+                  } else {
+                    doc.text(wrapped, 14, itemY);
+                  }
+                  itemY += wrapped.length * 5.5;
+                }
+                maxItemBottom = Math.max(maxItemBottom, itemY);
+              });
+              y = maxItemBottom + 2;
+            }
           } else if(line.urdu){
             // Rendered as a right-aligned image (see urduLineToImage_ above)
             // rather than doc.text, so it actually displays instead of
@@ -23249,37 +23388,27 @@
         });
         qrFooterY_ = y;
       }
-      // ADD (2026-08-29, user request: "QR on all export and printed
-      // files too"). Sits right below whatever footer content was drawn
-      // above (qrFooterY_ tracks that), so it never overlaps regardless
-      // of how much footer text a given ledger export adds. Applies to
-      // EVERY call to exportPDF_ — i.e. every PDF-based ledger export in
-      // the app — and, because 'print' mode below reuses this exact same
-      // `doc`, to every printed document too, with no separate code path
-      // needed for printing.
+      // FALLBACK (2026-08-29, QR realignment): normally the QR is now
+      // drawn directly into the signature/stamp row above (see
+      // qrEmbedded_), so it lines up level with the stamp instead of
+      // trailing below it. This only fires when there was no stamp
+      // uploaded at all (so there was no image row to embed the QR
+      // into) — the QR still needs to appear somewhere, so it falls back
+      // to its own line here, same as the original behaviour. Applies to
+      // EVERY call to exportPDF_ and, because 'print' mode below reuses
+      // this exact same `doc`, to every printed document too.
       //
-      // Honesty note on scope: there's no backend endpoint yet that could
-      // turn this into a "scan to open the live record online" link (that
-      // needs a small addition to Code.gs to look records up by export
-      // ID) — so for this first version the QR is self-contained: it
-      // encodes the export's own details as plain text (title, a unique
-      // export ID, when it was generated, and — when this export's own
-      // footerLines starts with a plain headline line rather than a
-      // two-column signature row — that headline, e.g. a Rs total) rather
-      // than pointing anywhere. Any generic QR scanner app shows that
-      // text directly.
-      if(window.qrcode){
-        const exportId = generateExportId_();
-        const qrText = buildExportQrText_(title, footerLines, exportId);
-        const qrDataUrl = renderQrPngDataUrl_(qrText, 240);
-        if(qrDataUrl){
-          const qrSize = 22;
-          const qrY = qrFooterY_ + 4;
-          doc.addImage(qrDataUrl, 'PNG', 14, qrY, qrSize, qrSize);
-          doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120);
-          doc.text('Scan for export details', 14 + qrSize + 3, qrY + qrSize / 2 - 2);
-          doc.text('ID: ' + exportId, 14 + qrSize + 3, qrY + qrSize / 2 + 4);
-        }
+      // Honesty note on scope (unchanged): there's no backend endpoint yet
+      // that could turn this into a "scan to open the live record online"
+      // link — the QR is self-contained, encoding the export's own details
+      // as plain text.
+      if(!qrEmbedded_ && qrDataUrl_){
+        const qrSize = 22;
+        const qrY = qrFooterY_ + 4;
+        doc.addImage(qrDataUrl_, 'PNG', 14, qrY, qrSize, qrSize);
+        doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120);
+        doc.text('Scan for export details', 14 + qrSize + 3, qrY + qrSize / 2 - 2);
+        doc.text('ID: ' + exportId_, 14 + qrSize + 3, qrY + qrSize / 2 + 4);
       }
       if(mode === 'print'){
         await printGeneratedPDF_(doc, title);
@@ -23435,12 +23564,50 @@
       const hasOwnSignatureImages = (footerLines || []).some(l => l && l.row && l.row.some(item => item.images && item.images.length));
       const effectiveFooterLines = footerLines ? footerLines.slice() : [];
       if(!hasOwnSignatureImages && sigStampImg){
-        effectiveFooterLines.push(signatureFooterRow_());
+        // FIX (2026-08-29, user request): matches the same fix in
+        // exportPDF_ — give ledgers that don't build their own footerLines
+        // (Paint, Raw Material, Scrap, Withdrawal, Custom, Labour Ledgers)
+        // the same "Thank you" note the Customer/Factory Ledger already has.
+        effectiveFooterLines.push(signatureFooterRow_('Thank you for your business with us.'));
       }
+      // FIX (2026-08-29, user report: "QR code is very lowly placed to
+      // stamp") — generated up front (was previously generated after
+      // footerHtml, then appended as its own block below everything) so it
+      // can be drawn INTO the same flex row as the stamp/signature further
+      // down, instead of trailing below on its own line.
+      let qrDataUrl_ = null, exportId_ = null;
+      if(window.qrcode){
+        exportId_ = generateExportId_();
+        const qrText = buildExportQrText_(title, footerLines, exportId_);
+        qrDataUrl_ = renderQrPngDataUrl_(qrText, 160);
+      }
+      let qrEmbedded_ = false;
       const footerHtml = (effectiveFooterLines && effectiveFooterLines.length)
         ? '<div style="margin-top:12px;">' +
             effectiveFooterLines.map((line, i)=>{
               if(line && typeof line === 'object' && line.row){
+                const imageItem = line.row.find(item => item.images && item.images.length);
+                if(imageItem && qrDataUrl_ && !qrEmbedded_){
+                  // Combined sign-off row: QR (left) + the row's other text
+                  // item centered in the gap + stamp/signature (right) —
+                  // all vertically centered on one line, rather than the
+                  // stamp/signature row and a separate QR block ending up
+                  // at different heights.
+                  qrEmbedded_ = true;
+                  const otherItem = line.row.find(item => item !== imageItem);
+                  const stampImagesHtml = imageItem.images.map(im => '<img src="' + im.dataUrl + '" style="width:' + im.wpx + 'px; height:' + im.hpx + 'px; object-fit:contain;">').join('');
+                  return '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:18px; gap:10px;">' +
+                    '<div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">' +
+                      '<img src="' + qrDataUrl_ + '" style="width:56px; height:56px;">' +
+                      '<div style="font-size:9px; color:#888; line-height:1.4;">Scan for export details<br>ID: ' + esc(exportId_) + '</div>' +
+                    '</div>' +
+                    '<div style="flex:1; text-align:center; font-size:12px; white-space:pre-line; padding:0 10px;">' + esc(otherItem && otherItem.text || '') + '</div>' +
+                    '<div style="text-align:right; flex-shrink:0;">' +
+                      '<div style="display:flex; gap:6px; justify-content:flex-end; margin-bottom:4px;">' + stampImagesHtml + '</div>' +
+                      esc(imageItem.text || '') +
+                    '</div>' +
+                  '</div>';
+                }
                 return '<div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:18px;">' +
                   line.row.map(item => {
                     const alignRight = item.align === 'right';
@@ -23461,24 +23628,19 @@
             }).join('') +
           '</div>'
         : '';
-      // ADD (2026-08-29, user request: "QR on all export and printed
-      // files too") — same QR block and same honesty note as exportPDF_
-      // just above (self-contained export details, no live-record link
-      // yet since there's no backend endpoint for that). Placed after the
-      // signature footer so it never overlaps it.
+      // FALLBACK (2026-08-29, QR realignment) — the QR is now normally
+      // drawn into the signature row above (see qrEmbedded_). This only
+      // fires when there's no stamp uploaded (no row to embed it into),
+      // same honesty note as exportPDF_: self-contained export details,
+      // no live-record link yet since there's no backend endpoint for that.
       let qrHtml = '';
-      if(window.qrcode){
-        const exportId = generateExportId_();
-        const qrText = buildExportQrText_(title, footerLines, exportId);
-        const qrDataUrl = renderQrPngDataUrl_(qrText, 160);
-        if(qrDataUrl){
-          qrHtml = '<div style="display:flex; align-items:center; gap:10px; margin-top:16px; padding-top:12px; border-top:1px solid #eee;">' +
-            '<img src="' + qrDataUrl + '" style="width:70px; height:70px;">' +
-            '<div style="font-size:10px; color:#888; line-height:1.5;">' +
-              'Scan for export details<br>ID: ' + esc(exportId) +
-            '</div>' +
-          '</div>';
-        }
+      if(!qrEmbedded_ && qrDataUrl_){
+        qrHtml = '<div style="display:flex; align-items:center; gap:10px; margin-top:16px; padding-top:12px; border-top:1px solid #eee;">' +
+          '<img src="' + qrDataUrl_ + '" style="width:70px; height:70px;">' +
+          '<div style="font-size:10px; color:#888; line-height:1.5;">' +
+            'Scan for export details<br>ID: ' + esc(exportId_) +
+          '</div>' +
+        '</div>';
       }
       wrap.innerHTML = headHtml + tableHtml + footerHtml + qrHtml;
       document.body.appendChild(wrap);
@@ -23956,7 +24118,12 @@
     window.openWithdrawalExportSettings_ = () => openLedgerExportSettings_('withdrawal', tr('withdrawal_title'));
     window.openPainterModalExportSettings_ = () => {
       const p = inventory.paint[currentPainterIdx];
-      openLedgerExportSettings_('paint', p ? p.name : tr('paint_title'));
+      // FIX (2026-08-29, same bug as exportPaintLedgerCSVRows_ above): this
+      // was opening the shared 'paint' slot instead of this painter's own
+      // entityExportPrefsKey_('paint', p.name) slot, so toggling a column
+      // off here saved to the wrong place relative to what the (now-fixed)
+      // export functions read from.
+      openLedgerExportSettings_('paint', p ? p.name : tr('paint_title'), entityExportPrefsKey_('paint', p ? p.name : ''));
     };
     window.openPainterModalLedgerSettings_ = () => {
       const p = inventory.paint[currentPainterIdx];
@@ -23964,7 +24131,10 @@
     };
     window.openCustomLedgerModalExportSettings_ = () => {
       const cl = customLedgers[currentCustomLedgerIdx];
-      openLedgerExportSettings_('custom', cl ? cl.name : tr('custom_ledgers_title'));
+      // FIX (2026-08-29, same bug as exportCustomLedgerCSVRows_ above): was
+      // opening the shared 'custom' slot instead of this ledger's own
+      // entityExportPrefsKey_('custom', cl.name) slot.
+      openLedgerExportSettings_('custom', cl ? cl.name : tr('custom_ledgers_title'), entityExportPrefsKey_('custom', cl ? cl.name : ''));
     };
     window.openCustomLedgerModalLedgerSettings_ = () => {
       const cl = customLedgers[currentCustomLedgerIdx];
