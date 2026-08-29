@@ -26,7 +26,20 @@ jobs:
           node-version: 22
 
       - name: Install Capacitor dependencies
-        run: npm ci
+        # FIX (2026-08-29): switched from `npm ci` to `npm install` —
+        # `npm ci` requires package-lock.json to already have an exact
+        # matching entry for every dependency in package.json, and refuses
+        # to run otherwise. `@capacitor-community/speech-recognition` was
+        # just added to package.json (for the voice-commands feature);
+        # package-lock.json doesn't have it pinned yet, so `npm ci` fails
+        # with a usage/error dump. `npm install` resolves and adds new
+        # packages fine regardless of lockfile state. Once this build runs
+        # once and the regenerated package-lock.json is committed back
+        # (this step won't do that automatically — commit the updated
+        # package-lock.json from a local `npm install` run, or just leave
+        # this as `npm install` going forward), it's safe to switch back to
+        # `npm ci` for the faster, fully-locked installs it normally gives.
+        run: npm install
 
       - name: Copy www/ into the native Android project
         run: npx cap sync android
