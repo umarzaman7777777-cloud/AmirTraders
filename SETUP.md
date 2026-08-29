@@ -87,3 +87,44 @@ your own phone and daily use. If you ever want a properly signed release
 build (e.g. for the Play Store), that's a separate one-time step
 involving a signing keystore — ask Claude and it can extend this same
 workflow to do that too.
+
+## Voice commands (added 2026-08-29)
+Tap the mic icon in the top header to open/navigate ledgers by voice, in
+Urdu (primary) or English (secondary). It works two ways:
+
+- **Offline** (works out of the box once the APK is rebuilt with the new
+  `package.json` — `@capacitor-community/speech-recognition` was added):
+  uses the phone/tablet's own built-in recognizer. Accuracy on
+  mixed Urdu/English sentences is decent but not great, since on-device
+  recognizers only really do one language well at a time.
+- **Online** (better accuracy on mixed Urdu/English, needs internet): uses
+  Google Cloud Speech-to-Text. To turn this on, get a free-tier API key
+  from Google Cloud Console (APIs & Services → Credentials → enable the
+  "Cloud Speech-to-Text API" first) and paste it into `GOOGLE_STT_API_KEY`
+  near the top of the "VOICE COMMANDS" section in `www/index.html`. Left
+  blank, the app just always uses the offline engine — nothing breaks,
+  it's simply less accurate on mixed-language speech.
+
+Note on that key: pasting it directly into `index.html` is fine to try
+this out, but it does end up inside the built APK where it could in
+theory be extracted — for real day-to-day use later, ask Claude to move
+that call behind the Apps Script backend instead (so the key lives on
+the server, not the device).
+
+This first version only handles **navigation** ("paint ledger kholo" /
+"open sales") — not yet adding orders/expenses or looking up balances by
+voice. That's a deliberate first step; ask Claude to extend it once
+you've tried navigation for a while on both devices.
+
+## QR code on exports & prints (added 2026-08-29)
+Every PDF export, JPG export, and printed document now has a small QR
+code in its footer, alongside "Scan for export details" and a short
+Export ID. Works fully offline (the QR library is vendored locally, same
+as jspdf/html2canvas).
+
+What it currently contains: the app name, the document's title, a unique
+export ID, when it was generated, and — when that ledger's export
+includes one — its headline total. It does **not** yet link anywhere
+online. Turning "Export ID" into a real "scan to open this record on the
+web" link needs a small lookup endpoint added to the Apps Script backend
+(`Code.gs`) — ask Claude for that next if you want it.

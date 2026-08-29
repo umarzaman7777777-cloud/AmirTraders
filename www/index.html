@@ -458,6 +458,13 @@
     .theme-toggle:hover{ border-color:var(--yellow); }
     .theme-toggle.spinning span{ display:inline-block; animation:pos-spin 0.8s linear infinite; }
     @keyframes pos-spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+    /* ADD (2026-08-29, voice commands): gentle "listening" pulse on the
+       mic circle in #voice-command-modal — purely cosmetic, no bearing on
+       whether recording is actually happening. */
+    @keyframes voice-pulse{
+      0%, 100%{ box-shadow:0 0 0 0 rgba(var(--logo-a-rgb),0.35); }
+      50%{ box-shadow:0 0 0 10px rgba(var(--logo-a-rgb),0); }
+    }
     .update-overview-btn{
       flex:none; display:flex; align-items:center; gap:7px;
       height:34px; padding:0 15px 0 12px; border-radius:999px; cursor:pointer;
@@ -1932,6 +1939,14 @@
   <script src="./vendor/jspdf.umd.min.js"></script>
   <script src="./vendor/jspdf.plugin.autotable.min.js"></script>
   <script src="./vendor/html2canvas.min.js"></script>
+  <!-- ADD (2026-08-29, user request: QR on every export/printed file).
+       Self-hosted for the same offline-reliability reason as the three
+       scripts above — see the file's own header comment for exactly
+       which parts of it are actually used (addData/make/isDark/
+       getModuleCount only; the drawing itself happens on a <canvas> in
+       renderQrPngDataUrl_ further down, not via this library's own
+       image helpers). -->
+  <script src="./vendor/qrcode-generator.js"></script>
   <!-- Capacitor bridge stub — window.CapApp is only used by the
        StatusBar/App plugin lookups below; Filesystem access now goes
        through window.Capacitor.Plugins (see filesystemPlugin_/
@@ -2151,6 +2166,25 @@
   </div>
 </div>
 
+<!-- ADD (2026-08-29, voice commands): listening/result UI. Opened by
+     #voice-command-btn in the header; see openVoiceCommandModal_ /
+     runVoiceCommand_ for what fills these spans in and drives it closed
+     again. Kept intentionally simple for v1 (no waveform, no manual stop
+     button) — it's a fixed ~4s listen window, see transcribeOnline_. -->
+<div class="modal-overlay" id="voice-command-modal">
+  <div class="modal-box" style="max-width:320px; text-align:center;">
+    <h3 data-i18n="voice_modal_title">Voice Command</h3>
+    <div id="voice-mic-indicator" style="width:56px; height:56px; margin:14px auto; border-radius:50%; background:var(--panel-raised); border:2px solid var(--yellow); display:flex; align-items:center; justify-content:center; animation:voice-pulse 1.2s ease-in-out infinite;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    </div>
+    <p id="voice-status-text" style="font-size:13px; margin:0 0 4px;" data-i18n="voice_listening">Listening… speak your command</p>
+    <p id="voice-engine-label" style="font-family:var(--mono); font-size:11px; color:var(--text-dim); margin:0 0 14px;"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="voice-command-cancel" style="flex:1;" data-i18n="voice_cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ================= POS SHELL ================= -->
 <div id="pos">
   <header class="topbar">
@@ -2210,6 +2244,16 @@
            beside its <h2> — same pattern already used for every ledger
            page's own Settings/Export icons (see openTxnLedgerSettings_
            and friends). See that button for the actual wiring. -->
+      <!-- ADD (2026-08-29, user request: hybrid cloud/offline voice
+           commands, Urdu primary + English secondary). Placed in the
+           global header (outside every #view-* container) so it's
+           reachable from any screen, same reasoning as
+           header-notifications-btn just below. See VOICE COMMANDS block
+           near speechRecognitionPlugin_ for the actual logic; this button
+           only opens #voice-command-modal. -->
+      <button type="button" class="theme-toggle" id="voice-command-btn" data-i18n-title="voice_btn_title" title="Voice Command (Urdu / English)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
       <button type="button" class="theme-toggle header-notif-btn" id="header-notifications-btn" title="Notifications">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="header-notif-badge" id="header-notifications-badge" style="display:none;"></span>
@@ -2393,6 +2437,7 @@
               <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('transactions','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="openExportFilterModal('transactions','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
                 <button onclick="openExportFilterModal('transactions','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('transactions','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
@@ -2447,6 +2492,7 @@
               <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="exportExpensesPDF(); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="printExpensesPDF(); closeExportDropdowns()" data-i18n="export_print">Print</button>
                 <button onclick="exportExpensesJPG(); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="exportExpensesCSV(); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
@@ -2505,6 +2551,7 @@
               <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="exportInventoryPDF('labour'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="printInventoryPDF('labour'); closeExportDropdowns()" data-i18n="export_print">Print</button>
                 <button onclick="exportInventoryJPG('labour'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="exportInventoryCSV('labour'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
@@ -2528,6 +2575,7 @@
               <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('paint','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="openExportFilterModal('paint','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
                 <button onclick="openExportFilterModal('paint','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('paint','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
@@ -2554,6 +2602,7 @@
               <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('labourledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="openExportFilterModal('labourledger','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
                 <button onclick="openExportFilterModal('labourledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('labourledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
@@ -2603,6 +2652,7 @@
               <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('scrapledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="openExportFilterModal('scrapledger','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
                 <button onclick="openExportFilterModal('scrapledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('scrapledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
@@ -2636,6 +2686,7 @@
               <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="export-dropdown-menu">
                 <button onclick="openExportFilterModal('withdrawal','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+                <button onclick="openExportFilterModal('withdrawal','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
                 <button onclick="openExportFilterModal('withdrawal','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
                 <button onclick="openExportFilterModal('withdrawal','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
               </div>
@@ -3107,6 +3158,7 @@
           <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
           <div class="export-dropdown-menu">
             <button onclick="openExportFilterModal('painterledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+            <button onclick="openExportFilterModal('painterledger','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
             <button onclick="openExportFilterModal('painterledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
             <button onclick="openExportFilterModal('painterledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
           </div>
@@ -3505,6 +3557,7 @@
           </button>
           <div class="export-dropdown-menu">
             <button type="button" id="rl-export-pdf" data-i18n="export_pdf">PDF</button>
+            <button type="button" id="rl-export-print" data-i18n="export_print">Print</button>
             <button type="button" id="rl-export-jpg" data-i18n="export_jpg">JPG</button>
             <button type="button" id="rl-export-csv" data-i18n="export_csv">CSV</button>
           </div>
@@ -3960,6 +4013,7 @@
           <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
           <div class="export-dropdown-menu">
             <button onclick="openExportFilterModal('customledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+            <button onclick="openExportFilterModal('customledger','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
             <button onclick="openExportFilterModal('customledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
             <button onclick="openExportFilterModal('customledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
           </div>
@@ -4139,6 +4193,7 @@
           <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
           <div class="export-dropdown-menu">
             <button onclick="openExportFilterModal('factoryledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
+            <button onclick="openExportFilterModal('factoryledger','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
             <button onclick="openExportFilterModal('factoryledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
             <button onclick="openExportFilterModal('factoryledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
           </div>
@@ -8561,7 +8616,7 @@
         total_stock_value: "Total Stock Value", add_item: "Add Item",
         // Modals — common
         cancel: "Cancel", save: "Save", add: "Add", delete: "Delete", close: "Close", confirm: "Confirm",
-        edit: "Edit", view: "View", export_csv: "CSV", export_pdf: "PDF", export_jpg: "JPG",
+        edit: "Edit", view: "View", export_csv: "CSV", export_pdf: "PDF", export_jpg: "JPG", export_print: "Print",
         item_name: "Item Name", price_rs: "Price (Rs)", colour: "Colour", entry_date: "Date", other: "Other",
         product_name: "Product Name", enter_custom_name: "Enter custom product name", weight: "Weight",
         bundle_count: "Bundle Count", gauge_count: "Gauge", size_count: "Size",
@@ -8652,6 +8707,25 @@
         nil_all_btn: "Nil All", nil_all_title: "Write off every confirmed order's remaining balance for this factory",
         confirm_nil_all: "Write off the remaining balance on all {n} order(s) with a due amount — {amount} total — and mark them fully paid? This can't be undone.",
         all_orders_nilled_toast: "{n} order(s) marked fully paid — {amount} written off.",
+        // ADD (2026-08-29, voice commands): two view labels that never
+        // needed a translated nav_ string before (their sidebar buttons
+        // render straight from ALL_VIEW_KEYS' English label) but are
+        // needed now so the "Opening {view}" voice confirmation toast can
+        // show a proper name instead of the raw view key.
+        nav_stock: "Stock", nav_backup: "Backup",
+        // ---------------- VOICE COMMANDS (ADD 2026-08-29) ----------------
+        voice_btn_title: "Voice Command (Urdu / English)",
+        voice_modal_title: "Voice Command",
+        voice_listening: "Listening… speak your command",
+        voice_online_mode: "Online — cloud recognition",
+        voice_offline_mode: "Offline — on-device recognition",
+        voice_no_match: "Didn't catch a command — try again",
+        voice_command_heard: "Heard: \"{text}\"",
+        voice_confirm_open: "Opening {view}",
+        voice_tap_to_speak: "Say a command, e.g. \"Open Paint Ledger\"",
+        voice_cancel: "Cancel",
+        voice_mic_denied: "Microphone permission is needed for voice commands.",
+        voice_not_supported: "Voice commands aren't available on this device.",
       },
       ur: {
         brand: "امیر ٹریڈرز", brand_loc: "فین ایکسیسریز · گجرات",
@@ -8925,7 +8999,7 @@
         item: "آئٹم", quantity: "مقدار", cost_per_unit: "قیمت فی یونٹ", total_value: "کل قیمت",
         total_stock_value: "کل اسٹاک ویلیو", add_item: "آئٹم شامل کریں",
         cancel: "منسوخ کریں", save: "محفوظ کریں", add: "شامل کریں", delete: "حذف کریں", close: "بند کریں", confirm: "تصدیق کریں",
-        edit: "ترمیم", view: "دیکھیں", export_csv: "CSV", export_pdf: "PDF", export_jpg: "JPG",
+        edit: "ترمیم", view: "دیکھیں", export_csv: "CSV", export_pdf: "PDF", export_jpg: "JPG", export_print: "پرنٹ",
         item_name: "آئٹم کا نام", price_rs: "قیمت (روپے)", colour: "رنگ", entry_date: "تاریخ", other: "دیگر",
         product_name: "پروڈکٹ کا نام", enter_custom_name: "مخصوص پروڈکٹ کا نام درج کریں", weight: "وزن",
         bundle_count: "بنڈل تعداد", gauge_count: "گیج", size_count: "سائز",
@@ -8997,6 +9071,19 @@
         nil_all_btn: "سب نل", nil_all_title: "اس فیکٹری کے تمام تصدیق شدہ آرڈرز کی باقی رقم معاف کریں",
         confirm_nil_all: "باقی رقم والے تمام {n} آرڈرز کی باقی رقم — کل {amount} — معاف کر کے انہیں مکمل ادا شدہ نشان زد کریں؟ اسے واپس نہیں کیا جا سکتا۔",
         all_orders_nilled_toast: "{n} آرڈرز مکمل ادا شدہ نشان زد — {amount} معاف کر دیے گئے۔",
+        nav_stock: "اسٹاک", nav_backup: "بیک اپ",
+        voice_btn_title: "صوتی کمانڈ (اردو / انگریزی)",
+        voice_modal_title: "صوتی کمانڈ",
+        voice_listening: "سن رہا ہے… اپنی کمانڈ بولیں",
+        voice_online_mode: "آن لائن — کلاؤڈ شناخت",
+        voice_offline_mode: "آف لائن — ڈیوائس پر شناخت",
+        voice_no_match: "کوئی کمانڈ سمجھ نہیں آئی — دوبارہ کوشش کریں",
+        voice_command_heard: "سنا: \"{text}\"",
+        voice_confirm_open: "{view} کھولا جا رہا ہے",
+        voice_tap_to_speak: "ایک کمانڈ بولیں، مثلاً \"پینٹ لیجر کھولیں\"",
+        voice_cancel: "منسوخ کریں",
+        voice_mic_denied: "صوتی کمانڈز کے لیے مائیکروفون کی اجازت درکار ہے۔",
+        voice_not_supported: "اس ڈیوائس پر صوتی کمانڈز دستیاب نہیں ہیں۔",
       }
     };
     let currentLang = (function(){ try{ return localStorage.getItem('posLang') || 'en'; } catch(e){ return 'en'; } })();
@@ -9745,6 +9832,18 @@
     function biometricPlugin_(){ return capacitorPlugin_('NativeBiometric'); }
     // ADD (2026-08-22): see PUSH NOTIFICATIONS below.
     function pushNotificationsPlugin_(){ return capacitorPlugin_('PushNotifications'); }
+    // ADD (2026-08-29, user request): Print button — see exportPDF_'s new
+    // 'print' mode below. @capgo/capacitor-printer's registered native
+    // plugin name wasn't independently confirmed against the actual
+    // installed package (no network access in this environment to inspect
+    // node_modules directly) — 'CapacitorPrinter' is the documented/expected
+    // name, 'Printer' is tried as a fallback in case the installed version
+    // registers under its shorter JS import alias instead. If printing
+    // silently falls back to the browser-tab behavior below on a real
+    // device after the plugin is installed and synced, check
+    // node_modules/@capgo/capacitor-printer/android/.../*.java for the
+    // actual @CapacitorPlugin(name = "...") and update this one line.
+    function printerPlugin_(){ return capacitorPlugin_('CapacitorPrinter') || capacitorPlugin_('Printer'); }
     // FIX: exports (and receipt-photo saving, and backups) used to reach
     // for window.CapApp.Filesystem/Directory/Capacitor — a bridge that
     // capacitor-bridge.js declares (`window.CapApp = window.CapApp || {}`)
@@ -9786,6 +9885,222 @@
         return null;
       }
     }
+
+    // ================= VOICE COMMANDS (ADD 2026-08-29, user request) =================
+    // Hybrid engine, chosen automatically per attempt:
+    //   ONLINE  -> Google Cloud Speech-to-Text (transcribeOnline_). Best
+    //              accuracy on mixed Urdu/English speech because it's
+    //              given BOTH languages at once (primary + alternate) —
+    //              see VOICE_LANG_PRIMARY_/SECONDARY_ below. Needs
+    //              GOOGLE_STT_API_KEY filled in and an active connection.
+    //   OFFLINE -> the native @capacitor-community/speech-recognition
+    //              plugin (Android's on-device SpeechRecognizer, same
+    //              capacitorPlugin_() pattern as GoogleSignIn/
+    //              NativeBiometric above). Used whenever navigator.onLine
+    //              is false, AND as an automatic fallback if the online
+    //              call fails for any reason (no key set, request timed
+    //              out, quota, mid-recording connection drop, etc.) — see
+    //              runVoiceCommand_'s catch block. Single-locale only, so
+    //              mixed-language accuracy is weaker than the online path;
+    //              that's a real limitation of on-device recognition, not
+    //              a bug to chase here.
+    //
+    // Scope for this first version is NAVIGATION ONLY ("paint ledger
+    // kholo" / "open paint ledger") — seemed the right place to start
+    // since a misheard navigation command just opens the wrong screen,
+    // versus a misheard amount in a data-entry command touching the
+    // ledgers. Widening VOICE_COMMANDS_ below to lookups and then to
+    // entry (with a confirm-before-save step) is a natural next step
+    // once real accuracy on both devices has actually been seen.
+
+    // Fill this in with a Google Cloud Speech-to-Text API key (Cloud
+    // Console > APIs & Services > Credentials) to turn on the ONLINE
+    // path. Left blank, every attempt quietly goes straight to the
+    // offline engine instead — voice commands still work, just with
+    // whatever single-locale accuracy the device's own recognizer gives
+    // mixed Urdu/English speech. NOTE: a key sitting in the client like
+    // this is visible to anyone who inspects the built APK — fine to get
+    // started with, but for real use this call should move behind
+    // Code.gs (a new 'transcribe' action holding the key server-side)
+    // instead of hitting Google directly from here.
+    const GOOGLE_STT_API_KEY = "";
+    const VOICE_LANG_PRIMARY_ = 'ur-PK';   // Urdu — main
+    const VOICE_LANG_SECONDARY_ = 'en-US'; // English — secondary
+
+    function speechRecognitionPlugin_(){ return capacitorPlugin_('SpeechRecognition'); }
+
+    // Each entry's `match` list is checked as a case-insensitive substring
+    // against whatever either engine returned — Urdu script, common
+    // Roman-Urdu spellings, and English all point at the same view, so a
+    // partial or slightly garbled transcript still has a good chance of
+    // matching. First match in the list wins.
+    const VOICE_COMMANDS_ = [
+      { view:'overview',      match:['overview','جائزہ','jaiza','jayza'] },
+      { view:'notifications', match:['notification','اطلاعات','ittila'] },
+      { view:'factories',     match:['factor','supplier','فیکٹری','فراہم کنندہ'] },
+      { view:'sales',         match:['sales','فروخت','farokht'] },
+      { view:'transactions',  match:['transaction','order booked','لین دین','len den'] },
+      { view:'expenses',      match:['expense','اخراجات','kharcha','kharche'] },
+      { view:'rawmaterial',   match:['raw material','خام مال','kham maal','kham mal'] },
+      { view:'paint',         match:['paint','پینٹ','pent'] },
+      { view:'labourledger',  match:['labour','labor','مزدور','majdoor'] },
+      { view:'scrapledger',   match:['scrap','سکریپ'] },
+      { view:'withdrawal',    match:['withdrawal','نکاسی','nikasi'] },
+      { view:'stock',         match:['stock','inventory','اسٹاک','stok'] },
+      { view:'backup',        match:['backup','بیک اپ','baikap'] },
+      { view:'settings',      match:['setting','سیٹنگ'] },
+      { view:'products',      match:['product','پروڈکٹ'] },
+    ];
+    function parseVoiceCommand_(text){
+      const t = (text || '').toLowerCase();
+      if(!t) return null;
+      for(const cmd of VOICE_COMMANDS_){
+        if(cmd.match.some(kw => t.includes(kw.toLowerCase()))) return cmd;
+      }
+      return null;
+    }
+
+    function voiceBlobToBase64_(blob){
+      return new Promise((resolve, reject)=>{
+        const reader = new FileReader();
+        reader.onloadend = ()=> resolve(String(reader.result).split(',')[1] || '');
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    let voiceMediaRecorder_ = null;
+    // ONLINE engine: records a short clip, sends it to Google Cloud
+    // Speech-to-Text with Urdu as the primary language and English as the
+    // alternate (alternativeLanguageCodes) — the closest a REST call like
+    // this gets to "understanding both", since the service picks whichever
+    // language best matches each utterance rather than forcing one.
+    function transcribeOnline_(){
+      return new Promise((resolve, reject)=>{
+        if(!GOOGLE_STT_API_KEY){ reject(new Error('no-api-key')); return; }
+        if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ reject(new Error('no-mic-api')); return; }
+        navigator.mediaDevices.getUserMedia({ audio:true }).then(stream=>{
+          const recorder = new MediaRecorder(stream);
+          const chunks = [];
+          recorder.ondataavailable = e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+          recorder.onstop = ()=>{
+            stream.getTracks().forEach(t=> t.stop());
+            const blob = new Blob(chunks, { type:'audio/webm' });
+            voiceBlobToBase64_(blob).then(base64=>{
+              if(!base64){ reject(new Error('empty-recording')); return; }
+              fetch('https://speech.googleapis.com/v1p1beta1/speech:recognize?key=' + GOOGLE_STT_API_KEY, {
+                method:'POST',
+                headers:{ 'Content-Type':'application/json' },
+                body: JSON.stringify({
+                  config:{
+                    encoding:'WEBM_OPUS',
+                    languageCode: VOICE_LANG_PRIMARY_,
+                    alternativeLanguageCodes:[VOICE_LANG_SECONDARY_],
+                    model:'default'
+                  },
+                  audio:{ content: base64 }
+                })
+              }).then(resp=> resp.json()).then(data=>{
+                const transcript = data && data.results && data.results[0] && data.results[0].alternatives && data.results[0].alternatives[0]
+                  ? data.results[0].alternatives[0].transcript : '';
+                if(transcript) resolve(transcript); else reject(new Error('no-speech'));
+              }).catch(reject);
+            }).catch(reject);
+          };
+          voiceMediaRecorder_ = recorder;
+          recorder.start();
+          // Fixed ~4s listening window keeps v1 simple (no manual stop
+          // button yet) — enough for a short command like "raw material
+          // ledger kholo" without dragging every use out.
+          setTimeout(()=>{ if(recorder.state !== 'inactive') recorder.stop(); }, 4000);
+        }).catch(reject);
+      });
+    }
+
+    // OFFLINE engine: Android's on-device SpeechRecognizer via the native
+    // plugin, same capacitorPlugin_() lookup pattern as GoogleSignIn/
+    // NativeBiometric — silently unavailable (rejects) until the actual
+    // native project has @capacitor-community/speech-recognition installed
+    // and synced, exactly like those two.
+    async function transcribeOffline_(){
+      const plugin = speechRecognitionPlugin_();
+      if(!plugin) throw new Error('plugin-unavailable');
+      const avail = await plugin.available().catch(()=> null);
+      if(avail && avail.available === false) throw new Error('not-available');
+      let perm = await plugin.checkPermissions().catch(()=> null);
+      if(!perm || perm.speechRecognition !== 'granted'){
+        perm = await plugin.requestPermissions().catch(()=> null);
+        if(!perm || perm.speechRecognition !== 'granted'){
+          showToast_(tr('voice_mic_denied'));
+          throw new Error('permission-denied');
+        }
+      }
+      const result = await plugin.start({
+        language: VOICE_LANG_PRIMARY_,
+        maxResults: 1,
+        prompt: tr('voice_tap_to_speak'),
+        partialResults: false,
+        popup: false
+      });
+      const transcript = result && result.matches && result.matches[0] ? result.matches[0] : '';
+      if(!transcript) throw new Error('no-speech');
+      return transcript;
+    }
+
+    let voiceModalBusy_ = false;
+    function closeVoiceCommandModal_(){
+      document.getElementById('voice-command-modal')?.classList.remove('active');
+      voiceModalBusy_ = false;
+      if(voiceMediaRecorder_ && voiceMediaRecorder_.state !== 'inactive'){
+        try{ voiceMediaRecorder_.stop(); }catch(e){}
+      }
+    }
+    async function runVoiceCommand_(){
+      const statusEl = document.getElementById('voice-status-text');
+      const engineEl = document.getElementById('voice-engine-label');
+      const online = !!navigator.onLine;
+      if(statusEl) statusEl.textContent = tr('voice_listening');
+      if(engineEl) engineEl.textContent = online ? tr('voice_online_mode') : tr('voice_offline_mode');
+      let transcript = '';
+      try{
+        transcript = online ? await transcribeOnline_() : await transcribeOffline_();
+      }catch(err){
+        // Cloud attempt failed (no key set, network dropped mid-recording,
+        // quota, etc.) — fall back to the on-device engine rather than
+        // dead-ending someone who just spoke into the tablet.
+        if(online){
+          if(engineEl) engineEl.textContent = tr('voice_offline_mode');
+          try{ transcript = await transcribeOffline_(); }catch(err2){ transcript = ''; }
+        }
+      }
+      if(!voiceModalBusy_) return; // modal was cancelled while we were awaiting
+      if(!transcript){
+        if(statusEl) statusEl.textContent = tr('voice_no_match');
+        setTimeout(closeVoiceCommandModal_, 1500);
+        return;
+      }
+      if(statusEl) statusEl.textContent = tr('voice_command_heard').replace('{text}', transcript);
+      const cmd = parseVoiceCommand_(transcript);
+      setTimeout(()=>{
+        if(!voiceModalBusy_) return;
+        if(cmd){
+          setView(cmd.view);
+          showToast_(tr('voice_confirm_open').replace('{view}', tr('nav_'+cmd.view)));
+        } else {
+          showToast_(tr('voice_no_match'));
+        }
+        closeVoiceCommandModal_();
+      }, 900);
+    }
+    function openVoiceCommandModal_(){
+      const modal = document.getElementById('voice-command-modal');
+      if(!modal || voiceModalBusy_) return;
+      voiceModalBusy_ = true;
+      modal.classList.add('active');
+      runVoiceCommand_();
+    }
+    document.getElementById('voice-command-btn')?.addEventListener('click', openVoiceCommandModal_);
+    document.getElementById('voice-command-cancel')?.addEventListener('click', closeVoiceCommandModal_);
 
     // Set this to the Web application OAuth client ID created in Google
     // Cloud Console (see the setup guide) before rebuilding — a blank
@@ -13969,6 +14284,7 @@
                     </button>
                     <div class="export-dropdown-menu">
                       <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-print" data-idx="${idx}" data-i18n="export_print">Print</button>
                       <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
                       <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
                     </div>
@@ -14007,6 +14323,9 @@
         // Ledger's per-supplier row actions.
         wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('paint', 'pdf', painters[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-print').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('paint', 'print', painters[parseInt(btn.dataset.idx,10)].name); });
         });
         wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('paint', 'jpg', painters[parseInt(btn.dataset.idx,10)].name); });
@@ -14809,9 +15128,9 @@
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Paint-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Paint-Ledger');
     }
-    function exportPaintLedgerPDFRows_(rows, name){
+    function exportPaintLedgerPDFRows_(rows, name, printMode){
       const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, rows);
-      exportPDF_('Paint Ledger', f.headers, f.rows, exportFilename_('Paint-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : PAINT_LEDGER_PDF_COLUMN_STYLES, 'Paint-Ledger');
+      exportPDF_('Paint Ledger', f.headers, f.rows, exportFilename_('Paint-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : PAINT_LEDGER_PDF_COLUMN_STYLES, 'Paint-Ledger', printMode ? 'print' : 'save');
     }
     function exportPaintLedgerJPGRows_(rows, name){
       const f = filterExportColumns_('paint', PAINT_LEDGER_HEADERS, rows);
@@ -14897,6 +15216,7 @@
                     </button>
                     <div class="export-dropdown-menu">
                       <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-print" data-idx="${idx}" data-i18n="export_print">Print</button>
                       <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
                       <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
                     </div>
@@ -14935,6 +15255,9 @@
         // to open the ledger first just to export or customize its columns.
         wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'pdf', suppliers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-print').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'print', suppliers[parseInt(btn.dataset.idx,10)].name); });
         });
         wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'jpg', suppliers[parseInt(btn.dataset.idx,10)].name); });
@@ -15092,6 +15415,7 @@
       // addEventListener) is deliberate so re-binding never stacks up
       // duplicate handlers from earlier suppliers.
       document.getElementById('rl-export-pdf').onclick = ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'pdf', s.name); };
+      document.getElementById('rl-export-print').onclick = ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'print', s.name); };
       document.getElementById('rl-export-jpg').onclick = ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'jpg', s.name); };
       document.getElementById('rl-export-csv').onclick = ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'csv', s.name); };
       document.getElementById('rl-export-settings-btn').onclick = ()=> openRawSupplierExportSettings_(s.name);
@@ -15695,9 +16019,9 @@
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Raw-Material-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Raw-Material-Ledger');
     }
-    function exportRawLedgerPDFRows_(rows, name){
+    function exportRawLedgerPDFRows_(rows, name, printMode){
       const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows, rawExportPrefsKey_(name));
-      exportPDF_('Raw Material Ledger', f.headers, f.rows, exportFilename_('Raw-Material-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : RAW_LEDGER_PDF_COLUMN_STYLES, 'Raw-Material-Ledger');
+      exportPDF_('Raw Material Ledger', f.headers, f.rows, exportFilename_('Raw-Material-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : RAW_LEDGER_PDF_COLUMN_STYLES, 'Raw-Material-Ledger', printMode ? 'print' : 'save');
     }
     function exportRawLedgerJPGRows_(rows, name){
       const f = filterExportColumns_('raw', RAW_LEDGER_HEADERS, rows, rawExportPrefsKey_(name));
@@ -15767,6 +16091,7 @@
                     </button>
                     <div class="export-dropdown-menu">
                       <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-print" data-idx="${idx}" data-i18n="export_print">Print</button>
                       <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
                       <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
                     </div>
@@ -15802,6 +16127,9 @@
         // same pattern as Raw Material/Paint Ledger row actions.
         wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('scrapledger', 'pdf', buyers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-print').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('scrapledger', 'print', buyers[parseInt(btn.dataset.idx,10)].name); });
         });
         wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('scrapledger', 'jpg', buyers[parseInt(btn.dataset.idx,10)].name); });
@@ -16211,9 +16539,9 @@
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Scrap-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Scrap-Ledger');
     }
-    function exportScrapLedgerPDFRows_(rows, name){
+    function exportScrapLedgerPDFRows_(rows, name, printMode){
       const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows);
-      exportPDF_('Scrap Ledger', f.headers, f.rows, exportFilename_('Scrap-Ledger', name, 'pdf'), 'l', null, undefined, 'Scrap-Ledger');
+      exportPDF_('Scrap Ledger', f.headers, f.rows, exportFilename_('Scrap-Ledger', name, 'pdf'), 'l', null, undefined, 'Scrap-Ledger', printMode ? 'print' : 'save');
     }
     function exportScrapLedgerJPGRows_(rows, name){
       const f = filterExportColumns_('scrap', SCRAP_LEDGER_HEADERS, rows);
@@ -16241,9 +16569,9 @@
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Withdrawal-Ledger', null, 'csv'), withCompanyHeader_(csv), 'Withdrawal-Ledger');
     }
-    function exportWithdrawalLedgerPDFRows_(rows){
+    function exportWithdrawalLedgerPDFRows_(rows, printMode){
       const f = filterExportColumns_('withdrawal', WITHDRAWAL_LEDGER_HEADERS, rows);
-      exportPDF_('Withdrawal Ledger', f.headers, f.rows, exportFilename_('Withdrawal-Ledger', null, 'pdf'), 'l', null, undefined, 'Withdrawal-Ledger');
+      exportPDF_('Withdrawal Ledger', f.headers, f.rows, exportFilename_('Withdrawal-Ledger', null, 'pdf'), 'l', null, undefined, 'Withdrawal-Ledger', printMode ? 'print' : 'save');
     }
     function exportWithdrawalLedgerJPGRows_(rows){
       const f = filterExportColumns_('withdrawal', WITHDRAWAL_LEDGER_HEADERS, rows);
@@ -16293,9 +16621,9 @@
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Custom-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Custom-Ledger');
     }
-    function exportCustomLedgerPDFRows_(rows, name){
+    function exportCustomLedgerPDFRows_(rows, name, printMode){
       const f = filterExportColumns_('custom', CUSTOM_LEDGER_HEADERS, rows);
-      exportPDF_('Custom Ledger', f.headers, f.rows, exportFilename_('Custom-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : CUSTOM_LEDGER_PDF_COLUMN_STYLES, 'Custom-Ledger');
+      exportPDF_('Custom Ledger', f.headers, f.rows, exportFilename_('Custom-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : CUSTOM_LEDGER_PDF_COLUMN_STYLES, 'Custom-Ledger', printMode ? 'print' : 'save');
     }
     function exportCustomLedgerJPGRows_(rows, name){
       const f = filterExportColumns_('custom', CUSTOM_LEDGER_HEADERS, rows);
@@ -16867,6 +17195,7 @@
                     </button>
                     <div class="export-dropdown-menu">
                       <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-print" data-idx="${idx}" data-i18n="export_print">Print</button>
                       <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
                       <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
                     </div>
@@ -16907,6 +17236,9 @@
         // ledger itself would.
         wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomLedgerIdx = parseInt(btn.dataset.idx,10); openExportFilterModal('customledger', 'pdf'); });
+        });
+        wrap.querySelectorAll('.inv-row-export-print').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomLedgerIdx = parseInt(btn.dataset.idx,10); openExportFilterModal('customledger', 'print'); });
         });
         wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); currentCustomLedgerIdx = parseInt(btn.dataset.idx,10); openExportFilterModal('customledger', 'jpg'); });
@@ -17793,6 +18125,7 @@
                     </button>
                     <div class="export-dropdown-menu">
                       <button type="button" class="inv-row-export-pdf" data-idx="${idx}" data-i18n="export_pdf">PDF</button>
+                      <button type="button" class="inv-row-export-print" data-idx="${idx}" data-i18n="export_print">Print</button>
                       <button type="button" class="inv-row-export-jpg" data-idx="${idx}" data-i18n="export_jpg">JPG</button>
                       <button type="button" class="inv-row-export-csv" data-idx="${idx}" data-i18n="export_csv">CSV</button>
                     </div>
@@ -17833,6 +18166,9 @@
         // same pattern as Raw Material/Paint/Scrap Ledger row actions.
         wrap.querySelectorAll('.inv-row-export-pdf').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('labourledger', 'pdf', workers[parseInt(btn.dataset.idx,10)].name); });
+        });
+        wrap.querySelectorAll('.inv-row-export-print').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('labourledger', 'print', workers[parseInt(btn.dataset.idx,10)].name); });
         });
         wrap.querySelectorAll('.inv-row-export-jpg').forEach(btn=>{
           btn.addEventListener('click', ()=>{ closeExportDropdowns(); openExportFilterModal('labourledger', 'jpg', workers[parseInt(btn.dataset.idx,10)].name); });
@@ -19287,9 +19623,9 @@
       const csv = toCSV_(f.headers, f.rows);
       downloadCSV_(exportFilename_('Labour-Ledger', name, 'csv'), withCompanyHeader_(csv), 'Labour-Ledger');
     }
-    function exportLabourLedgerPDFRows_(rows, name){
+    function exportLabourLedgerPDFRows_(rows, name, printMode){
       const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows);
-      exportPDF_('Labour Ledger', f.headers, f.rows, exportFilename_('Labour-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : LABOUR_LEDGER_PDF_COLUMN_STYLES, 'Labour-Ledger');
+      exportPDF_('Labour Ledger', f.headers, f.rows, exportFilename_('Labour-Ledger', name, 'pdf'), 'l', null, f.hidden ? undefined : LABOUR_LEDGER_PDF_COLUMN_STYLES, 'Labour-Ledger', printMode ? 'print' : 'save');
     }
     function exportLabourLedgerJPGRows_(rows, name){
       const f = filterExportColumns_('labour', LABOUR_LEDGER_HEADERS, rows);
@@ -22232,6 +22568,7 @@
         if(format === 'csv') exportTransactionsCSV(rows, name);
         if(format === 'pdf') exportTransactionsPDF(rows, name);
         if(format === 'jpg') exportTransactionsJPG(rows, name);
+        if(format === 'print') exportTransactionsPDF(rows, name, true);
       } else if(section === 'factoryledger'){
         // Pulls straight from the factory's own ledger entries (c.entries,
         // after reconciling confirmed orders in) — same data the on-screen
@@ -22243,6 +22580,7 @@
         if(format === 'csv') exportCustomerLedgerCSVRows_(rows, currentCustomerName);
         if(format === 'pdf') exportCustomerLedgerPDFRows_(rows, currentCustomerName);
         if(format === 'jpg') exportCustomerLedgerJPGRows_(rows, currentCustomerName);
+        if(format === 'print') exportCustomerLedgerPDFRows_(rows, currentCustomerName, true);
       } else if(section === 'painterledger'){
         // Same paintLedgerRows_ pipeline as the Paint Ledger's own list-level
         // export below, just pre-locked to the currently open painter.
@@ -22252,6 +22590,7 @@
         if(format === 'csv') exportPaintLedgerCSVRows_(rows, painterName);
         if(format === 'pdf') exportPaintLedgerPDFRows_(rows, painterName);
         if(format === 'jpg') exportPaintLedgerJPGRows_(rows, painterName);
+        if(format === 'print') exportPaintLedgerPDFRows_(rows, painterName, true);
       } else if(section === 'customledger'){
         const ledgerName = (currentCustomLedgerIdx !== null && customLedgers[currentCustomLedgerIdx]) ? customLedgers[currentCustomLedgerIdx].name : null;
         const rows = customLedgerRows_(dateFrom, dateTo, ledgerName);
@@ -22259,36 +22598,42 @@
         if(format === 'csv') exportCustomLedgerCSVRows_(rows, ledgerName);
         if(format === 'pdf') exportCustomLedgerPDFRows_(rows, ledgerName);
         if(format === 'jpg') exportCustomLedgerJPGRows_(rows, ledgerName);
+        if(format === 'print') exportCustomLedgerPDFRows_(rows, ledgerName, true);
       } else if(section === 'rawledger'){
         const rows = rawLedgerRows_(dateFrom, dateTo, name);
         if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
         if(format === 'csv') exportRawLedgerCSVRows_(rows, name);
         if(format === 'pdf') exportRawLedgerPDFRows_(rows, name);
         if(format === 'jpg') exportRawLedgerJPGRows_(rows, name);
+        if(format === 'print') exportRawLedgerPDFRows_(rows, name, true);
       } else if(section === 'labourledger'){
         const rows = labourLedgerRows_(dateFrom, dateTo, name);
         if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
         if(format === 'csv') exportLabourLedgerCSVRows_(rows, name);
         if(format === 'pdf') exportLabourLedgerPDFRows_(rows, name);
         if(format === 'jpg') exportLabourLedgerJPGRows_(rows, name);
+        if(format === 'print') exportLabourLedgerPDFRows_(rows, name, true);
       } else if(section === 'scrapledger'){
         const rows = scrapLedgerRows_(dateFrom, dateTo, name);
         if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
         if(format === 'csv') exportScrapLedgerCSVRows_(rows, name);
         if(format === 'pdf') exportScrapLedgerPDFRows_(rows, name);
         if(format === 'jpg') exportScrapLedgerJPGRows_(rows, name);
+        if(format === 'print') exportScrapLedgerPDFRows_(rows, name, true);
       } else if(section === 'withdrawal'){
         const rows = withdrawalLedgerRows_(dateFrom, dateTo);
         if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
         if(format === 'csv') exportWithdrawalLedgerCSVRows_(rows);
         if(format === 'pdf') exportWithdrawalLedgerPDFRows_(rows);
         if(format === 'jpg') exportWithdrawalLedgerJPGRows_(rows);
+        if(format === 'print') exportWithdrawalLedgerPDFRows_(rows, true);
       } else {
         const rows = paintLedgerRows_(dateFrom, dateTo, name);
         if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
         if(format === 'csv') exportPaintLedgerCSVRows_(rows, name);
         if(format === 'pdf') exportPaintLedgerPDFRows_(rows, name);
         if(format === 'jpg') exportPaintLedgerJPGRows_(rows, name);
+        if(format === 'print') exportPaintLedgerPDFRows_(rows, name, true);
       }
     });
     function csvEscape_(val){
@@ -22679,6 +23024,106 @@
     // doesn't already build its own signature row (see hasOwnSignatureImages
     // below) — this is what makes the stamp/signature show up on every
     // exported file, not just the Customer/Factory Ledger.
+    // ================= EXPORT QR CODE (ADD 2026-08-29) =================
+    // Shared by exportPDF_ and exportAsJPG_ below — one small block of
+    // helpers rather than duplicating QR logic in each. See both call
+    // sites for the "why here, why this content" reasoning; this section
+    // is just the mechanics.
+
+    // The vendored library (see vendor/qrcode-generator.js) encodes text
+    // as single-byte Latin-1 by default, which would silently corrupt any
+    // Urdu-script supplier/customer name that ends up in a QR's text
+    // (this app is Urdu/English throughout — see the i18n dictionary and
+    // the new Urdu voice-command support above). Overwriting
+    // stringToBytes with a proper UTF-8 encoder is the library's own
+    // documented extension point for exactly this ("Overwrite this
+    // function to encode using a multibyte charset" — see the library's
+    // own comments). Runs once, right after the script loads.
+    if(window.qrcode){
+      window.qrcode.stringToBytes = function(s){
+        const bytes = [];
+        for(const ch of String(s)){
+          const cp = ch.codePointAt(0);
+          if(cp < 0x80) bytes.push(cp);
+          else if(cp < 0x800){ bytes.push(0xc0 | (cp>>6), 0x80 | (cp&0x3f)); }
+          else if(cp < 0x10000){ bytes.push(0xe0 | (cp>>12), 0x80 | ((cp>>6)&0x3f), 0x80 | (cp&0x3f)); }
+          else { bytes.push(0xf0 | (cp>>18), 0x80 | ((cp>>12)&0x3f), 0x80 | ((cp>>6)&0x3f), 0x80 | (cp&0x3f)); }
+        }
+        return bytes;
+      };
+    }
+
+    function generateExportId_(){
+      return 'AT-' + Date.now().toString(36).toUpperCase();
+    }
+
+    // "Both — link plus a few key numbers" was the plan discussed for
+    // this, but there's no backend endpoint yet that could resolve an
+    // export ID to a live record online (that's a small future addition
+    // to Code.gs) — so for now this builds a self-contained text payload
+    // instead of a link: title, a unique export ID, when it was
+    // generated, and — only when this export's own footerLines starts
+    // with a plain headline line rather than a two-column signature row —
+    // that headline (by this file's own established convention, e.g. in
+    // exportAsJPG_ above, footerLines[0] is normally the bold "headline"
+    // total when a footer is used at all).
+    function buildExportQrText_(title, footerLines, exportId){
+      const first = footerLines && footerLines[0];
+      const isPlainHeadline = first && (typeof first === 'string' || (typeof first === 'object' && !first.row));
+      const headlineText = isPlainHeadline ? (typeof first === 'string' ? first : first.text) : '';
+      const lines = [
+        'Amir Traders',
+        title,
+        'Export ID: ' + exportId,
+        'Generated: ' + new Date().toLocaleString()
+      ];
+      if(headlineText) lines.push(String(headlineText).split('\n')[0]);
+      return lines.join('\n');
+    }
+
+    // Draws the QR's module grid onto a plain <canvas> and returns a PNG
+    // data URL — deliberately NOT using this library's own createImgTag/
+    // createSvgTag helpers, because createImgTag produces a GIF data URL
+    // and jsPDF's addImage() doesn't reliably accept GIF, only PNG/JPEG/
+    // WEBP. A canvas gives a real PNG that works in both exportPDF_
+    // (addImage) and exportAsJPG_ (plain <img src=...>).
+    //
+    // typeNumber (QR "version"/size) isn't auto-detected by this library
+    // version — passing 0 throws rather than picking a size itself, so
+    // this tries increasingly larger versions until one is big enough to
+    // hold the text, same approach used by most integrations of this
+    // particular library.
+    function renderQrPngDataUrl_(text, sizePx){
+      if(!window.qrcode) return null;
+      sizePx = sizePx || 200;
+      let qr = null;
+      for(let type = 1; type <= 20; type += 1){
+        try{
+          const attempt = window.qrcode(type, 'M');
+          attempt.addData(text);
+          attempt.make();
+          qr = attempt;
+          break;
+        }catch(e){ /* too small for this much text — try the next size up */ }
+      }
+      if(!qr) return null;
+      const count = qr.getModuleCount();
+      const cell = Math.max(1, Math.floor(sizePx / count));
+      const canvasSize = cell * count;
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasSize; canvas.height = canvasSize;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvasSize, canvasSize);
+      ctx.fillStyle = '#000000';
+      for(let r = 0; r < count; r += 1){
+        for(let c = 0; c < count; c += 1){
+          if(qr.isDark(r, c)) ctx.fillRect(c * cell, r * cell, cell, cell);
+        }
+      }
+      return canvas.toDataURL('image/png');
+    }
+
     function signatureFooterRow_(leftText){
       // One modest, consistently-sized image everywhere ("manage space") —
       // 34mm/150px wide, height scaled from the source's own aspect ratio —
@@ -22693,7 +23138,12 @@
       }
       return { row: [ { text: leftText || '' }, signatureItem ] };
     }
-    async function exportPDF_(title, headers, rows, filename, orientation, footerLines, columnStyles, folder){
+    // ADD (2026-08-29, user request): 'mode' param — 'save' (default,
+    // unchanged behaviour: writes the PDF to a file same as always) or
+    // 'print' (builds the exact same document, then hands it straight to
+    // the device's native print dialog via printGeneratedPDF_ below,
+    // instead of saving a file at all).
+    async function exportPDF_(title, headers, rows, filename, orientation, footerLines, columnStyles, folder, mode){
       if(!window.jspdf){ alert('PDF library did not load — check your internet connection and try again.'); return; }
       const logo = await getLogoDataURL();
       const { jsPDF } = window.jspdf;
@@ -22735,8 +23185,14 @@
       if(!hasOwnSignatureImages && sigStampImg){
         effectiveFooterLines.push(signatureFooterRow_());
       }
+      // ADD (2026-08-29, QR follow-up to voice commands): tracked outside
+      // the if-block below (was previously local to it) so the QR-code
+      // block right after this whole footer section knows the exact Y
+      // position everything else finished at, and can never overlap it —
+      // see qrFooterY_ use just below.
+      let qrFooterY_ = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 48) + 10;
       if(effectiveFooterLines.length){
-        let y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 48) + 10;
+        let y = qrFooterY_;
         const maxWidth = pageWidth - 28;
         effectiveFooterLines.forEach(line=>{
           if(line.row){
@@ -22791,8 +23247,66 @@
             y += wrapped.length * 5.5 + 2;
           }
         });
+        qrFooterY_ = y;
       }
-      saveGeneratedFile_(doc.output('blob'), filename, folder);
+      // ADD (2026-08-29, user request: "QR on all export and printed
+      // files too"). Sits right below whatever footer content was drawn
+      // above (qrFooterY_ tracks that), so it never overlaps regardless
+      // of how much footer text a given ledger export adds. Applies to
+      // EVERY call to exportPDF_ — i.e. every PDF-based ledger export in
+      // the app — and, because 'print' mode below reuses this exact same
+      // `doc`, to every printed document too, with no separate code path
+      // needed for printing.
+      //
+      // Honesty note on scope: there's no backend endpoint yet that could
+      // turn this into a "scan to open the live record online" link (that
+      // needs a small addition to Code.gs to look records up by export
+      // ID) — so for this first version the QR is self-contained: it
+      // encodes the export's own details as plain text (title, a unique
+      // export ID, when it was generated, and — when this export's own
+      // footerLines starts with a plain headline line rather than a
+      // two-column signature row — that headline, e.g. a Rs total) rather
+      // than pointing anywhere. Any generic QR scanner app shows that
+      // text directly.
+      if(window.qrcode){
+        const exportId = generateExportId_();
+        const qrText = buildExportQrText_(title, footerLines, exportId);
+        const qrDataUrl = renderQrPngDataUrl_(qrText, 240);
+        if(qrDataUrl){
+          const qrSize = 22;
+          const qrY = qrFooterY_ + 4;
+          doc.addImage(qrDataUrl, 'PNG', 14, qrY, qrSize, qrSize);
+          doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(120);
+          doc.text('Scan for export details', 14 + qrSize + 3, qrY + qrSize / 2 - 2);
+          doc.text('ID: ' + exportId, 14 + qrSize + 3, qrY + qrSize / 2 + 4);
+        }
+      }
+      if(mode === 'print'){
+        await printGeneratedPDF_(doc, title);
+      } else {
+        saveGeneratedFile_(doc.output('blob'), filename, folder);
+      }
+    }
+    // Hands an already-built jsPDF document to the device's native print
+    // dialog (any WiFi/Mopria/AirPrint-style printer Android already knows
+    // about — no per-brand code needed here, that's Android's own job).
+    // Falls back to opening the PDF in a new tab when there's no native
+    // print plugin available (e.g. testing in a desktop browser) — most
+    // browsers' own PDF viewer has a print button/shortcut once it's open.
+    async function printGeneratedPDF_(doc, jobName){
+      const printer = printerPlugin_();
+      if(printer){
+        try{
+          const base64 = String(doc.output('datauristring')).split(',')[1];
+          await printer.printBase64({ data: base64, mimeType: 'application/pdf', name: jobName || 'Document' });
+        }catch(err){
+          console.error('[print] failed:', err);
+          alert('Printing failed: ' + (err && err.message ? err.message : String(err)));
+        }
+      } else {
+        const win = window.open(doc.output('bloburl'), '_blank');
+        if(!win) alert('Could not open print preview — please allow pop-ups for this app.');
+      }
     }
     // FIX: only Items/Colour/Payment Mode had explicit widths — every other
     // column (including short single-word headers like "Time", "Size",
@@ -22809,7 +23323,7 @@
       8:{cellWidth:17}, 9:{cellWidth:18}, 10:{cellWidth:15}, 11:{cellWidth:17},
       12:{cellWidth:17}, 13:{cellWidth:17}, 14:{cellWidth:24}
     };
-    function exportTransactionsPDF(list, name){
+    function exportTransactionsPDF(list, name, printMode){
       const rows = list || transactionsLog;
       const total = txnRemainingBalanceTotal_(rows);
       const f = filterExportColumns_('transactions', TXN_EXPORT_HEADERS, txnExportRows_(rows));
@@ -22824,30 +23338,38 @@
           { text: 'Total Remaining Balance: ' + fmt(total), bold: true },
           { text: amountInWordsUrdu_(total), urdu: true }
         ],
-        f.hidden ? undefined : TXN_PDF_COLUMN_STYLES, 'Transactions');
+        f.hidden ? undefined : TXN_PDF_COLUMN_STYLES, 'Transactions', printMode ? 'print' : 'save');
     }
-    function exportExpensesPDF(){
+    function exportExpensesPDF(printMode){
       const f = filterExportColumns_('expenses', ['Date','Description','Category','Amount'], expenses.map(x => [x.date, x.desc, x.category, x.amount]));
       exportPDF_('Daily Expenses', f.headers,
         f.rows,
-        exportFilename_('Expenses', null, 'pdf'), undefined, undefined, undefined, 'Expenses');
+        exportFilename_('Expenses', null, 'pdf'), undefined, undefined, undefined, 'Expenses', printMode ? 'print' : 'save');
     }
-    function exportInventoryPDF(category){
+    function exportInventoryPDF(category, printMode){
       const items = inventory[category] || [];
       const titles = { rawmaterial:'Raw Material Stock', labour:'Labour', paint:'Paint Stock' };
       if(category === 'labour'){
         exportPDF_(titles[category] || category, ['Labour Name','Work Type','Rate (Rs)'],
           items.map(it => [it.name, it.workType, it.rate]),
-          exportFilename_(category, null, 'pdf'), undefined, undefined, undefined, 'Inventory');
+          exportFilename_(category, null, 'pdf'), undefined, undefined, undefined, 'Inventory', printMode ? 'print' : 'save');
         return;
       }
       exportPDF_(titles[category] || category, ['Name','Qty','Unit','Cost'],
         items.map(it => [it.name, it.qty, it.unit, it.cost]),
-        exportFilename_(category, null, 'pdf'), undefined, undefined, undefined, 'Inventory');
+        exportFilename_(category, null, 'pdf'), undefined, undefined, undefined, 'Inventory', printMode ? 'print' : 'save');
     }
     window.exportTransactionsPDF = exportTransactionsPDF;
     window.exportExpensesPDF = exportExpensesPDF;
     window.exportInventoryPDF = exportInventoryPDF;
+    // ADD (2026-08-29, user request): Print, alongside every CSV/PDF/JPG
+    // Export button — Expenses and Inventory have no date-range filter
+    // modal (see openExportFilterModal's isTxn/isRawLedger/... checks,
+    // neither section is handled there), so unlike every other ledger they
+    // need their own direct Print entry points rather than a 'print' case
+    // added to that modal's dispatch.
+    window.printExpensesPDF = () => exportExpensesPDF(true);
+    window.printInventoryPDF = (category) => exportInventoryPDF(category, true);
 
     // ---------------- JPG EXPORT ----------------
     async function exportAsJPG_(title, headers, rows, filename, wide, footerLines, colWidths, folder){
@@ -22939,7 +23461,26 @@
             }).join('') +
           '</div>'
         : '';
-      wrap.innerHTML = headHtml + tableHtml + footerHtml;
+      // ADD (2026-08-29, user request: "QR on all export and printed
+      // files too") — same QR block and same honesty note as exportPDF_
+      // just above (self-contained export details, no live-record link
+      // yet since there's no backend endpoint for that). Placed after the
+      // signature footer so it never overlaps it.
+      let qrHtml = '';
+      if(window.qrcode){
+        const exportId = generateExportId_();
+        const qrText = buildExportQrText_(title, footerLines, exportId);
+        const qrDataUrl = renderQrPngDataUrl_(qrText, 160);
+        if(qrDataUrl){
+          qrHtml = '<div style="display:flex; align-items:center; gap:10px; margin-top:16px; padding-top:12px; border-top:1px solid #eee;">' +
+            '<img src="' + qrDataUrl + '" style="width:70px; height:70px;">' +
+            '<div style="font-size:10px; color:#888; line-height:1.5;">' +
+              'Scan for export details<br>ID: ' + esc(exportId) +
+            '</div>' +
+          '</div>';
+        }
+      }
+      wrap.innerHTML = headHtml + tableHtml + footerHtml + qrHtml;
       document.body.appendChild(wrap);
       try{
         const canvas = await html2canvas(wrap, { scale:2, backgroundColor:'#ffffff' });
@@ -23027,7 +23568,7 @@
           // export already leaves its own item columns blank for non-order
           // rows.
           let desc = e.desc || '';
-          let itemsCell = '', sizeCell = '', colourCell = '', qtyCell = '';
+          let itemsCell = '', sizeCell = '', colourCell = '', qtyCell = '', itemCountCell = '', rateCell = '';
           const t = e.txnId ? transactionsLog.find(x => x.id === e.txnId) : null;
           if(t){
             desc = 'Order #' + t.id;
@@ -23038,6 +23579,12 @@
             qtyCell = perLineCounts.length > 1
               ? perLineCounts.join('\n') + '\nTotal: ' + (t.itemCount || 0)
               : (t.itemCounts || String(t.itemCount || ''));
+            // ADD (2026-08-29, user request): plain single total (not the
+            // multi-line breakdown Qty already shows above) plus the same
+            // per-item rate the Transactions export already computes — see
+            // txnRateCell_ above and CUSTOMER_LEDGER_HEADERS' own comment.
+            itemCountCell = t.itemCount || 0;
+            rateCell = txnRateCell_(t);
           }
           // Payment method with its detail folded right in — the cheque
           // number for Cheque, the account/Easypaisa number for Bank/Online
@@ -23092,7 +23639,7 @@
             }
           }
 
-          rows.push([c.name, e.date, e.time || '', desc, itemsCell, sizeCell, colourCell, qtyCell, e.debit || 0, e.credit || 0, running, methodCell, paymentSeqLabel, chequeStatusCell, receivedCell]);
+          rows.push([c.name, e.date, e.time || '', desc, itemsCell, sizeCell, colourCell, qtyCell, itemCountCell, rateCell, e.debit || 0, e.credit || 0, running, methodCell, paymentSeqLabel, chequeStatusCell, receivedCell]);
         });
       });
       return rows;
@@ -23109,7 +23656,17 @@
     // export, and two more separate columns would not have fit a landscape
     // page without forcing other columns back into mid-word breaks (see the
     // width re-tuning note below).
-    const CUSTOMER_LEDGER_HEADERS = ['Factory','Date','Time','Description','Item(s)','Size','Colour','Qty','Debit - Billed','Credit - Received','Balance','Payment Method','Payment #','Cheque Status','Received By / In'];
+    // ADD (2026-08-29, user request): 'Item Count' and 'Rate Per Item' —
+    // same two columns the Transactions export already has (see
+    // TXN_EXPORT_HEADERS/txnRateCell_ below), added here too so this
+    // ledger's export carries the same per-order rate/count info. 'Qty'
+    // (just before these) is left exactly as-is — it's the detailed
+    // per-product-line breakdown (with a "Total: N" line for a multi-item
+    // order); 'Item Count' is deliberately the plain single overall total
+    // number instead (t.itemCount, same value the "Total:" line already
+    // shows), so a spreadsheet can sum/filter on it without having to parse
+    // multi-line text.
+    const CUSTOMER_LEDGER_HEADERS = ['Factory','Date','Time','Description','Item(s)','Size','Colour','Qty','Item Count','Rate Per Item','Debit - Billed','Credit - Received','Balance','Payment Method','Payment #','Cheque Status','Received By / In'];
     // Same header-text-breaks-mid-word fix as the other ledger PDF exports
     // (see TXN_PDF_COLUMN_STYLES) — explicit widths instead of leaving them
     // to autoTable's auto-sizing.
@@ -23126,17 +23683,26 @@
     // page-edge clipping (an earlier wider candidate — before combining
     // Received By/In into one column — measurably clipped the last 1-2
     // columns off the page edge; this is the version that didn't).
+    // RE-TUNED (2026-08-29) for the 2 new columns (Item Count, Rate Per
+    // Item) — every other column trimmed by 1-3mm to keep the same overall
+    // ~272mm budget the 15-column version used, rather than letting the
+    // total grow past the usable landscape width. Approximate, not
+    // re-measured against real jsPDF getTextWidth like the 2026-08-26
+    // re-tune above was — flag it if any column still wraps mid-word/
+    // mid-number on a real export and the widths can be adjusted further.
     const CUSTOMER_LEDGER_PDF_COLUMN_STYLES = {
-      0:{cellWidth:17}, 1:{cellWidth:21}, 2:{cellWidth:13}, 3:{cellWidth:21},
-      4:{cellWidth:18}, 5:{cellWidth:11}, 6:{cellWidth:15}, 7:{cellWidth:13},
-      8:{cellWidth:18}, 9:{cellWidth:18}, 10:{cellWidth:19}, 11:{cellWidth:25},
-      12:{cellWidth:19}, 13:{cellWidth:22}, 14:{cellWidth:22}
+      0:{cellWidth:16}, 1:{cellWidth:19}, 2:{cellWidth:12}, 3:{cellWidth:19},
+      4:{cellWidth:17}, 5:{cellWidth:10}, 6:{cellWidth:14}, 7:{cellWidth:12},
+      8:{cellWidth:12}, 9:{cellWidth:14}, 10:{cellWidth:16}, 11:{cellWidth:16},
+      12:{cellWidth:17}, 13:{cellWidth:22}, 14:{cellWidth:17}, 15:{cellWidth:20},
+      16:{cellWidth:20}
     };
     // Same idea as TXN_JPG_COL_WIDTHS — percentages sum to 100, with the
     // text-heavy Item(s)/Description columns given more room than short
     // ones like Qty/Date so ordinary words don't force-wrap one-per-line.
     // RE-TUNED (2026-08-26) for the 2 new columns (Time, Received By / In).
-    const CUSTOMER_LEDGER_JPG_COL_WIDTHS = [5,8,5,7,7,4,6,5,7,7,7,9,7,8,8];
+    // RE-TUNED (2026-08-29) for the 2 new columns (Item Count, Rate Per Item).
+    const CUSTOMER_LEDGER_JPG_COL_WIDTHS = [5,7,4,7,6,4,5,5,5,6,6,6,6,8,6,7,7];
 
     // ---------------- EXPORT SETTINGS: per-ledger column visibility ----------------
     // One stable key per column, positionally matching each ledger's own
@@ -23162,7 +23728,7 @@
       custom: ['ledger','date','time','desc','itemColour','weight','sizeCount','itemCount','ratePerItem','itemMethod','itemWeightStatus','selfWeightStock','weightPerItem','weightPerScrap','remainingWeight','debit','credit','balance','receivedBy','receivedIn'],
       labour: ['worker','date','time','type','rate','size','units','note','payment','advance','loan','credit','balance','receivedBy','receivedIn'],
       transactions: ['id','date','time','items','itemCount','rate','size','colour','total','factory','status','debit','credit','balance','paymentMode'],
-      customerledger: ['factory','date','time','desc','items','size','colour','qty','debit','credit','balance','method','paymentNum','chequeStatus','receivedByIn'],
+      customerledger: ['factory','date','time','desc','items','size','colour','qty','itemCount','ratePerItem','debit','credit','balance','method','paymentNum','chequeStatus','receivedByIn'],
       expenses: ['date','desc','category','amount'],
       scrap: ['buyer','date','time','desc','itemName','type','weight','rate','debit','credit','balance','receivedBy','receivedIn'],
       withdrawal: ['date','desc','amount','method','detail','withdrawnBy','withdrawnIn']
@@ -23467,15 +24033,16 @@
       const filteredRows = rows.map(row => keepIdx.map(i => row[i]));
       return { headers: filteredHeaders, rows: filteredRows, hidden: true };
     }
-    // Balance column (index 10 — shifted from 9 by the 2026-08-26 addition
-    // of the Time column at index 2, see CUSTOMER_LEDGER_HEADERS) of the
+    // Balance column (index 12 — shifted from 10 by the 2026-08-29 addition
+    // of the Item Count/Rate Per Item columns, and from 9 by the earlier
+    // 2026-08-26 addition of Time — see CUSTOMER_LEDGER_HEADERS) of the
     // LAST row is this export's actual current running balance — same
     // figure the on-screen ledger and the last row's Balance cell both
     // show. If a date/order filter is active, this is the balance as of the
     // last row the filter let through, same as the Transactions export's
     // total already works relative to its own filtered rows.
     function customerLedgerTotalBalance_(rows){
-      return rows.length ? (rows[rows.length - 1][10] || 0) : 0;
+      return rows.length ? (rows[rows.length - 1][12] || 0) : 0;
     }
     function customerLedgerFooterLines_(total){
       return [
@@ -23485,9 +24052,24 @@
         signatureFooterRow_('Thank you for your business with us.')
       ];
     }
+    // FIX (2026-08-29, user report with screenshots: "I have unchecked
+    // these boxes but still showing on exported files") — openFactoryCardExportSettings_
+    // (see below) saves each factory's column choices to its OWN prefs slot
+    // ('customerledger::<factory name>', via entityExportPrefsKey_), same
+    // per-entity pattern the Raw Material Ledger already uses (see
+    // rawExportPrefsKey_). But these three export functions were calling
+    // filterExportColumns_ with NO prefsKey at all, which defaults to the
+    // single shared 'customerledger' slot — a completely different slot
+    // from the one the modal actually wrote to. So every checkbox in
+    // "Export Settings — <factory>" looked and behaved correctly in the
+    // modal itself, but had zero effect on the real CSV/PDF/JPG export,
+    // which kept reading the (empty/default) shared slot instead. Now
+    // passes the same entityExportPrefsKey_('customerledger', name) the
+    // modal itself is scoped to, so a factory's unchecked columns are
+    // actually left out.
     function exportCustomerLedgerCSVRows_(rows, name){
       const total = customerLedgerTotalBalance_(rows);
-      const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows, entityExportPrefsKey_('customerledger', name));
       const csv = toCSV_(f.headers, f.rows);
       const footer = '\r\n'
         + csvEscape_('Total Remaining Balance') + ',' + csvEscape_(fmt(total)) + '\r\n'
@@ -23498,15 +24080,15 @@
         + csvEscape_('Signature') + ',' + csvEscape_('______________________');
       downloadCSV_(exportFilename_('Customer-Ledger', name, 'csv'), withCompanyHeader_(csv) + footer, 'Customer-Ledger');
     }
-    function exportCustomerLedgerPDFRows_(rows, name){
+    function exportCustomerLedgerPDFRows_(rows, name, printMode){
       const total = customerLedgerTotalBalance_(rows);
-      const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows, entityExportPrefsKey_('customerledger', name));
       exportPDF_('Customer / Factory Ledger', f.headers, f.rows, exportFilename_('Customer-Ledger', name, 'pdf'), 'l',
-        customerLedgerFooterLines_(total), f.hidden ? undefined : CUSTOMER_LEDGER_PDF_COLUMN_STYLES, 'Customer-Ledger');
+        customerLedgerFooterLines_(total), f.hidden ? undefined : CUSTOMER_LEDGER_PDF_COLUMN_STYLES, 'Customer-Ledger', printMode ? 'print' : 'save');
     }
     function exportCustomerLedgerJPGRows_(rows, name){
       const total = customerLedgerTotalBalance_(rows);
-      const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows);
+      const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows, entityExportPrefsKey_('customerledger', name));
       exportAsJPG_('Customer / Factory Ledger', f.headers, f.rows, exportFilename_('Customer-Ledger', name, 'jpg'), true,
         customerLedgerFooterLines_(total), f.hidden ? undefined : CUSTOMER_LEDGER_JPG_COL_WIDTHS, 'Customer-Ledger');
     }

@@ -45,6 +45,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Needed for fingerprint quick-unlock (@capgo/capacitor-native-biometric) -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- ADD (2026-08-29, voice commands): required by both voice paths —
+         the OFFLINE on-device recognizer (@capacitor-community/speech-
+         recognition, which requests/checks this at runtime itself) and
+         the ONLINE Google Cloud Speech-to-Text path (index.html records
+         via getUserMedia, which needs this same OS-level grant on
+         Android before the WebView's own permission prompt can appear). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- FIX (2026-08-23, Galaxy Tab A / Android 8 report): exported files
          (PDF/JPG/CSV), receipt photos, and backups all write through the
          @capacitor/filesystem plugin to Directory.Documents (shared/public
