@@ -1349,16 +1349,26 @@
     .ledger-balance-owed{ color:var(--green); font-weight:600; }
     .ledger-balance-advance{ color:var(--red); font-weight:600; }
     .ledger-balance-settled{ color:var(--text-dim); font-weight:600; }
+    /* REDESIGN (2026-08-30, user request "more advanced/aesthetic ledgers,
+       suitable for all ledgers") — every ledger (Customer, Paint, Raw,
+       Labour, Scrap, Custom) renders its entries through this SAME shared
+       set of classes (.ledger-entry-block/.ledger-entry-row/etc., see
+       joinLedgerBlocks_), so redesigning it here is what makes the new
+       look apply everywhere at once rather than needing 6 separate
+       per-ledger rewrites. Each entry is now its own rounded card
+       (was: a flat dashed-border row) with breathing room between cards
+       instead of a continuous list — this is what lets the colored
+       left-accent bar below read clearly per-entry instead of blurring
+       into one long strip. */
     .ledger-entry-row{
-      display:flex; align-items:center; gap:10px; padding:9px 4px;
-      border-bottom:1px dashed var(--steel-line); font-size:12px;
+      display:flex; align-items:center; gap:10px; padding:11px 12px;
+      font-size:12px;
     }
-    .ledger-entry-row:last-child{ border-bottom:none; }
     .ledger-entry-when{ font-family:var(--mono); font-size:9.5px; color:var(--text-dim); width:56px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .ledger-entry-desc{ flex:1; color:var(--text-dim); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10.5px; }
-    .ledger-entry-debit{ font-family:var(--mono); font-size:11.5px; color:var(--red); width:70px; flex-shrink:0; text-align:right; }
-    .ledger-entry-credit{ font-family:var(--mono); font-size:11.5px; color:var(--green); width:70px; flex-shrink:0; text-align:right; }
-    .ledger-entry-bal{ font-family:var(--mono); font-size:11.5px; font-weight:600; width:70px; flex-shrink:0; text-align:right; }
+    .ledger-entry-desc{ flex:1; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; font-weight:500; }
+    .ledger-entry-debit{ font-family:var(--display); font-weight:600; font-size:13.5px; color:var(--red); width:74px; flex-shrink:0; text-align:right; }
+    .ledger-entry-credit{ font-family:var(--display); font-weight:600; font-size:13.5px; color:var(--green); width:74px; flex-shrink:0; text-align:right; }
+    .ledger-entry-bal{ font-family:var(--mono); font-size:10px; color:var(--text-dim); width:70px; flex-shrink:0; text-align:right; }
     /* FIX (2026-08-20): same widen-for-accidental-touch pass as
        .txn-row-actions/.inv-row-actions above — this is the per-entry
        receipt/edit/delete button inside an open ledger (up to 3 packed
@@ -1371,13 +1381,28 @@
       display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s;
     }
     .ledger-entry-del:hover{ border-color:var(--red); color:var(--red); }
-    /* Cheque highlighting — a whole entry gets wrapped in .ledger-entry-block
-       (the normal .ledger-entry-row plus an extra .cheque-sub-row line for
-       the badge + Mark Cleared/Bounced buttons) only when it's a cheque
-       payment; everything else renders exactly as before. */
-    .ledger-entry-block{ border-bottom:1px dashed var(--steel-line); }
-    .ledger-entry-block:last-child{ border-bottom:none; }
+    /* Card shell — replaces the old continuous dashed-line list. Each
+       entry is its own raised surface with a 6px gap below it (set on the
+       wrapper in joinLedgerBlocks_'s own markup is unnecessary; margin
+       here does it per-card) so colored accent bars stay visually
+       separate from one another. */
+    .ledger-entry-block{
+      border-radius:10px; background:var(--panel-raised);
+      margin-bottom:6px; overflow:hidden; position:relative;
+      border-left:3px solid transparent;
+    }
+    .ledger-entry-block:last-child{ margin-bottom:0; }
     .ledger-entry-block .ledger-entry-row{ border-bottom:none; }
+    /* Base debit/credit accent — a plain manual entry with no special
+       cheque/order state still gets a colored left bar so red (money
+       billed/owed) vs green (money received) is readable at a glance
+       while scrolling, before even reading the numbers. The more specific
+       cheque-pending/overdue/bounced/order-linked rules below share this
+       same equal-specificity level, so their later position in this
+       stylesheet is what lets them override this default when both would
+       otherwise apply to the same entry. */
+    .ledger-entry-block.is-debit{ border-left-color:rgba(209,67,67,0.55); }
+    .ledger-entry-block.is-credit{ border-left-color:rgba(76,154,90,0.55); }
     .ledger-entry-block.cheque-pending{ background:rgba(var(--logo-a-rgb),0.10); border-left:3px solid var(--yellow); }
     .ledger-entry-block.cheque-overdue{ background:rgba(209,67,67,0.12); border-left:3px solid var(--red); }
     .ledger-entry-block.cheque-bounced{ background:rgba(209,67,67,0.06); border-left:3px solid var(--red); }
@@ -1399,14 +1424,26 @@
       -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") center/contain no-repeat;
       mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") center/contain no-repeat;
     }
-    .cheque-sub-row{ display:flex; align-items:center; gap:8px; padding:0 4px 8px 4px; flex-wrap:wrap; }
+    .cheque-sub-row{ display:flex; align-items:center; gap:6px; padding:0 12px 10px 12px; flex-wrap:wrap; }
     .ledger-entry-spec-row{
       font-family:var(--mono); font-size:10.5px; color:var(--text-dim);
-      padding:0 4px 8px 4px; margin-top:-4px;
+      padding:0 12px 10px 12px; margin-top:-4px;
     }
+    /* Tag chips (payment method, tax %, sequence #, cheque status...) —
+       every ledger already fed its own set of these into cheque-sub-row
+       before this redesign (methodBadge/receivedBadge/seqBadge/etc, see
+       each ledger's own renderer); only the visual treatment changes
+       here, into rounder, slightly larger pills that read as a flexible
+       "tag" system rather than tiny uppercase labels — this is what
+       makes the SAME row template look right whether it's showing a
+       Customer Ledger's tax %/payment method or Paint/Raw/Labour's own
+       spec details (weight, rate, size count, etc. — see
+       .ledger-entry-spec-row just above, left as its own separate line
+       since those tend to be longer/more numerous than a payment tag).
+    */
     .cheque-badge{
-      font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px;
-      padding:2px 6px; border-radius:4px; white-space:nowrap;
+      font-family:var(--mono); font-size:9.5px; text-transform:none; letter-spacing:0.2px;
+      padding:3px 8px; border-radius:8px; white-space:nowrap;
     }
     .cheque-badge.pending{ background:rgba(var(--logo-a-rgb),0.18); color:var(--yellow); }
     .cheque-badge.overdue{ background:rgba(209,67,67,0.18); color:var(--red); }
@@ -1414,14 +1451,14 @@
     /* Neutral badge for a manual entry's payment method (Cash/Bank/Online
        Transfer/Cheque) and its running "Received #N"/"Given #N" count —
        shown for every payment method now, not just Cheque. */
-    .cheque-badge.method{ background:rgba(74,82,87,0.18); color:var(--text-dim); text-transform:none; letter-spacing:0.2px; }
+    .cheque-badge.method{ background:var(--panel); color:var(--text-dim); }
     /* Green "Receipt Attached" badge — shown on any entry that has a
        receipt file/image attached (see hasReceipt in each ledger renderer),
        so it's obvious at a glance without having to tap the paperclip
        button. This is also the visual counterpart to the Notifications
        "Pending Slips" section: once this tick appears, that entry no
        longer contributes to that notification (see getPendingSlips_). */
-    .cheque-badge.receipt{ background:rgba(76,154,90,0.18); color:var(--green); text-transform:none; letter-spacing:0.2px; display:inline-flex; align-items:center; gap:3px; }
+    .cheque-badge.receipt{ background:rgba(76,154,90,0.18); color:var(--green); display:inline-flex; align-items:center; gap:3px; }
     .cheque-badge.receipt svg{ display:block; }
     .cheque-action-btn{
       font-family:var(--mono); font-size:9.5px; min-height:32px; padding:8px 12px; border-radius:4px;
@@ -1444,6 +1481,72 @@
       border:1px solid var(--red); border-radius:var(--radius); padding:10px 14px;
       font-size:12.5px; color:var(--text); margin-bottom:16px;
     }
+    /* ADD (2026-08-30): Balance Owed hero card + stat boxes + entry
+       search/filter chips + per-entry kebab menu + floating add button —
+       the redesigned Customer/Factory Ledger detail view. Hero card shows
+       the running balance in large display type plus a small sparkline
+       (buildSparklinePoints_/buildSparklineSvg_) tracing the running
+       balance across every entry in order; the trend line underneath
+       compares today's balance to the balance right before this
+       calendar month's first entry (computeMonthStartBalance_). */
+    .cl-hero-card{
+      background:var(--panel-raised); border:1px solid var(--steel-line);
+      border-radius:12px; padding:14px 16px; margin-bottom:12px;
+    }
+    .cl-hero-label{
+      font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase;
+      color:var(--text-dim);
+    }
+    .cl-hero-amount-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:4px; }
+    .cl-hero-amount{ font-family:var(--display); font-weight:700; font-size:28px; line-height:1.1; }
+    .cl-hero-spark{ flex-shrink:0; opacity:0.9; }
+    .cl-hero-trend{ font-family:var(--mono); font-size:11px; margin-top:6px; }
+    .cl-stat-row{ display:flex; gap:10px; margin-bottom:14px; }
+    .cl-stat-box{
+      flex:1; min-width:0; background:var(--panel-raised); border:1px solid var(--steel-line);
+      border-radius:10px; padding:10px 12px;
+    }
+    .cl-stat-label{
+      font-family:var(--mono); font-size:9.5px; letter-spacing:0.5px; text-transform:uppercase;
+      color:var(--text-dim);
+    }
+    .cl-stat-value{ font-family:var(--display); font-weight:600; font-size:16.5px; margin-top:3px; }
+    .cl-filter-row{ display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+    .cl-filter-chip{
+      font-family:var(--mono); font-size:11px; padding:6px 13px; border-radius:20px;
+      border:1px solid var(--steel-line); background:var(--panel-raised); color:var(--text-dim);
+      cursor:pointer; transition:all 0.15s; white-space:nowrap;
+    }
+    .cl-filter-chip:hover{ border-color:var(--yellow); color:var(--text); }
+    .cl-filter-chip.active{ background:var(--yellow); border-color:var(--yellow); color:#1C1F22; font-weight:600; }
+    .cl-entry-kebab-wrap{ position:relative; flex-shrink:0; }
+    .cl-entry-kebab-btn{
+      width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+      border:1px solid var(--steel-line); border-radius:6px; background:var(--panel);
+      color:var(--text-dim); cursor:pointer; padding:0;
+    }
+    .cl-entry-kebab-btn:hover{ border-color:var(--yellow); color:var(--yellow); }
+    .cl-entry-kebab-menu{
+      position:absolute; top:calc(100% + 4px); right:0; z-index:40;
+      background:var(--panel-raised); border:1px solid var(--steel-line); border-radius:8px;
+      min-width:132px; padding:6px; display:none; flex-direction:column; gap:2px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.28);
+    }
+    .cl-entry-kebab-wrap.open .cl-entry-kebab-menu{ display:flex; }
+    .cl-entry-kebab-menu button{
+      font-family:var(--mono); font-size:11px; background:none; border:none; color:var(--text);
+      text-align:left; padding:8px 9px; border-radius:5px; cursor:pointer;
+      display:flex; align-items:center; gap:6px;
+    }
+    .cl-entry-kebab-menu button:hover{ background:var(--steel-line); color:var(--yellow); }
+    .cl-entry-kebab-menu button.danger:hover{ color:var(--red); }
+    .cl-fab{
+      width:46px; height:46px; border-radius:50%; background:var(--yellow); color:#1C1F22;
+      border:none; display:flex; align-items:center; justify-content:center; cursor:pointer;
+      box-shadow:0 6px 16px rgba(0,0,0,0.35); transition:transform 0.15s;
+    }
+    .cl-fab:hover{ transform:scale(1.06); }
+    .cl-fab.open{ background:var(--panel-raised); color:var(--text); border:1px solid var(--steel-line); }
     .ledger-entry-kind{
       font-family:var(--mono); font-size:8.5px; text-transform:uppercase; letter-spacing:0.3px;
       padding:2px 5px; border-radius:4px; flex-shrink:0; white-space:nowrap;
@@ -2988,6 +3091,28 @@
         </div>
       </div>
 
+      <div class="settings-section-label" data-i18n="settings_section_business">Business</div>
+
+      <!-- ADD (2026-08-30, Tax Invoice feature): editable NTN / Sales Tax
+           Reg. # for the Customer Ledger's Tax Invoice header. Synced via
+           Meta (see ntn/salesTaxReg above and Code.gs), unlike Device Name
+           just below which is deliberately per-device/local-only — these
+           two numbers belong to the business, not the phone, so every
+           device should show the same value. -->
+      <div class="settings-card">
+        <div class="settings-card-header" style="--settings-icon-color:var(--logo-a);">
+          <div class="settings-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6M9 8h1"/><rect x="4" y="3" width="16" height="18" rx="2"/></svg></div>
+          <div class="settings-card-title" data-i18n="tax_details_title">Business Tax Details</div>
+        </div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:14px;" data-i18n="tax_details_desc">Shown on the Customer/Factory Ledger's Tax Invoice export and print. Leave blank to hide that line.</div>
+        <label class="field-label" data-i18n="ntn_label">NTN</label>
+        <input type="text" id="settings-ntn" class="field-input" placeholder="e.g. 1234567-8" autocomplete="off">
+        <label class="field-label" data-i18n="sales_tax_reg_label">Sales Tax Reg. #</label>
+        <input type="text" id="settings-sales-tax-reg" class="field-input" placeholder="e.g. 12-34-5678-901-23" autocomplete="off">
+        <p id="settings-tax-details-success" style="color:var(--green); font-size:11.5px; font-family:var(--mono); margin:-8px 0 12px; display:none;" data-i18n="tax_details_saved_msg">Tax details saved.</p>
+        <button type="button" id="settings-tax-details-save" style="background:var(--yellow); color:#1C1F22; border:none; padding:11px 22px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:13px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="save">Save</button>
+      </div>
+
       <div class="settings-section-label" data-i18n="settings_section_device">Device</div>
 
       <div class="settings-card">
@@ -3198,10 +3323,23 @@
         <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openPainterModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
-    <div id="pl-balance-line" style="font-family:var(--mono); font-size:13px; margin:6px 0 14px;"></div>
+    <div id="pl-overdue-banner"></div>
+    <div id="pl-hero-card" class="cl-hero-card"></div>
+    <div id="pl-stat-row" class="cl-stat-row"></div>
     <input type="text" class="search-box" id="pl-date-search" data-i18n-placeholder="search_by_date" placeholder="Search by date (dd/mm/yyyy)…" style="margin-bottom:12px;">
+    <div id="pl-filter-row" class="cl-filter-row">
+      <button type="button" class="cl-filter-chip active" data-filter="all" data-i18n="cl_filter_all">All</button>
+      <button type="button" class="cl-filter-chip" data-filter="debit" data-i18n="cl_filter_debit">Debit</button>
+      <button type="button" class="cl-filter-chip" data-filter="credit" data-i18n="cl_filter_credit">Credit</button>
+      <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
+    </div>
     <div id="pl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
+    <div id="pl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
+      <button type="button" id="pl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div id="pl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
       <label class="field-label" data-i18n="description">Description</label>
       <input class="field-input" id="pl-desc" placeholder="e.g. Cash advance / 3 fans painted">
       <label class="field-label" data-i18n="entry_date">Date</label>
@@ -3305,11 +3443,13 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" id="painter-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_painter">Delete Painter</button>
-        <button class="btn-confirm" id="pl-add-entry" data-i18n="add_entry">Add Entry</button>
+        <button class="btn-confirm" id="pl-add-entry" style="width:100%;" data-i18n="add_entry">Add Entry</button>
       </div>
-      <button class="btn-cancel" id="pl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
     </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="btn-cancel" id="painter-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_painter">Delete Painter</button>
+    </div>
+    <button class="btn-cancel" id="pl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -3436,14 +3576,27 @@
       <button class="btn-confirm" id="wl-save-profile" style="width:100%; margin-top:0;" data-i18n="save_details">Save Details</button>
     </div>
 
-    <div id="wl-balance-line" style="font-family:var(--mono); font-size:13px; margin:0 0 14px;"></div>
+    <div id="wl-overdue-banner"></div>
+    <div id="wl-hero-card" class="cl-hero-card"></div>
+    <div id="wl-stat-row" class="cl-stat-row"></div>
+    <div id="wl-filter-row" class="cl-filter-row">
+      <button type="button" class="cl-filter-chip active" data-filter="all" data-i18n="cl_filter_all">All</button>
+      <button type="button" class="cl-filter-chip" data-filter="attendance" data-i18n="entry_kind_attendance">Attendance / Work</button>
+      <button type="button" class="cl-filter-chip" data-filter="payment" data-i18n="entry_kind_payment_short">Payment</button>
+      <button type="button" class="cl-filter-chip" data-filter="advance" data-i18n="cl_filter_advance_loan">Advance/Loan</button>
+    </div>
     <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
       <label class="field-label" style="margin-bottom:0; white-space:nowrap;" data-i18n="filter_by_date">Filter by Date</label>
       <input class="field-input" id="wl-entries-filter-date" type="date" style="margin-bottom:0;">
       <button type="button" class="btn-cancel" id="wl-entries-filter-clear" style="padding:8px 12px; flex-shrink:0;" data-i18n="clear">Clear</button>
     </div>
     <div id="wl-entries-wrap" style="max-height:230px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
+    <div id="wl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
+      <button type="button" id="wl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div id="wl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
       <label class="field-label" data-i18n="entry_kind">Entry Type</label>
       <select class="field-input" id="wl-kind">
         <option value="attendance" data-i18n="entry_kind_attendance">Attendance / Work</option>
@@ -3536,11 +3689,13 @@
       <input class="field-input" id="wl-note" placeholder="e.g. Cash advance for Eid">
 
       <div class="modal-actions">
-        <button class="btn-cancel" id="worker-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_worker">Delete Worker</button>
-        <button class="btn-confirm" id="wl-add-entry" data-i18n="add_entry">Add Entry</button>
+        <button class="btn-confirm" id="wl-add-entry" style="width:100%;" data-i18n="add_entry">Add Entry</button>
       </div>
-      <button class="btn-cancel" id="wl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
     </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="btn-cancel" id="worker-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_worker">Delete Worker</button>
+    </div>
+    <button class="btn-cancel" id="wl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -3599,9 +3754,23 @@
         </button>
       </div>
     </div>
-    <div id="rl-balance-line" style="font-family:var(--mono); font-size:13px; margin:-8px 0 14px;"></div>
+    <div id="rl-overdue-banner"></div>
+    <div id="rl-hero-card" class="cl-hero-card"></div>
+    <div id="rl-stat-row" class="cl-stat-row"></div>
+    <input type="text" class="search-box" id="rl-entries-search" data-i18n-placeholder="cl_search_entries_placeholder" placeholder="Search entries…" style="margin-bottom:10px;">
+    <div id="rl-filter-row" class="cl-filter-row">
+      <button type="button" class="cl-filter-chip active" data-filter="all" data-i18n="cl_filter_all">All</button>
+      <button type="button" class="cl-filter-chip" data-filter="debit" data-i18n="cl_filter_debit">Debit</button>
+      <button type="button" class="cl-filter-chip" data-filter="credit" data-i18n="cl_filter_credit">Credit</button>
+      <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
+    </div>
     <div id="rl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
+    <div id="rl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
+      <button type="button" id="rl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div id="rl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
       <div style="display:flex; align-items:baseline; justify-content:space-between;">
         <label class="field-label" style="margin:0;" data-i18n="description">Description</label>
         <button type="button" id="rl-desc-manage-btn" class="ml-manage-link" data-list="rawdesc" data-i18n="manage">Manage</button>
@@ -3776,8 +3945,7 @@
         <button type="button" id="rl-receipt-remove" style="background:none; border:none; color:var(--red); cursor:pointer; font-family:var(--mono); font-size:11px; text-decoration:underline; padding:0;" data-i18n="remove">Remove</button>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" id="rawsupplier-delete" style="border-color:var(--red) !important; color:var(--red); background:color-mix(in srgb, var(--red) 10%, transparent); font-weight:600;" data-i18n="delete_supplier">Delete Supplier</button>
-        <button class="btn-confirm" id="rl-add-entry" data-i18n="add_entry">Add Entry</button>
+        <button class="btn-confirm" id="rl-add-entry" style="width:100%;" data-i18n="add_entry">Add Entry</button>
       </div>
       <!-- ADD (2026-08-24, user request #2): quick stock top-up + reset,
            scoped to whichever Raw Material Name is currently in rl-stockname
@@ -3808,8 +3976,11 @@
         <button type="button" class="weight-add-btn weight-reset-btn" id="rl-resetweight-btn" style="flex:1;" data-i18n="rl_reset_weight_btn">Reset Weight</button>
         <button type="button" class="weight-add-btn weight-reset-btn" id="rl-resetitems-btn" style="flex:1;" data-i18n="rl_reset_items_btn">Reset Items</button>
       </div>
-      <button class="btn-cancel" id="rl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
     </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="btn-cancel" id="rawsupplier-delete" style="border-color:var(--red) !important; color:var(--red); background:color-mix(in srgb, var(--red) 10%, transparent); font-weight:600;" data-i18n="delete_supplier">Delete Supplier</button>
+    </div>
+    <button class="btn-cancel" id="rl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -3830,9 +4001,23 @@
 <div class="modal-overlay" id="scrapledger-modal">
   <div class="modal-box" style="max-width:560px;">
     <h3 id="sl-title">Buyer</h3>
-    <div id="sl-balance-line" style="font-family:var(--mono); font-size:13px; margin:-8px 0 14px;"></div>
+    <div id="sl-overdue-banner"></div>
+    <div id="sl-hero-card" class="cl-hero-card"></div>
+    <div id="sl-stat-row" class="cl-stat-row"></div>
+    <input type="text" class="search-box" id="sl-entries-search" data-i18n-placeholder="cl_search_entries_placeholder" placeholder="Search entries…" style="margin-bottom:10px;">
+    <div id="sl-filter-row" class="cl-filter-row">
+      <button type="button" class="cl-filter-chip active" data-filter="all" data-i18n="cl_filter_all">All</button>
+      <button type="button" class="cl-filter-chip" data-filter="debit" data-i18n="cl_filter_debit">Debit</button>
+      <button type="button" class="cl-filter-chip" data-filter="credit" data-i18n="cl_filter_credit">Credit</button>
+      <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
+    </div>
     <div id="sl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
+    <div id="sl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
+      <button type="button" id="sl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div id="sl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
       <label class="field-label" data-i18n="scrap_description">Scrap Description</label>
       <div class="pl-colour-wrap" id="sl-desc-wrap">
         <div class="pl-colour-bar" id="sl-desc-bar">
@@ -3919,11 +4104,13 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" id="scrapbuyer-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_scrap_buyer">Delete Buyer</button>
-        <button class="btn-confirm" id="sl-add-entry" data-i18n="add_entry">Add Entry</button>
+        <button class="btn-confirm" id="sl-add-entry" style="width:100%;" data-i18n="add_entry">Add Entry</button>
       </div>
-      <button class="btn-cancel" id="sl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
     </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="btn-cancel" id="scrapbuyer-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_scrap_buyer">Delete Buyer</button>
+    </div>
+    <button class="btn-cancel" id="sl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -4053,10 +4240,23 @@
         <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openCustomLedgerModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
-    <div id="cul-balance-line" style="font-family:var(--mono); font-size:13px; margin:6px 0 14px;"></div>
+    <div id="cul-overdue-banner"></div>
+    <div id="cul-hero-card" class="cl-hero-card"></div>
+    <div id="cul-stat-row" class="cl-stat-row"></div>
     <input type="text" class="search-box" id="cul-date-search" data-i18n-placeholder="search_by_date" placeholder="Search by date (dd/mm/yyyy)…" style="margin-bottom:12px;">
+    <div id="cul-filter-row" class="cl-filter-row">
+      <button type="button" class="cl-filter-chip active" data-filter="all" data-i18n="cl_filter_all">All</button>
+      <button type="button" class="cl-filter-chip" data-filter="debit" data-i18n="cl_filter_debit">Debit</button>
+      <button type="button" class="cl-filter-chip" data-filter="credit" data-i18n="cl_filter_credit">Credit</button>
+      <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
+    </div>
     <div id="cul-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
+    <div id="cul-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
+      <button type="button" id="cul-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div id="cul-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
       <div id="cul-items-wrap">
         <div class="cul-item-block" data-idx="0">
           <div style="display:flex; align-items:baseline; justify-content:space-between;">
@@ -4198,8 +4398,7 @@
         <button type="button" id="cul-receipt-remove" style="background:none; border:none; color:var(--red); cursor:pointer; font-family:var(--mono); font-size:11px; text-decoration:underline; padding:0;" data-i18n="remove">Remove</button>
       </div>
       <div class="modal-actions">
-        <button class="btn-cancel" id="customledger-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_ledger">Delete Ledger</button>
-        <button class="btn-confirm" id="cul-add-entry" data-i18n="add_entry">Add Entry</button>
+        <button class="btn-confirm" id="cul-add-entry" style="width:100%;" data-i18n="add_entry">Add Entry</button>
       </div>
       <input class="field-input" id="cul-addstock-amount" type="number" min="0" data-i18n-placeholder="add_stock_amount_placeholder" placeholder="Amount to add" style="margin-top:10px;">
       <div class="weight-add-row">
@@ -4207,8 +4406,11 @@
         <button type="button" class="weight-add-btn weight-reset-btn" id="cul-resetweight-btn" style="flex:1;" data-i18n="reset_weight_btn">Reset Weight</button>
       </div>
       <div id="cul-addstock-preview" style="font-family:var(--mono); font-size:11px; color:var(--text-dim); margin:6px 2px 0;"></div>
-      <button class="btn-cancel" id="cul-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
     </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="btn-cancel" id="customledger-delete" style="border-color:var(--red) !important; color:var(--red);" data-i18n="delete_ledger">Delete Ledger</button>
+    </div>
+    <button class="btn-cancel" id="cul-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -4233,7 +4435,9 @@
         <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openCustomerLedgerModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
-    <div id="cl-balance-line" style="font-family:var(--mono); font-size:13px; margin:6px 0 14px;"></div>
+    <div id="cl-overdue-banner"></div>
+    <div id="cl-hero-card" class="cl-hero-card"></div>
+    <div id="cl-stat-row" class="cl-stat-row"></div>
     <input type="text" class="search-box" id="cl-order-search" data-i18n-placeholder="search_order_number" placeholder="Search order #…" style="margin-bottom:12px;">
     <div id="cl-orders-section" style="margin-bottom:16px;">
       <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
@@ -4242,8 +4446,20 @@
       </div>
       <div id="cl-orders-wrap" style="max-height:160px; overflow-y:auto;"></div>
     </div>
+    <input type="text" class="search-box" id="cl-entries-search" data-i18n-placeholder="cl_search_entries_placeholder" placeholder="Search entries…" style="margin-bottom:10px;">
+    <div id="cl-filter-row" class="cl-filter-row">
+      <button type="button" class="cl-filter-chip active" data-filter="all" data-i18n="cl_filter_all">All</button>
+      <button type="button" class="cl-filter-chip" data-filter="debit" data-i18n="cl_filter_debit">Debit</button>
+      <button type="button" class="cl-filter-chip" data-filter="credit" data-i18n="cl_filter_credit">Credit</button>
+      <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
+    </div>
     <div id="cl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div style="border-top:1px solid var(--steel-line); padding-top:14px;">
+    <div id="cl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
+      <button type="button" id="cl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <div id="cl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
       <label class="field-label" data-i18n="description">Description</label>
       <input class="field-input" id="cl-desc" placeholder="e.g. Order billed / Payment received">
       <label class="field-label" data-i18n="entry_date">Date</label>
@@ -4257,6 +4473,21 @@
           <label class="field-label" data-i18n="credit_received">Credit — Received (Rs)</label>
           <input class="field-input" id="cl-credit" type="number" min="0" placeholder="0">
         </div>
+      </div>
+      <!-- ADD (2026-08-30, Tax Invoice feature): Tax % only applies to a
+           Debit (amount billed) — a Credit is a payment received, never
+           taxed. Hidden until Debit has an amount, same show/hide pattern
+           as cl-method-wrap below. Stored per-entry as taxPercent/taxAmt
+           and synced to a SEPARATE helper sheet (CustomerLedger_Tax), not
+           mixed into the normal CustomerLedger columns — see Code.gs. -->
+      <div id="cl-tax-wrap" style="display:none;">
+        <label class="field-label" data-i18n="tax_percent">Tax %</label>
+        <select class="field-input" id="cl-tax-percent">
+          <option value="0">No tax (0%)</option>
+          <option value="18">18% (standard)</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <input class="field-input" id="cl-tax-percent-custom" type="number" min="0" step="0.01" placeholder="Enter tax %" style="display:none; margin-top:6px;">
       </div>
       <div id="cl-method-wrap" style="display:none;">
         <label class="field-label" data-i18n="payment_method">Payment Method</label>
@@ -4305,8 +4536,8 @@
       <div class="modal-actions">
         <button class="btn-confirm" id="cl-add-entry" style="width:100%;" data-i18n="add_entry">Add Entry</button>
       </div>
-      <button class="btn-cancel" id="cl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
     </div>
+    <button class="btn-cancel" id="cl-close" style="width:100%; margin-top:10px;" data-i18n="close">Close</button>
   </div>
 </div>
 
@@ -4333,6 +4564,15 @@
       </div>
     </div>
     <p style="font-size:11px; color:var(--text-dim); margin:2px 0 0;" data-i18n="filter_hint">Leave a field on "All" or blank to include everything.</p>
+    <!-- ADD (2026-08-30, Tax Invoice feature): only relevant to the
+         Customer/Factory Ledger, so hidden/shown per-section in JS (see
+         where currentExportSection_ is set, alongside ef-name-label's own
+         show/hide). Checked = every one of PDF/Print/JPG/CSV below
+         produces the Tax Invoice variant instead of the normal ledger. -->
+    <label class="field-label" id="ef-include-tax-wrap" style="display:none; align-items:center; gap:6px; cursor:pointer; margin-top:8px;">
+      <input type="checkbox" id="ef-include-tax" style="width:auto; margin:0;">
+      <span data-i18n="export_include_tax">Include tax (Tax Invoice)</span>
+    </label>
     <div class="modal-actions">
       <button class="btn-cancel" id="ef-cancel" data-i18n="cancel">Cancel</button>
       <button class="btn-confirm" id="ef-apply" data-i18n="export">Export</button>
@@ -7063,6 +7303,7 @@
           customLedgers: customLedgersForSync, customItemColours, customDescriptions, customWeightPerItems, customWeightPerScraps, customItemSizes,
           productColours,
           txnNumber, sessionTotal, sessionCount, products: PRODUCTS,
+          ntn, salesTaxReg,
           salesSummary: buildSalesSummaryRows_(), expensesSummary: buildExpensesSummaryRows_(),
           accountsSummary: buildAccountsSummaryRows_(),
           // FIX: send this device's own tombstones up so the backend can
@@ -7667,6 +7908,8 @@
           if(Array.isArray(d.rawLedgerDescriptions)) rawLedgerDescriptions = d.rawLedgerDescriptions;
           if(d.rawMaterialResetAt && typeof d.rawMaterialResetAt === 'object') rawMaterialResetAt = d.rawMaterialResetAt;
           if(typeof d.lastBackupEmailAt === 'string' && d.lastBackupEmailAt) lastBackupEmailAt = d.lastBackupEmailAt;
+          if(typeof d.ntn === 'string') ntn = d.ntn;
+          if(typeof d.salesTaxReg === 'string') salesTaxReg = d.salesTaxReg;
           if(Array.isArray(d.scrapDescriptions) && d.scrapDescriptions.length > 0) scrapDescriptions = d.scrapDescriptions;
           if(Array.isArray(d.scrapItemNames) && d.scrapItemNames.length > 0) scrapItemNames = d.scrapItemNames;
           if(Array.isArray(d.scrapTypes) && d.scrapTypes.length > 0) scrapTypes = d.scrapTypes;
@@ -8485,6 +8728,11 @@
         received_in_optional: "Received In (optional)", received_in_placeholder: "e.g. Shop Cash Box",
         nav_settings: "Settings", settings_title: "Settings", settings_subtitle: "Manage your PIN, recovery question, and (soon) account login.",
         settings_section_security: "Security", settings_section_device: "Device", settings_section_data_sync: "Data & Sync", settings_section_notifications: "Notifications",
+        settings_section_business: "Business",
+        tax_details_title: "Business Tax Details", tax_details_desc: "Shown on the Customer/Factory Ledger's Tax Invoice export and print. Leave blank to hide that line.",
+        ntn_label: "NTN", sales_tax_reg_label: "Sales Tax Reg. #", tax_details_saved_msg: "Tax details saved.",
+        tax_percent: "Tax %",
+        export_include_tax: "Include tax (Tax Invoice)",
         sync_settings_title: "Sync", sync_now_btn: "Sync Now",
         sync_status_local_only: "This app saves to your device only — no Google Sheet connected.",
         sync_status_error: "Sync problem: {detail}",
@@ -8723,6 +8971,18 @@
         view_ledger: "View Ledger", confirm_delete_painter: "Delete {name} and their whole ledger?",
         confirm_delete_payment: "Delete this payment? The order's due amount will go back up.",
         no_entries_yet: "No entries yet", todays_expenses: "Today's Expenses",
+        cl_balance_owed: "Balance Owed", cl_balance_advance: "Advance Balance", cl_balance_settled: "Settled",
+        cl_billed: "Billed", cl_received: "Received",
+        cl_search_entries_placeholder: "Search entries…",
+        cl_filter_all: "All", cl_filter_debit: "Debit", cl_filter_credit: "Credit", cl_filter_pending: "Pending",
+        cl_filter_advance_loan: "Advance/Loan",
+        cl_no_matching_entries: "No entries match",
+        cl_overdue_cheque_banner_one: "1 cheque overdue — was due {date}",
+        cl_overdue_cheque_banner_many: "{n} cheques overdue — nearest due {date}",
+        cl_menu_edit: "Edit", cl_menu_delete: "Delete", cl_menu_view_receipt: "View Receipt",
+        cl_menu_remove_ghost: "Remove (order gone)",
+        cl_fab_title: "Add Entry",
+        cl_this_month_change: "{sign}{amount} this month",
         add_one_below_expense: "Add one below to start tracking",
         view_attached_receipt: "View attached receipt", receipt_attached: "Receipt Attached",
         nil_order_btn: "Nil", nil_order_title: "Write off the remaining balance and mark this order fully paid",
@@ -8871,6 +9131,11 @@
         received_in_optional: "کہاں وصول ہوئی (اختیاری)", received_in_placeholder: "مثلاً دکان کا کیش باکس",
         nav_settings: "سیٹنگز", settings_title: "سیٹنگز", settings_subtitle: "اپنا پن، سیکیورٹی سوال، اور (جلد) اکاؤنٹ لاگ ان یہاں سے مینج کریں۔",
         settings_section_security: "سیکیورٹی", settings_section_device: "ڈیوائس", settings_section_data_sync: "ڈیٹا اور سنک", settings_section_notifications: "اطلاعات",
+        settings_section_business: "کاروبار",
+        tax_details_title: "کاروباری ٹیکس تفصیلات", tax_details_desc: "کسٹمر/فیکٹری لیجر کے ٹیکس انوائس ایکسپورٹ اور پرنٹ پر دکھایا جائے گا۔ یہ لائن چھپانے کے لیے خالی چھوڑ دیں۔",
+        ntn_label: "این ٹی این", sales_tax_reg_label: "سیلز ٹیکس رجسٹریشن نمبر", tax_details_saved_msg: "ٹیکس تفصیلات محفوظ ہو گئیں۔",
+        tax_percent: "ٹیکس فیصد",
+        export_include_tax: "ٹیکس شامل کریں (ٹیکس انوائس)",
         sync_settings_title: "سنک", sync_now_btn: "ابھی سنک کریں",
         sync_status_local_only: "یہ ایپ صرف آپ کی ڈیوائس پر محفوظ کرتی ہے — کوئی گوگل شیٹ منسلک نہیں۔",
         sync_status_error: "سنک میں مسئلہ: {detail}",
@@ -9087,6 +9352,18 @@
         view_ledger: "لیجر دیکھیں", confirm_delete_painter: "{name} اور ان کا پورا لیجر حذف کریں؟",
         confirm_delete_payment: "یہ ادائیگی حذف کریں؟ آرڈر کی باقی رقم دوبارہ بڑھ جائے گی۔",
         no_entries_yet: "ابھی تک کوئی اندراج نہیں", todays_expenses: "آج کے اخراجات",
+        cl_balance_owed: "واجب الادا رقم", cl_balance_advance: "ایڈوانس بیلنس", cl_balance_settled: "طے شدہ",
+        cl_billed: "بل شدہ", cl_received: "موصول شدہ",
+        cl_search_entries_placeholder: "اندراجات تلاش کریں…",
+        cl_filter_all: "تمام", cl_filter_debit: "ڈیبٹ", cl_filter_credit: "کریڈٹ", cl_filter_pending: "زیر التوا",
+        cl_filter_advance_loan: "ایڈوانس/قرض",
+        cl_no_matching_entries: "کوئی مماثل اندراج نہیں",
+        cl_overdue_cheque_banner_one: "1 چیک واجب الادا — تاریخ {date} تھی",
+        cl_overdue_cheque_banner_many: "{n} چیک واجب الادا — قریب ترین تاریخ {date}",
+        cl_menu_edit: "ترمیم کریں", cl_menu_delete: "حذف کریں", cl_menu_view_receipt: "رسید دیکھیں",
+        cl_menu_remove_ghost: "ہٹائیں (آرڈر موجود نہیں)",
+        cl_fab_title: "اندراج شامل کریں",
+        cl_this_month_change: "اس مہینے {sign}{amount}",
         add_one_below_expense: "ٹریک کرنا شروع کرنے کے لیے نیچے ایک شامل کریں",
         view_attached_receipt: "منسلک رسید دیکھیں", receipt_attached: "رسید منسلک",
         nil_order_btn: "نل", nil_order_title: "باقی رقم معاف کریں اور اس آرڈر کو مکمل ادا شدہ نشان زد کریں",
@@ -9717,6 +9994,11 @@
     // response). Blank means "never sent" — see getBackupOverdueAlert_/
     // formatBackupLastSent_ below for how this is surfaced.
     let lastBackupEmailAt = '';
+    // ADD (2026-08-30, Tax Invoice feature): business's NTN and Sales Tax
+    // Registration numbers, editable in Settings, synced via Meta same as
+    // lastBackupEmailAt above.
+    let ntn = '';
+    let salesTaxReg = '';
     // The standard product-name/size chart for the "American Pedestal Fan"
     // category (used to populate the Product edit modal's dropdowns below)
     // — moved up here so the Paint Ledger's Item Type suggestions (right
@@ -10609,6 +10891,12 @@
       // whatever's currently saved instead of leaving it blank every time.
       const deviceNameInput = document.getElementById('settings-device-name');
       if(deviceNameInput) deviceNameInput.value = DEVICE_NAME;
+      // ADD (2026-08-30, Tax Invoice feature): reflect the synced ntn/
+      // salesTaxReg values every time Settings is opened, same pattern.
+      const ntnInput = document.getElementById('settings-ntn');
+      if(ntnInput) ntnInput.value = ntn;
+      const salesTaxRegInput = document.getElementById('settings-sales-tax-reg');
+      if(salesTaxRegInput) salesTaxRegInput.value = salesTaxReg;
       resetSettingsFormFeedback_();
       // Export Settings and Ledger Settings (range/sort) no longer render
       // here as of 2026-08-23 — both moved onto each ledger's own page/
@@ -10687,6 +10975,22 @@
       try{ localStorage.setItem('pos-device-name', DEVICE_NAME); }catch(e){}
       successEl.style.display = 'block';
       showToast_(tr('device_name_saved_msg'));
+    });
+
+    // ADD (2026-08-30, Tax Invoice feature): unlike Device Name above,
+    // these two are business-wide values that must reach every device, so
+    // this just sets the synced ntn/salesTaxReg vars and marks the data
+    // dirty — the app's normal debounced save picks it up and pushes it
+    // to the Meta sheet same as any other change (see saveLocalSnapshot_/
+    // the payload builder for where ntn/salesTaxReg get sent).
+    document.getElementById('settings-tax-details-save').addEventListener('click', ()=>{
+      const successEl = document.getElementById('settings-tax-details-success');
+      ntn = document.getElementById('settings-ntn').value.trim();
+      salesTaxReg = document.getElementById('settings-sales-tax-reg').value.trim();
+      dataDirty = true;
+      try{ saveLocalSnapshot_(); }catch(e){}
+      successEl.style.display = 'block';
+      showToast_(tr('tax_details_saved_msg'));
     });
 
     // ---------------- SETTINGS: Google Sign-In / Biometric / Backup card ----------------
@@ -12019,7 +12323,7 @@
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
     const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.26.16. Fixed a bug from build .15: closing the new Notification Alerts popup after changing a setting wrongly asked 'Discard what you've entered?', even though every field there already auto-saves instantly (same fix already applied to the Export Settings/Ledger Settings popups). Also includes: Notification Alerts settings moved off the Notifications page's main scroll into its own popup — tap the gear icon top-left of Notifications to open it (build .15); ledger export Rate columns on Raw Material/Labour Ledgers, the Raw Material Ledger export missing-data fix (entries added via 'Raw Material Name'/'Weight Received' now always show their weight/count), the Export Settings checkbox-misalignment fix, and the Customer/Factory Ledger Time + Received By/In export fix (build .14). Also includes: the grams/kg fix extended to the Raw Material Ledger's own entry fields and the product recipe rows/Raw Material Stock table (builds .12-.13), the order-numbering reset counter fix, the order-vanish-after-confirm fix (tombstoned-id collision), Product Colour Manage option, the saved-suggestion-list delete-doesn't-stick fix, the 90s save-timeout fix, and the multi-device delete-sync fix — see status docs for full history.";
+    const APP_VERSION_NOTE = "Build 2026.08.30.17. Rolled the dashboard-style ledger redesign out to every ledger (Customer/Factory, Painter, Raw Material, Scrap, Custom, and Worker/Labour): each ledger modal now has a Balance Owed/Advance hero card with a running-balance sparkline and a month-over-month trend line, Billed/Received (or ledger-appropriate) stat boxes, a per-ledger overdue-cheque banner, entry search + filter chips, a single kebab (⋮) menu per entry replacing the old row of separate icon buttons, and a floating + button that reveals the (now collapsed-by-default) add-entry form. Worker/Labour Ledger got its own hero card variant (Dues, same as before, correctly still excludes Advance/Loan entries) and kind-based filter chips (Attendance/Payment/Advance-Loan) instead of Debit/Credit. Also includes everything from build .16.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -13357,11 +13661,30 @@
       clOrderSearchTerm = '';
       document.getElementById('cl-order-search').value = '';
       document.getElementById('cl-add-entry').textContent = tr('add_entry');
+      // ADD (2026-08-30): reset the entry search/filter and collapse the
+      // add-entry form back behind the floating + button every time a
+      // (possibly different) factory's ledger is opened fresh.
+      clEntriesSearchTerm_ = '';
+      clEntriesFilter_ = 'all';
+      const clEntriesSearchEl = document.getElementById('cl-entries-search');
+      if(clEntriesSearchEl) clEntriesSearchEl.value = '';
+      document.querySelectorAll('#cl-filter-row .cl-filter-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.filter === 'all'));
+      const clFormWrap = document.getElementById('cl-add-entry-form-wrap');
+      const clFab = document.getElementById('cl-fab');
+      if(clFormWrap) clFormWrap.style.display = 'none';
+      if(clFab) clFab.classList.remove('open');
       renderCustomerLedgerModalContent_();
       document.getElementById('cl-desc').value = '';
       document.getElementById('cl-date').value = todayISO_();
       document.getElementById('cl-debit').value = '';
       document.getElementById('cl-credit').value = '';
+      // ADD (2026-08-30, Tax Invoice feature): reset Tax % back to default
+      // whenever the modal is (re)opened fresh — same as every other field
+      // reset right here.
+      document.getElementById('cl-tax-wrap').style.display = 'none';
+      document.getElementById('cl-tax-percent').value = '0';
+      document.getElementById('cl-tax-percent-custom').style.display = 'none';
+      document.getElementById('cl-tax-percent-custom').value = '';
       document.getElementById('cl-method-wrap').style.display = 'none';
       document.getElementById('cl-method-detail-wrap').style.display = 'none';
       document.getElementById('cl-method-detail').value = '';
@@ -13632,13 +13955,168 @@
       if(c.entries.map(e=>e.id).join(',') !== beforeOrder) changed = true;
       if(changed) queueSync();
     }
+    // ADD (2026-08-30): search box + filter chips above cl-entries-wrap.
+    // Kept as module-level state (not re-read from the DOM on every
+    // keystroke) so renderClEntriesList_ alone can re-filter without
+    // touching the hero card, stat boxes, or the add-entry form — typing
+    // in the search box must never reset whatever the person was mid-way
+    // through filling in below.
+    let clEntriesSearchTerm_ = '';
+    let clEntriesFilter_ = 'all';
+    function fmtCompact_(n){
+      const abs = Math.abs(n);
+      if(abs >= 1000) return (n/1000).toFixed(1).replace(/\.0$/,'') + 'k';
+      return String(Math.round(n));
+    }
+    // Chronological running-balance snapshot after each entry (bounced
+    // cheques excluded, same rule customerLedgerBalance_ itself uses) —
+    // feeds both the hero card's sparkline and, indirectly via its last
+    // value, the big balance figure above it.
+    function buildSparklinePoints_(entries){
+      let running = 0;
+      return entries.map(e=>{
+        if(e.chequeStatus !== 'bounced') running += (e.debit||0) - (e.credit||0);
+        return running;
+      });
+    }
+    function buildSparklineSvg_(values, w, h, color){
+      if(!values || values.length < 2) return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"></svg>`;
+      const min = Math.min(...values), max = Math.max(...values);
+      const range = (max - min) || 1;
+      const step = w / (values.length - 1);
+      const pts = values.map((v,i)=>{
+        const x = i * step;
+        const y = h - ((v - min) / range) * (h - 4) - 2;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+      return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none"><polyline points="${pts}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    }
+    // Balance right before this calendar month's first entry — entries are
+    // walked in true chronological order (same assumption joinLedgerBlocks_
+    // and the running-balance loop below both already rely on), so the
+    // running total at the moment the first current-month entry is reached
+    // is exactly "where the balance stood at month start".
+    // Generic versions of the month-start / running-series helpers above —
+    // `direction` is 1 for ledgers where running balance = debit - credit
+    // (Customer/Raw supplier bills you owe them 1:1 with what you're
+    // billed) and -1 for ledgers where it's credit - debit (Painter/Worker
+    // — credit is value of work done, i.e. what's owed TO them). Every
+    // other ledger's hero card below is just a thin call into these two
+    // plus renderLedgerHeroGeneric_/renderLedgerOverdueBannerGeneric_, so
+    // Customer Ledger's own cl-prefixed versions are kept as thin wrappers
+    // (direction 1) rather than duplicated.
+    function buildRunningSeriesGeneric_(entries, direction){
+      let running = 0;
+      return (entries||[]).map(e=>{
+        if(e.chequeStatus !== 'bounced') running += direction * ((e.debit||0) - (e.credit||0));
+        return running;
+      });
+    }
+    function computeMonthStartBalanceGeneric_(entries, direction){
+      const now = new Date();
+      let running = 0, monthStartBal = 0, found = false;
+      (entries||[]).forEach(e=>{
+        const d = parseDMY_(e.date);
+        if(!found && d && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()){
+          monthStartBal = running;
+          found = true;
+        }
+        if(e.chequeStatus !== 'bounced') running += direction * ((e.debit||0) - (e.credit||0));
+      });
+      return found ? monthStartBal : running;
+    }
+    function fmtShortDate_(d){
+      if(!d) return '';
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return d.getDate() + ' ' + months[d.getMonth()];
+    }
+    function ledgerOverdueInfoGeneric_(entries){
+      let count = 0, nearest = null;
+      (entries||[]).forEach(e=>{
+        if(chequeRowClass_(e) === 'cheque-overdue'){
+          count++;
+          const due = parseDMY_(e.chequeDate);
+          if(due && (!nearest || due < nearest)) nearest = due;
+        }
+      });
+      return { count, nearest };
+    }
+    function renderLedgerOverdueBannerGeneric_(holderElId, entries){
+      const holder = document.getElementById(holderElId);
+      if(!holder) return;
+      const info = ledgerOverdueInfoGeneric_(entries);
+      if(info.count === 0){ holder.innerHTML = ''; return; }
+      const dateStr = fmtShortDate_(info.nearest);
+      const label = info.count === 1
+        ? tr('cl_overdue_cheque_banner_one').replace('{date}', dateStr)
+        : tr('cl_overdue_cheque_banner_many').replace('{n}', info.count).replace('{date}', dateStr);
+      holder.innerHTML = `<div class="overdue-cheque-banner">⚠ ${label}</div>`;
+    }
+    // Balance Owed hero card + Billed/Received stat boxes, shared by every
+    // ledger's detail modal. Owed is shown in red (an outstanding amount
+    // is a warning, not a win) and Advance in green — the opposite of
+    // balanceLabel_'s app-wide owed=green convention used elsewhere —
+    // deliberate here, scoped to just this hero card, matching the mockup
+    // rather than flipping that convention everywhere else it's used.
+    function renderLedgerHeroGeneric_(heroElId, statElId, entries, balVal, direction){
+      const heroEl = document.getElementById(heroElId);
+      const statEl = document.getElementById(statElId);
+      if(!heroEl || !statEl) return;
+      entries = entries || [];
+      const debitSum = entries.reduce((s,e)=> s + (e.chequeStatus !== 'bounced' ? (e.debit||0) : 0), 0);
+      const creditSum = entries.reduce((s,e)=> s + (e.chequeStatus !== 'bounced' ? (e.credit||0) : 0), 0);
+      const isOwed = balVal > 0, isAdvance = balVal < 0;
+      const color = isOwed ? 'var(--red-bright)' : (isAdvance ? 'var(--green)' : 'var(--text-dim)');
+      const label = isOwed ? tr('cl_balance_owed') : (isAdvance ? tr('cl_balance_advance') : tr('cl_balance_settled'));
+      const monthChange = balVal - computeMonthStartBalanceGeneric_(entries, direction);
+      const points = buildRunningSeriesGeneric_(entries, direction);
+      const sparkSvg = buildSparklineSvg_(points, 84, 34, color);
+      let trendHtml = '';
+      if(Math.round(monthChange) !== 0){
+        const arrow = monthChange > 0 ? '↗' : '↘';
+        const trendColor = monthChange > 0 ? 'var(--red-bright)' : 'var(--green)';
+        const sign = monthChange > 0 ? '+' : '-';
+        trendHtml = `<div class="cl-hero-trend" style="color:${trendColor};">${arrow} ${tr('cl_this_month_change').replace('{sign}', sign).replace('{amount}', fmtCompact_(Math.abs(monthChange)))}</div>`;
+      }
+      heroEl.innerHTML = `
+        <div class="cl-hero-label">${label}</div>
+        <div class="cl-hero-amount-row">
+          <div class="cl-hero-amount" style="color:${color};">${fmt(Math.abs(balVal))}</div>
+          <div class="cl-hero-spark">${sparkSvg}</div>
+        </div>
+        ${trendHtml}`;
+      // Which raw sum lands under "Billed" vs "Received" flips with
+      // direction, same reasoning as buildRunningSeriesGeneric_ above —
+      // for a direction:-1 ledger (Painter/Worker), credit is the value
+      // billed TO the business (work done) and debit is what's been paid
+      // out, the reverse of Customer/Raw/Scrap/Custom.
+      const billedVal = direction === 1 ? debitSum : creditSum;
+      const receivedVal = direction === 1 ? creditSum : debitSum;
+      statEl.innerHTML = `
+        <div class="cl-stat-box"><div class="cl-stat-label">${tr('cl_billed')}</div><div class="cl-stat-value">${Math.round(billedVal).toLocaleString('en-PK')}</div></div>
+        <div class="cl-stat-box"><div class="cl-stat-label">${tr('cl_received')}</div><div class="cl-stat-value" style="color:var(--green);">${Math.round(receivedVal).toLocaleString('en-PK')}</div></div>`;
+    }
+    function computeMonthStartBalance_(entries){ return computeMonthStartBalanceGeneric_(entries, 1); }
+    function clOverdueInfo_(c){ return ledgerOverdueInfoGeneric_(c.entries || []); }
+    function renderClOverdueBanner_(c){ renderLedgerOverdueBannerGeneric_('cl-overdue-banner', c.entries || []); }
+    function renderClHero_(c){ renderLedgerHeroGeneric_('cl-hero-card', 'cl-stat-row', c.entries || [], customerLedgerBalance_(c), 1); }
+    function closeClEntryKebabs_(){
+      document.querySelectorAll('.cl-entry-kebab-wrap.open').forEach(w => w.classList.remove('open'));
+    }
     function renderCustomerLedgerModalContent_(){
       const c = getOrCreateCustomerLedgerEntry_(currentCustomerName);
       reconcileFactoryLedgerOrders_(c);
       document.getElementById('cl-title').textContent = c.name;
-      const bl = balanceLabel_(customerLedgerBalance_(c));
-      document.getElementById('cl-balance-line').innerHTML = 'Balance: <span class="' + bl.cls + '">' + bl.text + '</span>';
+      renderClOverdueBanner_(c);
+      renderClHero_(c);
       renderCustomerLedgerOrders_(c.name);
+      renderClEntriesList_(c);
+    }
+    // Split out of renderCustomerLedgerModalContent_ so the search box and
+    // filter chips can re-render just the entry list — re-running the
+    // whole modal-content function on every keystroke would also reset the
+    // add-entry form fields the person might be mid-way through.
+    function renderClEntriesList_(c){
       const entriesWrap = document.getElementById('cl-entries-wrap');
       const entries = c.entries || [];
       if(entries.length === 0){
@@ -13647,6 +14125,7 @@
       }
       let running = 0;
       let blocks = [];
+      const term = (clEntriesSearchTerm_ || '').trim().toLowerCase();
       // Running counts of actual payment events in this ledger — separate
       // for money received (credit) vs money given (debit) — so "Received
       // #N" / "Given #N" lets you count how many payments have gone each
@@ -13710,37 +14189,80 @@
         // decide on its own.
         const linkedOrderId = e.txnId || (/^Order #(.+)$/.exec(e.desc || '') || [])[1] || null;
         const linkedOrderGone = isOrderLinked && linkedOrderId && !transactionsLog.some(t => t.id === linkedOrderId);
+        // ADD (2026-08-30): search box + filter chips gate — computed after
+        // the running balance above so an entry hidden by a filter still
+        // contributes correctly to every entry rendered after it.
+        const isDebitRow = (e.debit||0) > 0, isCreditRow = (e.credit||0) > 0;
+        const isPendingish = e.method === 'Cheque' && (chequeCls === 'cheque-pending' || chequeCls === 'cheque-overdue');
+        let passesFilter = true;
+        if(clEntriesFilter_ === 'debit') passesFilter = isDebitRow;
+        else if(clEntriesFilter_ === 'credit') passesFilter = isCreditRow;
+        else if(clEntriesFilter_ === 'pending') passesFilter = isPendingish;
+        let passesSearch = true;
+        if(term){
+          const hay = [e.desc, e.date, e.method, e.detail, e.receivedBy, e.receivedIn, e.debit, e.credit].filter(Boolean).join(' ').toLowerCase();
+          passesSearch = hay.includes(term);
+        }
+        if(!passesFilter || !passesSearch) return;
+        // Consolidated kebab (⋮) menu — replaces the old row of separate
+        // icon buttons with a single dropdown, reusing the exact same
+        // classes (cl-entry-receipt / cl-entry-edit / cl-entry-del-ghost /
+        // plain ledger-entry-del) the click handlers below already query
+        // for, so none of that wiring had to change.
+        const menuItems = `
+            ${hasReceipt ? `
+            <button class="ledger-entry-del cl-entry-receipt" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              ${tr('cl_menu_view_receipt')}
+            </button>` : ''}
+            ${isOrderLinked ? (linkedOrderGone ? `
+            <button class="ledger-entry-del cl-entry-del-ghost danger" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              ${tr('cl_menu_remove_ghost')}
+            </button>
+            ` : `
+            <div style="font-size:9.5px; color:var(--text-dim); padding:6px 9px; max-width:150px; white-space:normal;">${tr('order_linked_row_note')}</div>
+            `) : `
+            <button class="ledger-entry-del cl-entry-edit" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              ${tr('cl_menu_edit')}
+            </button>
+            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              ${tr('cl_menu_delete')}
+            </button>
+            `}`;
         blocks.push(`
-          <div class="ledger-entry-block ${chequeCls} ${isOrderLinked ? 'order-linked' : ''}">
+          <div class="ledger-entry-block ${chequeCls} ${isOrderLinked ? 'order-linked' : ''} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
           <div class="ledger-entry-row">
             <div class="ledger-entry-when">${e.date}</div>
             <div class="ledger-entry-desc">${e.desc || ''}</div>
             <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
             <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
             <div class="ledger-entry-bal">${fmt(running)}</div>
-            ${hasReceipt ? `
-            <button class="ledger-entry-del cl-entry-receipt" data-idx="${eIdx}" title="${tr('view_attached_receipt')}" style="border-color:var(--yellow); color:var(--yellow);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            </button>` : ''}
-            ${isOrderLinked ? (linkedOrderGone ? `
-            <button class="ledger-entry-del cl-entry-del-ghost" data-idx="${eIdx}" title="This order no longer exists — remove this leftover entry">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-            </button>
-            ` : `
-            <span title="${tr('order_linked_row_note')}" style="font-size:9.5px; color:var(--text-dim); white-space:nowrap; padding:0 4px;">${tr('order_linked_row_short')}</span>
-            `) : `
-            <button class="ledger-entry-del cl-entry-edit" data-idx="${eIdx}" title="${tr('edit_entry')}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            </button>
-            <button class="ledger-entry-del" data-idx="${eIdx}" title="Delete entry">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-            </button>
-            `}
+            <div class="cl-entry-kebab-wrap" data-kebab="${eIdx}">
+              <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}" title="${tr('cl_menu_edit')}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+              </button>
+              <div class="cl-entry-kebab-menu">${menuItems}</div>
+            </div>
           </div>
           ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
           </div>`);
       });
-      entriesWrap.innerHTML = joinLedgerBlocks_(blocks, 'customerledger');
+      entriesWrap.innerHTML = blocks.length ? joinLedgerBlocks_(blocks, 'customerledger') : '<div class="empty-state" style="padding:20px 10px;">' + tr('cl_no_matching_entries') + '</div>';
+      entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
+        btn.addEventListener('click', (ev)=>{
+          ev.stopPropagation();
+          const wrap = btn.closest('.cl-entry-kebab-wrap');
+          const wasOpen = wrap.classList.contains('open');
+          closeClEntryKebabs_();
+          if(!wasOpen) wrap.classList.add('open');
+        });
+      });
+      entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
+        btn.addEventListener('click', ()=> closeClEntryKebabs_());
+      });
       entriesWrap.querySelectorAll('.cl-entry-receipt').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const eIdx = parseInt(btn.dataset.idx,10);
@@ -13756,10 +14278,40 @@
           const e = c.entries[eIdx];
           if(!e) return;
           editingClEntryIdx = eIdx;
+          // Reveal the (collapsed-by-default) add/edit form first — same
+          // toggle the floating + button drives — otherwise the fields
+          // being pre-filled below stay hidden and scrollIntoView has
+          // nothing visible to scroll to.
+          const formWrap = document.getElementById('cl-add-entry-form-wrap');
+          const fabBtn = document.getElementById('cl-fab');
+          if(formWrap){ formWrap.style.display = ''; }
+          if(fabBtn){ fabBtn.classList.add('open'); }
           document.getElementById('cl-desc').value = e.desc || '';
           document.getElementById('cl-date').value = dmyToISO_(e.date) || todayISO_();
           document.getElementById('cl-debit').value = e.debit || '';
           document.getElementById('cl-credit').value = e.credit || '';
+          // FIX (2026-08-30, Tax Invoice feature): Tax % wasn't being
+          // pre-filled on edit — it always reset to "No tax", silently
+          // discarding whatever rate the entry actually had if you edited
+          // and re-saved it without noticing. Mirrors clCurrentTaxPercent_'s
+          // own two-input split: an exact match to a preset (0/18) selects
+          // that option directly; anything else selects "Custom…" and
+          // fills the free-type field with the entry's real value.
+          const showTax = (e.debit || 0) > 0;
+          document.getElementById('cl-tax-wrap').style.display = showTax ? '' : 'none';
+          const existingTaxPercent = e.taxPercent || 0;
+          const taxSelectEl = document.getElementById('cl-tax-percent');
+          const taxCustomEl = document.getElementById('cl-tax-percent-custom');
+          const presetMatch = Array.from(taxSelectEl.options).some(o => o.value !== 'custom' && parseFloat(o.value) === existingTaxPercent);
+          if(presetMatch){
+            taxSelectEl.value = String(existingTaxPercent);
+            taxCustomEl.style.display = 'none';
+            taxCustomEl.value = '';
+          } else {
+            taxSelectEl.value = 'custom';
+            taxCustomEl.style.display = '';
+            taxCustomEl.value = existingTaxPercent || '';
+          }
           const showMethod = (e.debit > 0 || e.credit > 0);
           document.getElementById('cl-method-wrap').style.display = showMethod ? '' : 'none';
           document.getElementById('cl-method').value = e.method || 'Cash';
@@ -13837,6 +14389,34 @@
       });
     }
     document.getElementById('cl-close').addEventListener('click', ()=> customerLedgerModal.classList.remove('active'));
+    // ADD (2026-08-30): search box, filter chips, per-entry kebab menus and
+    // the floating Add Entry button for the redesigned ledger screen.
+    document.getElementById('cl-entries-search').addEventListener('input', (e)=>{
+      clEntriesSearchTerm_ = e.target.value;
+      const c = getOrCreateCustomerLedgerEntry_(currentCustomerName);
+      renderClEntriesList_(c);
+    });
+    document.querySelectorAll('#cl-filter-row .cl-filter-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        clEntriesFilter_ = chip.dataset.filter;
+        document.querySelectorAll('#cl-filter-row .cl-filter-chip').forEach(c2 => c2.classList.toggle('active', c2 === chip));
+        const c = getOrCreateCustomerLedgerEntry_(currentCustomerName);
+        renderClEntriesList_(c);
+      });
+    });
+    document.addEventListener('click', (e)=>{
+      if(!e.target.closest('.cl-entry-kebab-wrap')) closeClEntryKebabs_();
+    });
+    const clFabBtn_ = document.getElementById('cl-fab');
+    const clAddFormWrap_ = document.getElementById('cl-add-entry-form-wrap');
+    if(clFabBtn_ && clAddFormWrap_){
+      clFabBtn_.addEventListener('click', ()=>{
+        const isOpen = clAddFormWrap_.style.display !== 'none';
+        clAddFormWrap_.style.display = isOpen ? 'none' : '';
+        clFabBtn_.classList.toggle('open', !isOpen);
+        if(!isOpen) clAddFormWrap_.scrollIntoView({ behavior:'smooth', block:'start' });
+      });
+    }
     // Debit gets the same Cash/Bank/Online/Cheque options as Credit — not
     // just billing amounts, a Debit entry can just as easily be a real
     // outgoing adjustment (e.g. a refund/credit note to the customer), so
@@ -13844,11 +14424,32 @@
     document.getElementById('cl-debit').addEventListener('input', function(){
       const show = parseFloat(this.value) > 0 || parseFloat(document.getElementById('cl-credit').value) > 0;
       document.getElementById('cl-method-wrap').style.display = show ? '' : 'none';
+      // ADD (2026-08-30, Tax Invoice feature): Tax % only ever applies to
+      // the Debit side, so it's keyed off cl-debit alone (not "either
+      // field has an amount" like cl-method-wrap above).
+      document.getElementById('cl-tax-wrap').style.display = (parseFloat(this.value) > 0) ? '' : 'none';
     });
     document.getElementById('cl-credit').addEventListener('input', function(){
       const show = parseFloat(this.value) > 0 || parseFloat(document.getElementById('cl-debit').value) > 0;
       document.getElementById('cl-method-wrap').style.display = show ? '' : 'none';
     });
+    // ADD (2026-08-30, Tax Invoice feature): "Custom…" reveals a free-type
+    // field; any preset value hides it again. Kept as two separate inputs
+    // (a select for the common case, a number input for anything else)
+    // rather than one free-type-always field, so the fast common case
+    // (0% or the standard rate) never needs the keyboard to open.
+    function clTaxPercentChangeHandler_(){
+      const val = document.getElementById('cl-tax-percent').value;
+      document.getElementById('cl-tax-percent-custom').style.display = (val === 'custom') ? '' : 'none';
+    }
+    document.getElementById('cl-tax-percent').addEventListener('change', clTaxPercentChangeHandler_);
+    document.getElementById('cl-tax-percent').addEventListener('input', clTaxPercentChangeHandler_);
+    // Reads whichever of the two Tax % inputs is actually active right now.
+    function clCurrentTaxPercent_(){
+      const sel = document.getElementById('cl-tax-percent').value;
+      if(sel === 'custom') return parseFloat(document.getElementById('cl-tax-percent-custom').value) || 0;
+      return parseFloat(sel) || 0;
+    }
     // FIX (2026-08-19): also bind 'input' alongside 'change' — some Android
     // WebView builds have been reported to not reliably fire 'change' on a
     // native <select> picker (the visible text updates, but this listener
@@ -13883,6 +14484,12 @@
       const chequeDate = (hasAmount && method === 'Cheque') ? isoToDMY_(document.getElementById('cl-cheque-date').value) : '';
       const receivedBy = hasAmount ? document.getElementById('cl-receivedby').value.trim() : '';
       const receivedIn = hasAmount ? document.getElementById('cl-receivedin').value.trim() : '';
+      // ADD (2026-08-30, Tax Invoice feature): Tax % only ever applies to
+      // the Debit side (see cl-tax-wrap's show/hide above) — a Credit-only
+      // entry always gets taxPercent/taxAmt of 0, regardless of whatever
+      // the (hidden) Tax % field happens to hold.
+      const taxPercent = (debit > 0) ? clCurrentTaxPercent_() : 0;
+      const taxAmt = (debit > 0 && taxPercent > 0) ? Math.round(debit * taxPercent / 100) : 0;
       const c = getOrCreateCustomerLedgerEntry_(currentCustomerName);
       c.entries = c.entries || [];
       const chosenDate = isoToDMY_(document.getElementById('cl-date').value) || new Date().toLocaleDateString('en-GB');
@@ -13902,6 +14509,8 @@
             existing.detail = detail;
             existing.receivedBy = receivedBy;
             existing.receivedIn = receivedIn;
+            existing.taxPercent = taxPercent;
+            existing.taxAmt = taxAmt;
             if(hasAmount && method === 'Cheque'){
               existing.chequeDate = chequeDate;
               if(!existing.chequeStatus) existing.chequeStatus = 'pending';
@@ -13924,6 +14533,7 @@
             date: chosenDate,
             time: now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
             desc, debit, credit, method, detail, receivedBy, receivedIn, chequeDate, chequeStatus: (hasAmount && method === 'Cheque') ? 'pending' : '',
+            taxPercent, taxAmt,
             device: DEVICE_NAME
           });
           if(hasAmount && pendingCustomerReceipt){
@@ -13935,6 +14545,12 @@
         document.getElementById('cl-date').value = todayISO_();
         document.getElementById('cl-debit').value = '';
         document.getElementById('cl-credit').value = '';
+        // ADD (2026-08-30, Tax Invoice feature): same post-save reset as
+        // openCustomerLedgerModal above.
+        document.getElementById('cl-tax-wrap').style.display = 'none';
+        document.getElementById('cl-tax-percent').value = '0';
+        document.getElementById('cl-tax-percent-custom').style.display = 'none';
+        document.getElementById('cl-tax-percent-custom').value = '';
         document.getElementById('cl-method-wrap').style.display = 'none';
         document.getElementById('cl-method-detail-wrap').style.display = 'none';
         document.getElementById('cl-method-detail').value = '';
@@ -14447,6 +15063,7 @@
     // editingClEntryIdx above.
     let editingPlEntryIdx = null;
     let plDateSearchTerm = '';
+    let plEntriesFilter_ = 'all';
     // Colours picked for the entry currently being drafted (a Set of names).
     // Colours already saved on the painter live in p.colours and are only
     // written to on "Add Entry" — see the pl-add-entry handler below.
@@ -14635,6 +15252,10 @@
       plCreditWasAutoFilled = false;
       plDateSearchTerm = '';
       document.getElementById('pl-date-search').value = '';
+      plEntriesFilter_ = 'all';
+      document.querySelectorAll('#pl-filter-row .cl-filter-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.filter === 'all'));
+      { const w = document.getElementById('pl-add-entry-form-wrap'); if(w) w.style.display = 'none'; }
+      { const f = document.getElementById('pl-fab'); if(f) f.classList.remove('open'); }
       document.getElementById('pl-add-entry').textContent = tr('add_entry');
       document.getElementById('pl-desc').value = '';
       document.getElementById('pl-date').value = todayISO_();
@@ -14729,8 +15350,8 @@
       if(!p){ painterLedgerModal.classList.remove('active'); return; }
       document.getElementById('pl-title').textContent = p.name;
       const bal = painterBalance_(p);
-      const bl = balanceLabel_(bal);
-      document.getElementById('pl-balance-line').innerHTML = 'Balance: <span class="' + bl.cls + '">' + bl.text + '</span>';
+      renderLedgerOverdueBannerGeneric_('pl-overdue-banner', p.entries || []);
+      renderLedgerHeroGeneric_('pl-hero-card', 'pl-stat-row', p.entries || [], bal, -1);
       const entriesWrap = document.getElementById('pl-entries-wrap');
       const entries = p.entries || [];
       const dateTerm = plDateSearchTerm.trim().toLowerCase();
@@ -14753,6 +15374,12 @@
         entries.forEach((e, eIdx)=>{
           if(e.chequeStatus !== 'bounced') running += (e.credit||0) - (e.debit||0);
           if(dateTerm && !(e.date || '').toLowerCase().includes(dateTerm)) return;
+          const isDebitRow = (e.debit||0) > 0, isCreditRow = (e.credit||0) > 0;
+          const chequeClsEarly = chequeRowClass_(e);
+          const isPendingish = e.method === 'Cheque' && (chequeClsEarly === 'cheque-pending' || chequeClsEarly === 'cheque-overdue');
+          if(plEntriesFilter_ === 'debit' && !isDebitRow) return;
+          if(plEntriesFilter_ === 'credit' && !isCreditRow) return;
+          if(plEntriesFilter_ === 'pending' && !isPendingish) return;
           shownCount++;
           const hasReceipt = !!(paintReceiptFiles[e.id] || e.receiptUrl);
           const chequeCls = chequeRowClass_(e);
@@ -14774,30 +15401,52 @@
           if(e.itemCount) specParts.push(tr('item_count') + ': ' + e.itemCount);
           if(e.ratePerItem) specParts.push(tr('rate_per_item') + ': ' + fmt(e.ratePerItem));
           const specLine = specParts.length ? `<div class="ledger-entry-spec-row">${specParts.join(' · ')}</div>` : '';
+          const menuItems = `
+            ${hasReceipt ? `
+            <button class="ledger-entry-del pl-entry-receipt" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              ${tr('cl_menu_view_receipt')}
+            </button>` : ''}
+            <button class="ledger-entry-del pl-entry-edit" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              ${tr('cl_menu_edit')}
+            </button>
+            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              ${tr('cl_menu_delete')}
+            </button>`;
           blocks.push(`
-            <div class="ledger-entry-block ${chequeCls}">
+            <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
             <div class="ledger-entry-row">
               <div class="ledger-entry-when">${e.date}</div>
               <div class="ledger-entry-desc">${e.desc || ''}${e.color ? ' <span style="color:var(--yellow);">· ' + e.color + '</span>' : ''}</div>
               <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
               <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
               <div class="ledger-entry-bal">${fmt(running)}</div>
-              ${hasReceipt ? `
-              <button class="ledger-entry-del pl-entry-receipt" data-idx="${eIdx}" title="${tr('view_attached_receipt')}" style="border-color:var(--yellow); color:var(--yellow);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              </button>` : ''}
-              <button class="ledger-entry-del pl-entry-edit" data-idx="${eIdx}" title="${tr('edit_entry')}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              </button>
-              <button class="ledger-entry-del" data-idx="${eIdx}" title="Delete entry">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              </button>
+              <div class="cl-entry-kebab-wrap">
+                <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                </button>
+                <div class="cl-entry-kebab-menu">${menuItems}</div>
+              </div>
             </div>
             ${specLine}
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
         entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'paint') : '<div class="empty-state" style="padding:20px 10px;">' + tr('no_matching_orders') + '</div>';
+        entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
+          btn.addEventListener('click', (ev)=>{
+            ev.stopPropagation();
+            const wrap = btn.closest('.cl-entry-kebab-wrap');
+            const wasOpen = wrap.classList.contains('open');
+            closeClEntryKebabs_();
+            if(!wasOpen) wrap.classList.add('open');
+          });
+        });
+        entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
+          btn.addEventListener('click', ()=> closeClEntryKebabs_());
+        });
         entriesWrap.querySelectorAll('.pl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -14814,6 +15463,10 @@
             if(!e) return;
             editingPlEntryIdx = eIdx;
             plCreditWasAutoFilled = false;
+            const plFormWrap = document.getElementById('pl-add-entry-form-wrap');
+            const plFabBtn = document.getElementById('pl-fab');
+            if(plFormWrap) plFormWrap.style.display = '';
+            if(plFabBtn) plFabBtn.classList.add('open');
             document.getElementById('pl-desc').value = e.desc || '';
             document.getElementById('pl-date').value = dmyToISO_(e.date) || todayISO_();
             document.getElementById('pl-itemsize').value = e.itemSize || '';
@@ -14876,6 +15529,23 @@
       renderPainterLedgerModalContent_();
     });
     document.getElementById('pl-close').addEventListener('click', ()=> painterLedgerModal.classList.remove('active'));
+    document.querySelectorAll('#pl-filter-row .cl-filter-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        plEntriesFilter_ = chip.dataset.filter;
+        document.querySelectorAll('#pl-filter-row .cl-filter-chip').forEach(c2 => c2.classList.toggle('active', c2 === chip));
+        renderPainterLedgerModalContent_();
+      });
+    });
+    { const plFabBtn2 = document.getElementById('pl-fab'), plFormWrap2 = document.getElementById('pl-add-entry-form-wrap');
+      if(plFabBtn2 && plFormWrap2){
+        plFabBtn2.addEventListener('click', ()=>{
+          const isOpen = plFormWrap2.style.display !== 'none';
+          plFormWrap2.style.display = isOpen ? 'none' : '';
+          plFabBtn2.classList.toggle('open', !isOpen);
+          if(!isOpen) plFormWrap2.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      }
+    }
     document.getElementById('painter-delete').addEventListener('click', ()=>{
       if(currentPainterIdx === null) return;
       const p = inventory.paint[currentPainterIdx];
@@ -15395,6 +16065,8 @@
     // Set while editing an existing Raw Material Ledger entry — mirrors
     // editingClEntryIdx/editingPlEntryIdx above.
     let editingRlEntryIdx = null;
+    let rlEntriesSearchTerm_ = '';
+    let rlEntriesFilter_ = 'all';
     // Receipt picked but not yet attached to an entry (mirrors pendingExpenseReceipt).
     // Raw ledger entries can't be edited after creation — only added or deleted — so
     // a receipt only ever attaches at "Add Entry" time, same as it's captured here.
@@ -15451,6 +16123,12 @@
       currentRawSupplierIdx = idx;
       editingRlEntryIdx = null;
       refreshRawMaterialDatalist_();
+      rlEntriesSearchTerm_ = '';
+      rlEntriesFilter_ = 'all';
+      { const se = document.getElementById('rl-entries-search'); if(se) se.value = ''; }
+      document.querySelectorAll('#rl-filter-row .cl-filter-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.filter === 'all'));
+      { const w = document.getElementById('rl-add-entry-form-wrap'); if(w) w.style.display = 'none'; }
+      { const f = document.getElementById('rl-fab'); if(f) f.classList.remove('open'); }
       document.getElementById('rl-add-entry').textContent = tr('add_entry');
       document.getElementById('rl-desc').value = '';
       document.getElementById('rl-stockname').value = '';
@@ -15499,20 +16177,33 @@
       document.getElementById('rl-export-csv').onclick = ()=>{ closeExportDropdowns(); openExportFilterModal('rawledger', 'csv', s.name); };
       document.getElementById('rl-export-settings-btn').onclick = ()=> openRawSupplierExportSettings_(s.name);
       const bal = rawSupplierBalance_(s);
-      const bl = balanceLabel_(bal);
-      document.getElementById('rl-balance-line').innerHTML = 'Balance: <span class="' + bl.cls + '">' + bl.text + '</span>';
+      renderLedgerOverdueBannerGeneric_('rl-overdue-banner', s.entries || []);
+      renderLedgerHeroGeneric_('rl-hero-card', 'rl-stat-row', s.entries || [], bal, -1);
       const entriesWrap = document.getElementById('rl-entries-wrap');
       const entries = s.entries || [];
+      const rlTerm = (rlEntriesSearchTerm_ || '').trim().toLowerCase();
       if(entries.length === 0){
         entriesWrap.innerHTML = '<div class="empty-state" style="padding:20px 10px;">' + tr('no_entries_yet') + '</div>';
       } else {
         let running = 0;
         let blocks = [];
+        let shownCount = 0;
         // Same Received/Given payment-count + always-visible method badge
         // fix as the Customer/Factory Ledger — see the comment there.
         let receivedSeq = 0, givenSeq = 0;
         entries.forEach((e, eIdx)=>{
           if(e.chequeStatus !== 'bounced') running += (e.credit||0) - (e.debit||0);
+          const chequeClsEarly = chequeRowClass_(e);
+          const isDebitRow = (e.debit||0) > 0, isCreditRow = (e.credit||0) > 0;
+          const isPendingish = e.method === 'Cheque' && (chequeClsEarly === 'cheque-pending' || chequeClsEarly === 'cheque-overdue');
+          if(rlEntriesFilter_ === 'debit' && !isDebitRow) return;
+          if(rlEntriesFilter_ === 'credit' && !isCreditRow) return;
+          if(rlEntriesFilter_ === 'pending' && !isPendingish) return;
+          if(rlTerm){
+            const hay = [e.desc, e.date, e.method, e.detail, e.stockName, e.weightIn, e.itemsIn].filter(Boolean).join(' ').toLowerCase();
+            if(!hay.includes(rlTerm)) return;
+          }
+          shownCount++;
           const hasReceipt = !!(rawReceiptFiles[e.id] || e.receiptUrl);
           const chequeCls = chequeRowClass_(e);
           const isPendingCheque = e.method === 'Cheque' && e.chequeStatus === 'pending';
@@ -15533,30 +16224,52 @@
           if(e.gaugeCount) specParts.push(tr('gauge_count') + ': ' + e.gaugeCount);
           if(e.sizeCount) specParts.push(tr('size_count') + ': ' + e.sizeCount);
           const specLine = specParts.length ? `<div class="ledger-entry-spec-row">${specParts.join(' · ')}</div>` : '';
+          const menuItems = `
+            ${hasReceipt ? `
+            <button class="ledger-entry-del rl-entry-receipt" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              ${tr('cl_menu_view_receipt')}
+            </button>` : ''}
+            <button class="ledger-entry-del rl-entry-edit" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              ${tr('cl_menu_edit')}
+            </button>
+            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              ${tr('cl_menu_delete')}
+            </button>`;
           blocks.push(`
-            <div class="ledger-entry-block ${chequeCls}">
+            <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
             <div class="ledger-entry-row">
               <div class="ledger-entry-when">${e.date}</div>
               <div class="ledger-entry-desc">${e.desc || ''}</div>
               <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
               <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
               <div class="ledger-entry-bal">${fmt(running)}</div>
-              ${hasReceipt ? `
-              <button class="ledger-entry-del rl-entry-receipt" data-idx="${eIdx}" title="${tr('view_attached_receipt')}" style="border-color:var(--yellow); color:var(--yellow);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              </button>` : ''}
-              <button class="ledger-entry-del rl-entry-edit" data-idx="${eIdx}" title="${tr('edit_entry')}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              </button>
-              <button class="ledger-entry-del" data-idx="${eIdx}" title="Delete entry">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              </button>
+              <div class="cl-entry-kebab-wrap">
+                <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                </button>
+                <div class="cl-entry-kebab-menu">${menuItems}</div>
+              </div>
             </div>
             ${specLine}
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
-        entriesWrap.innerHTML = joinLedgerBlocks_(blocks, 'raw');
+        entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'raw') : '<div class="empty-state" style="padding:20px 10px;">' + tr('cl_no_matching_entries') + '</div>';
+        entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
+          btn.addEventListener('click', (ev)=>{
+            ev.stopPropagation();
+            const wrap = btn.closest('.cl-entry-kebab-wrap');
+            const wasOpen = wrap.classList.contains('open');
+            closeClEntryKebabs_();
+            if(!wasOpen) wrap.classList.add('open');
+          });
+        });
+        entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
+          btn.addEventListener('click', ()=> closeClEntryKebabs_());
+        });
         entriesWrap.querySelectorAll('.rl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -15572,6 +16285,8 @@
             const e = s.entries[eIdx];
             if(!e) return;
             editingRlEntryIdx = eIdx;
+            { const w = document.getElementById('rl-add-entry-form-wrap'); if(w) w.style.display = ''; }
+            { const f = document.getElementById('rl-fab'); if(f) f.classList.add('open'); }
             document.getElementById('rl-desc').value = e.desc || '';
             document.getElementById('rl-stockname').value = e.stockName || '';
             document.getElementById('rl-itemsin').value = (e.itemsIn || e.itemsIn === 0) ? e.itemsIn : '';
@@ -15645,6 +16360,27 @@
       }
     }
     document.getElementById('rl-close').addEventListener('click', ()=> rawLedgerModal.classList.remove('active'));
+    document.getElementById('rl-entries-search').addEventListener('input', (e)=>{
+      rlEntriesSearchTerm_ = e.target.value;
+      renderRawLedgerModalContent_();
+    });
+    document.querySelectorAll('#rl-filter-row .cl-filter-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        rlEntriesFilter_ = chip.dataset.filter;
+        document.querySelectorAll('#rl-filter-row .cl-filter-chip').forEach(c2 => c2.classList.toggle('active', c2 === chip));
+        renderRawLedgerModalContent_();
+      });
+    });
+    { const rlFabBtn = document.getElementById('rl-fab'), rlFormWrap = document.getElementById('rl-add-entry-form-wrap');
+      if(rlFabBtn && rlFormWrap){
+        rlFabBtn.addEventListener('click', ()=>{
+          const isOpen = rlFormWrap.style.display !== 'none';
+          rlFormWrap.style.display = isOpen ? 'none' : '';
+          rlFabBtn.classList.toggle('open', !isOpen);
+          if(!isOpen) rlFormWrap.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      }
+    }
     document.getElementById('rawsupplier-delete').addEventListener('click', ()=>{
       if(currentRawSupplierIdx === null) return;
       const s = inventory.rawledger[currentRawSupplierIdx];
@@ -16262,10 +16998,18 @@
     let currentScrapBuyerIdx = null;
     // Mirrors editingRlEntryIdx/editingClEntryIdx above.
     let editingSlEntryIdx = null;
+    let slEntriesSearchTerm_ = '';
+    let slEntriesFilter_ = 'all';
     function openScrapLedgerModal(idx){
       currentScrapBuyerIdx = idx;
       editingSlEntryIdx = null;
       slDebitWasAutoFilled = false;
+      slEntriesSearchTerm_ = '';
+      slEntriesFilter_ = 'all';
+      { const se = document.getElementById('sl-entries-search'); if(se) se.value = ''; }
+      document.querySelectorAll('#sl-filter-row .cl-filter-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.filter === 'all'));
+      { const w = document.getElementById('sl-add-entry-form-wrap'); if(w) w.style.display = 'none'; }
+      { const f = document.getElementById('sl-fab'); if(f) f.classList.remove('open'); }
       document.getElementById('sl-add-entry').textContent = tr('add_entry');
       document.getElementById('sl-desc').value = '';
       document.getElementById('sl-itemname').value = '';
@@ -16290,17 +17034,30 @@
       if(!b){ scrapLedgerModal.classList.remove('active'); return; }
       document.getElementById('sl-title').textContent = b.name;
       const bal = scrapBuyerBalance_(b);
-      const bl = balanceLabel_(bal);
-      document.getElementById('sl-balance-line').innerHTML = tr('balance') + ': <span class="' + bl.cls + '">' + bl.text + '</span>';
+      renderLedgerOverdueBannerGeneric_('sl-overdue-banner', b.entries || []);
+      renderLedgerHeroGeneric_('sl-hero-card', 'sl-stat-row', b.entries || [], bal, 1);
       const entriesWrap = document.getElementById('sl-entries-wrap');
       const entries = b.entries || [];
+      const slTerm = (slEntriesSearchTerm_ || '').trim().toLowerCase();
       if(entries.length === 0){
         entriesWrap.innerHTML = '<div class="empty-state" style="padding:20px 10px;">' + tr('no_entries_yet') + '</div>';
       } else {
         let running = 0;
         let blocks = [];
+        let shownCount = 0;
         entries.forEach((e, eIdx)=>{
           if(e.chequeStatus !== 'bounced') running += (e.debit||0) - (e.credit||0);
+          const chequeClsEarly = chequeRowClass_(e);
+          const isDebitRow = (e.debit||0) > 0, isCreditRow = (e.credit||0) > 0;
+          const isPendingish = e.method === 'Cheque' && (chequeClsEarly === 'cheque-pending' || chequeClsEarly === 'cheque-overdue');
+          if(slEntriesFilter_ === 'debit' && !isDebitRow) return;
+          if(slEntriesFilter_ === 'credit' && !isCreditRow) return;
+          if(slEntriesFilter_ === 'pending' && !isPendingish) return;
+          if(slTerm){
+            const hay = [e.desc, e.date, e.method, e.detail, e.itemName, e.type].filter(Boolean).join(' ').toLowerCase();
+            if(!hay.includes(slTerm)) return;
+          }
+          shownCount++;
           const chequeCls = chequeRowClass_(e);
           const isPendingCheque = e.method === 'Cheque' && e.chequeStatus === 'pending';
           const methodBadge = e.method ? `<span class="cheque-badge method">${e.method}${e.detail ? ' (' + e.detail + ')' : ''}</span>` : '';
@@ -16314,32 +17071,55 @@
           if(e.weight !== undefined && e.weight !== '') specParts.push(tr('weight') + ': ' + e.weight + 'kg');
           if(e.rate !== undefined && e.rate !== '') specParts.push(tr('rate_per_kg') + ': ' + fmt(e.rate));
           const specLine = specParts.length ? `<div class="ledger-entry-spec-row">${specParts.join(' · ')}</div>` : '';
+          const menuItems = `
+            <button class="ledger-entry-del sl-entry-edit" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              ${tr('cl_menu_edit')}
+            </button>
+            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              ${tr('cl_menu_delete')}
+            </button>`;
           blocks.push(`
-            <div class="ledger-entry-block ${chequeCls}">
+            <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
             <div class="ledger-entry-row">
               <div class="ledger-entry-when">${e.date}</div>
               <div class="ledger-entry-desc">${e.desc || ''}</div>
               <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
               <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
               <div class="ledger-entry-bal">${fmt(running)}</div>
-              <button class="ledger-entry-del sl-entry-edit" data-idx="${eIdx}" title="${tr('edit_entry')}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              </button>
-              <button class="ledger-entry-del" data-idx="${eIdx}" title="Delete entry">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              </button>
+              <div class="cl-entry-kebab-wrap">
+                <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                </button>
+                <div class="cl-entry-kebab-menu">${menuItems}</div>
+              </div>
             </div>
             ${specLine}
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
-        entriesWrap.innerHTML = joinLedgerBlocks_(blocks, 'scrap');
+        entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'scrap') : '<div class="empty-state" style="padding:20px 10px;">' + tr('cl_no_matching_entries') + '</div>';
+        entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
+          btn.addEventListener('click', (ev)=>{
+            ev.stopPropagation();
+            const wrap = btn.closest('.cl-entry-kebab-wrap');
+            const wasOpen = wrap.classList.contains('open');
+            closeClEntryKebabs_();
+            if(!wasOpen) wrap.classList.add('open');
+          });
+        });
+        entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
+          btn.addEventListener('click', ()=> closeClEntryKebabs_());
+        });
         entriesWrap.querySelectorAll('.sl-entry-edit').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
             const e = b.entries[eIdx];
             if(!e) return;
             editingSlEntryIdx = eIdx;
+            { const w = document.getElementById('sl-add-entry-form-wrap'); if(w) w.style.display = ''; }
+            { const f = document.getElementById('sl-fab'); if(f) f.classList.add('open'); }
             document.getElementById('sl-desc').value = e.desc || '';
             document.getElementById('sl-itemname').value = e.itemName || '';
             document.getElementById('sl-type').value = e.type || '';
@@ -16396,6 +17176,27 @@
       }
     }
     document.getElementById('sl-close').addEventListener('click', ()=> scrapLedgerModal.classList.remove('active'));
+    document.getElementById('sl-entries-search').addEventListener('input', (e)=>{
+      slEntriesSearchTerm_ = e.target.value;
+      renderScrapLedgerModalContent_();
+    });
+    document.querySelectorAll('#sl-filter-row .cl-filter-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        slEntriesFilter_ = chip.dataset.filter;
+        document.querySelectorAll('#sl-filter-row .cl-filter-chip').forEach(c2 => c2.classList.toggle('active', c2 === chip));
+        renderScrapLedgerModalContent_();
+      });
+    });
+    { const slFabBtn = document.getElementById('sl-fab'), slFormWrap = document.getElementById('sl-add-entry-form-wrap');
+      if(slFabBtn && slFormWrap){
+        slFabBtn.addEventListener('click', ()=>{
+          const isOpen = slFormWrap.style.display !== 'none';
+          slFormWrap.style.display = isOpen ? 'none' : '';
+          slFabBtn.classList.toggle('open', !isOpen);
+          if(!isOpen) slFormWrap.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      }
+    }
     document.getElementById('scrapbuyer-delete').addEventListener('click', ()=>{
       if(currentScrapBuyerIdx === null) return;
       const b = inventory.scrapledger[currentScrapBuyerIdx];
@@ -16752,6 +17553,7 @@
     let editingCulEntryIdx = null;
     let culDebitWasAutoFilled = false;
     let culDateSearchTerm = '';
+    let culEntriesFilter_ = 'all';
     let pendingCustomLedgerReceipt = null; // { name, kind, dataUrl }
     const customLedgerReceiptFiles = {}; // local session cache of attached receipts, keyed by entry id
     const syncedCustomLedgerReceiptIds = new Set(); // entry ids whose receipt has already been uploaded
@@ -17429,6 +18231,10 @@
       culDebitWasAutoFilled = false;
       culDateSearchTerm = '';
       document.getElementById('cul-date-search').value = '';
+      culEntriesFilter_ = 'all';
+      document.querySelectorAll('#cul-filter-row .cl-filter-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.filter === 'all'));
+      { const w = document.getElementById('cul-add-entry-form-wrap'); if(w) w.style.display = 'none'; }
+      { const f = document.getElementById('cul-fab'); if(f) f.classList.remove('open'); }
       document.getElementById('cul-add-entry').textContent = tr('add_entry');
       document.getElementById('cul-date').value = todayISO_();
       document.getElementById('cul-debit').value = '';
@@ -17452,8 +18258,8 @@
       const cl = customLedgers[currentCustomLedgerIdx];
       if(!cl){ customLedgerModal.classList.remove('active'); return; }
       document.getElementById('cul-title').textContent = cl.name;
-      const bl = balanceLabel_(customLedgerBalance_(cl));
-      document.getElementById('cul-balance-line').innerHTML = 'Balance: <span class="' + bl.cls + '">' + bl.text + '</span>';
+      renderLedgerOverdueBannerGeneric_('cul-overdue-banner', cl.entries || []);
+      renderLedgerHeroGeneric_('cul-hero-card', 'cul-stat-row', cl.entries || [], customLedgerBalance_(cl), 1);
       const entriesWrap = document.getElementById('cul-entries-wrap');
       const entries = cl.entries || [];
       const dateTerm = culDateSearchTerm.trim().toLowerCase();
@@ -17470,6 +18276,12 @@
       entries.forEach((e, eIdx)=>{
         if(e.chequeStatus !== 'bounced') running += (e.debit||0) - (e.credit||0);
         if(dateTerm && !(e.date || '').toLowerCase().includes(dateTerm)) return;
+        const chequeClsEarly = chequeRowClass_(e);
+        const isDebitRow = (e.debit||0) > 0, isCreditRow = (e.credit||0) > 0;
+        const isPendingish = e.method === 'Cheque' && (chequeClsEarly === 'cheque-pending' || chequeClsEarly === 'cheque-overdue');
+        if(culEntriesFilter_ === 'debit' && !isDebitRow) return;
+        if(culEntriesFilter_ === 'credit' && !isCreditRow) return;
+        if(culEntriesFilter_ === 'pending' && !isPendingish) return;
         shownCount++;
         const hasReceipt = !!(customLedgerReceiptFiles[e.id] || e.receiptUrl);
         const chequeCls = chequeRowClass_(e);
@@ -17508,30 +18320,52 @@
           return `<div class="ledger-entry-spec-row ${rowCls}">${(culItems.length > 1 ? (it.desc ? escHtml_(it.desc) + ' — ' : '') : '')}${specParts.join(' · ')}${badge || actions ? `<div class="cheque-sub-row" style="padding:4px 0 0 0;">${badge}${actions}</div>` : ''}</div>`;
         }).filter(Boolean);
         const specLine = specLines.join('');
+        const menuItems = `
+          ${hasReceipt ? `
+          <button class="ledger-entry-del cul-entry-receipt" data-idx="${eIdx}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            ${tr('cl_menu_view_receipt')}
+          </button>` : ''}
+          <button class="ledger-entry-del cul-entry-edit" data-idx="${eIdx}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            ${tr('cl_menu_edit')}
+          </button>
+          <button class="ledger-entry-del danger" data-idx="${eIdx}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            ${tr('cl_menu_delete')}
+          </button>`;
         blocks.push(`
-          <div class="ledger-entry-block ${chequeCls}">
+          <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
           <div class="ledger-entry-row">
             <div class="ledger-entry-when">${e.date}</div>
             <div class="ledger-entry-desc">${e.desc || ''}</div>
             <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
             <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
             <div class="ledger-entry-bal">${fmt(running)}</div>
-            ${hasReceipt ? `
-            <button class="ledger-entry-del cul-entry-receipt" data-idx="${eIdx}" title="${tr('view_attached_receipt')}" style="border-color:var(--yellow); color:var(--yellow);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            </button>` : ''}
-            <button class="ledger-entry-del cul-entry-edit" data-idx="${eIdx}" title="${tr('edit_entry')}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            </button>
-            <button class="ledger-entry-del" data-idx="${eIdx}" title="Delete entry">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-            </button>
+            <div class="cl-entry-kebab-wrap">
+              <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+              </button>
+              <div class="cl-entry-kebab-menu">${menuItems}</div>
+            </div>
           </div>
           ${specLine}
           ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
           </div>`);
       });
-      entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'custom') : '<div class="empty-state" style="padding:20px 10px;">' + tr('no_matching_orders') + '</div>';
+      entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'custom') : '<div class="empty-state" style="padding:20px 10px;">' + tr('cl_no_matching_entries') + '</div>';
+      entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
+        btn.addEventListener('click', (ev)=>{
+          ev.stopPropagation();
+          const wrap = btn.closest('.cl-entry-kebab-wrap');
+          const wasOpen = wrap.classList.contains('open');
+          closeClEntryKebabs_();
+          if(!wasOpen) wrap.classList.add('open');
+        });
+      });
+      entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
+        btn.addEventListener('click', ()=> closeClEntryKebabs_());
+      });
       entriesWrap.querySelectorAll('.cul-entry-receipt').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const eIdx = parseInt(btn.dataset.idx,10);
@@ -17547,6 +18381,8 @@
           const e = cl.entries[eIdx];
           if(!e) return;
           editingCulEntryIdx = eIdx;
+          { const w = document.getElementById('cul-add-entry-form-wrap'); if(w) w.style.display = ''; }
+          { const f = document.getElementById('cul-fab'); if(f) f.classList.add('open'); }
           // Rebuild one item block per line stored in this entry's fields
           // (see culSplitItems_) — a plain single-item entry rebuilds as
           // just block 0, same as before.
@@ -17675,6 +18511,23 @@
       renderCustomLedgerModalContent_();
     });
     document.getElementById('cul-close').addEventListener('click', ()=> customLedgerModal.classList.remove('active'));
+    document.querySelectorAll('#cul-filter-row .cl-filter-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        culEntriesFilter_ = chip.dataset.filter;
+        document.querySelectorAll('#cul-filter-row .cl-filter-chip').forEach(c2 => c2.classList.toggle('active', c2 === chip));
+        renderCustomLedgerModalContent_();
+      });
+    });
+    { const culFabBtn = document.getElementById('cul-fab'), culFormWrap = document.getElementById('cul-add-entry-form-wrap');
+      if(culFabBtn && culFormWrap){
+        culFabBtn.addEventListener('click', ()=>{
+          const isOpen = culFormWrap.style.display !== 'none';
+          culFormWrap.style.display = isOpen ? 'none' : '';
+          culFabBtn.classList.toggle('open', !isOpen);
+          if(!isOpen) culFormWrap.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      }
+    }
     document.getElementById('customledger-delete').addEventListener('click', ()=>{
       if(currentCustomLedgerIdx === null) return;
       const cl = customLedgers[currentCustomLedgerIdx];
@@ -18817,6 +19670,61 @@
     // ---- Worker Ledger modal ----
     const workerLedgerModal = document.getElementById('worker-ledger-modal');
     let currentWorkerIdx = null;
+    let wlEntriesKindFilter_ = 'all';
+    function buildWlRunningSeries_(entries){
+      let running = 0;
+      return (entries||[]).map(e=>{ running += labourEntryBalanceDelta_(e); return running; });
+    }
+    function computeWlMonthStartBalance_(entries){
+      const now = new Date();
+      let running = 0, monthStartBal = 0, found = false;
+      (entries||[]).forEach(e=>{
+        const d = parseDMY_(e.date);
+        if(!found && d && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()){
+          monthStartBal = running;
+          found = true;
+        }
+        running += labourEntryBalanceDelta_(e);
+      });
+      return found ? monthStartBal : running;
+    }
+    // Worker Ledger's own hero card — kept separate from
+    // renderLedgerHeroGeneric_ rather than reusing it, because Dues here
+    // deliberately excludes Advance/Loan entries entirely (see
+    // labourEntryBalanceDelta_'s comment) while the generic version just
+    // sums every debit/credit — reusing it would show a wrong balance the
+    // moment a worker has any advance on the books.
+    function renderWlHero_(w){
+      const heroEl = document.getElementById('wl-hero-card');
+      const statEl = document.getElementById('wl-stat-row');
+      if(!heroEl || !statEl) return;
+      const entries = w.entries || [];
+      const totals = workerTotals_(w);
+      const bal = workerBalance_(w);
+      const isOwed = bal > 0, isAdvance = bal < 0;
+      const color = isOwed ? 'var(--red-bright)' : (isAdvance ? 'var(--green)' : 'var(--text-dim)');
+      const label = isOwed ? tr('cl_balance_owed') : (isAdvance ? tr('cl_balance_advance') : tr('cl_balance_settled'));
+      const monthChange = bal - computeWlMonthStartBalance_(entries);
+      const points = buildWlRunningSeries_(entries);
+      const sparkSvg = buildSparklineSvg_(points, 84, 34, color);
+      let trendHtml = '';
+      if(Math.round(monthChange) !== 0){
+        const arrow = monthChange > 0 ? '↗' : '↘';
+        const trendColor = monthChange > 0 ? 'var(--red-bright)' : 'var(--green)';
+        const sign = monthChange > 0 ? '+' : '-';
+        trendHtml = `<div class="cl-hero-trend" style="color:${trendColor};">${arrow} ${tr('cl_this_month_change').replace('{sign}', sign).replace('{amount}', fmtCompact_(Math.abs(monthChange)))}</div>`;
+      }
+      heroEl.innerHTML = `
+        <div class="cl-hero-label">${label}</div>
+        <div class="cl-hero-amount-row">
+          <div class="cl-hero-amount" style="color:${color};">${fmt(Math.abs(bal))}</div>
+          <div class="cl-hero-spark">${sparkSvg}</div>
+        </div>
+        ${trendHtml}`;
+      statEl.innerHTML = `
+        <div class="cl-stat-box"><div class="cl-stat-label">${tr('total_work_credit')}</div><div class="cl-stat-value">${Math.round(totals.credit).toLocaleString('en-PK')}</div></div>
+        <div class="cl-stat-box"><div class="cl-stat-label">${tr('total_paid_debit')}</div><div class="cl-stat-value" style="color:var(--green);">${Math.round(totals.debit).toLocaleString('en-PK')}</div></div>`;
+    }
     let wlSelectedStatus = 'present';
 
     function wlSelectedSizeRate_(w){
@@ -19026,13 +19934,8 @@
       const w = inventory.labourledger[currentWorkerIdx];
       if(!w) return;
       document.getElementById('wl-title').textContent = w.name;
-      const totals = workerTotals_(w);
-      const bal = workerBalance_(w);
-      const bl = balanceLabel_(bal);
-      document.getElementById('wl-balance-line').innerHTML =
-        tr('total_work_credit') + ': ' + fmt(totals.credit) + ' &nbsp;·&nbsp; ' +
-        tr('total_paid_debit') + ': ' + fmt(totals.debit) + ' &nbsp;·&nbsp; ' +
-        '<span class="' + bl.cls + '">' + tr('dues') + ': ' + bl.text + '</span>';
+      renderLedgerOverdueBannerGeneric_('wl-overdue-banner', w.entries || []);
+      renderWlHero_(w);
       const entriesWrap = document.getElementById('wl-entries-wrap');
       // FIX: entries used to render (and the running balance used to be
       // computed) in whatever order they sat in the array — usually
@@ -19073,12 +19976,16 @@
       } else {
         let running = 0;
         let blocks = [];
+        let shownCount = 0;
         // Same Received/Given payment-count + always-visible method badge
         // fix as the Customer/Factory Ledger — see the comment there.
         let receivedSeq = 0, givenSeq = 0;
         entries.forEach((e, eIdx)=>{
           running += labourEntryBalanceDelta_(e);
           if(!visibleIdx.has(eIdx)) return; // outside the date filter — still counted above, just not shown
+          const kindGroup = (e.kind === 'advance' || e.kind === 'loan') ? 'advance' : (e.kind === 'attendance' ? 'attendance' : 'payment');
+          if(wlEntriesKindFilter_ !== 'all' && wlEntriesKindFilter_ !== kindGroup) return;
+          shownCount++;
           let kindCls, kindTxt, detail;
           if(e.kind === 'attendance'){
             kindCls = 'kind-attendance-' + (e.status || 'present');
@@ -19110,8 +20017,18 @@
           const methodBadge = e.method ? `<span class="cheque-badge method">${e.method}${e.detail ? ' (' + e.detail + ')' : ''}</span>` : '';
           const receivedBadge = (e.receivedBy || e.receivedIn) ? `<span class="cheque-badge method">${[e.receivedBy, e.receivedIn].filter(Boolean).join(' · ')}</span>` : '';
           const seqBadge = paymentSeqLabel ? `<span class="cheque-badge method">${paymentSeqLabel}</span>` : '';
+          const menuItems = `
+            ${hasReceipt ? `
+            <button class="wl-entry-receipt" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              ${tr('cl_menu_view_receipt')}
+            </button>` : ''}
+            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              ${tr('cl_menu_delete')}
+            </button>`;
           blocks.push(`
-            <div class="ledger-entry-block ${chequeCls}">
+            <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
             <div class="ledger-entry-row">
               <span class="ledger-entry-when">${e.date}</span>
               <span class="ledger-entry-kind ${kindCls}">${kindTxt}</span>
@@ -19119,15 +20036,29 @@
               <span class="ledger-entry-debit" ${e.debit < 0 ? 'style="color:var(--green);"' : ''}>${e.debit ? fmtSigned_(e.debit) : ''}</span>
               <span class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</span>
               <span class="ledger-entry-bal">${fmt(running)}</span>
-              ${hasReceipt ? `<button class="wl-entry-receipt" data-idx="${eIdx}" title="${tr('view_attached_receipt')}" style="background:none; border:none; color:var(--yellow); cursor:pointer; padding:0 4px; display:flex; align-items:center;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              </button>` : ''}
-              <button class="ledger-entry-del" data-idx="${eIdx}" title="${tr('delete')}">✕</button>
+              <div class="cl-entry-kebab-wrap">
+                <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+                </button>
+                <div class="cl-entry-kebab-menu">${menuItems}</div>
+              </div>
             </div>
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
-        entriesWrap.innerHTML = joinLedgerBlocks_(blocks, 'labour');
+        entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'labour') : '<div class="empty-state">' + tr('cl_no_matching_entries') + '</div>';
+        entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
+          btn.addEventListener('click', (ev)=>{
+            ev.stopPropagation();
+            const wrap = btn.closest('.cl-entry-kebab-wrap');
+            const wasOpen = wrap.classList.contains('open');
+            closeClEntryKebabs_();
+            if(!wasOpen) wrap.classList.add('open');
+          });
+        });
+        entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
+          btn.addEventListener('click', ()=> closeClEntryKebabs_());
+        });
         entriesWrap.querySelectorAll('.wl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -19410,6 +20341,10 @@
       currentWorkerIdx = idx;
       const w = inventory.labourledger[idx];
       document.getElementById('wl-entries-filter-date').value = '';
+      wlEntriesKindFilter_ = 'all';
+      document.querySelectorAll('#wl-filter-row .cl-filter-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.filter === 'all'));
+      { const w2 = document.getElementById('wl-add-entry-form-wrap'); if(w2) w2.style.display = 'none'; }
+      { const f = document.getElementById('wl-fab'); if(f) f.classList.remove('open'); }
       wlPopulateProfileFields_(w);
       document.getElementById('wl-kind').value = 'attendance';
       document.getElementById('wl-date').value = todayISO_();
@@ -19432,6 +20367,23 @@
       workerLedgerModal.classList.add('active');
     }
     document.getElementById('wl-close').addEventListener('click', ()=> workerLedgerModal.classList.remove('active'));
+    document.querySelectorAll('#wl-filter-row .cl-filter-chip').forEach(chip=>{
+      chip.addEventListener('click', ()=>{
+        wlEntriesKindFilter_ = chip.dataset.filter;
+        document.querySelectorAll('#wl-filter-row .cl-filter-chip').forEach(c2 => c2.classList.toggle('active', c2 === chip));
+        renderWorkerLedgerModalContent_();
+      });
+    });
+    { const wlFabBtn = document.getElementById('wl-fab'), wlFormWrap = document.getElementById('wl-add-entry-form-wrap');
+      if(wlFabBtn && wlFormWrap){
+        wlFabBtn.addEventListener('click', ()=>{
+          const isOpen = wlFormWrap.style.display !== 'none';
+          wlFormWrap.style.display = isOpen ? 'none' : '';
+          wlFabBtn.classList.toggle('open', !isOpen);
+          if(!isOpen) wlFormWrap.scrollIntoView({ behavior:'smooth', block:'start' });
+        });
+      }
+    }
     document.getElementById('worker-delete').addEventListener('click', ()=>{
       if(currentWorkerIdx === null) return;
       const w = inventory.labourledger[currentWorkerIdx];
@@ -22668,6 +23620,12 @@
       document.getElementById('ef-date-to').value = defaultRange.to;
       document.getElementById('ef-all-dates').checked = !defaultRange.from;
       efSyncAllDatesUI_();
+      // ADD (2026-08-30, Tax Invoice feature): only the Customer/Factory
+      // Ledger gets this checkbox — every other ledger's export/print is
+      // untouched. Always resets to unchecked on open so a normal export
+      // never accidentally comes out as a tax invoice by default.
+      document.getElementById('ef-include-tax-wrap').style.display = isFactoryLedger ? 'flex' : 'none';
+      document.getElementById('ef-include-tax').checked = false;
       exportFilterModal.classList.add('active');
     }
     window.openExportFilterModal = openExportFilterModal;
@@ -22708,10 +23666,14 @@
         // first to last. Leaving Order # / dates blank exports everything.
         const rows = customerLedgerRows_(dateFrom, dateTo, currentCustomerName, orderNumber);
         if(rows.length === 0){ alert('No ledger entries match that filter.'); return; }
-        if(format === 'csv') exportCustomerLedgerCSVRows_(rows, currentCustomerName);
-        if(format === 'pdf') exportCustomerLedgerPDFRows_(rows, currentCustomerName);
-        if(format === 'jpg') exportCustomerLedgerJPGRows_(rows, currentCustomerName);
-        if(format === 'print') exportCustomerLedgerPDFRows_(rows, currentCustomerName, true);
+        // ADD (2026-08-30, Tax Invoice feature): the only ledger with this
+        // checkbox (see openExportFilterModal above) — passed straight
+        // through to whichever export function runs below.
+        const includeTax = document.getElementById('ef-include-tax').checked;
+        if(format === 'csv') exportCustomerLedgerCSVRows_(rows, currentCustomerName, includeTax);
+        if(format === 'pdf') exportCustomerLedgerPDFRows_(rows, currentCustomerName, false, includeTax);
+        if(format === 'jpg') exportCustomerLedgerJPGRows_(rows, currentCustomerName, includeTax);
+        if(format === 'print') exportCustomerLedgerPDFRows_(rows, currentCustomerName, true, includeTax);
       } else if(section === 'painterledger'){
         // Same paintLedgerRows_ pipeline as the Paint Ledger's own list-level
         // export below, just pre-locked to the currently open painter.
@@ -22781,7 +23743,15 @@
       const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
       saveGeneratedFile_(blob, filename, folder);
     }
-    function withCompanyHeader_(csvBody){
+    function withCompanyHeader_(csvBody, invoiceMode){
+      // ADD (2026-08-30, Tax Invoice feature): CSV equivalent of the bold
+      // "INVOICE" heading + NTN/Sales Tax Reg. line added to the PDF/Print/
+      // JPG header (see exportPDF_/exportAsJPG_) — CSV has no bold text, so
+      // it's just plain extra header lines, only added when this specific
+      // export was generated with "Include tax" checked.
+      if(invoiceMode){
+        return 'Amir Traders\r\nFan Accessories · Gujrat\r\nINVOICE\r\nNTN: ' + (ntn || '-') + '\r\nSales Tax Reg. #: ' + (salesTaxReg || '-') + '\r\n\r\n' + csvBody;
+      }
       return 'Amir Traders\r\nFan Accessories · Gujrat\r\n\r\n' + csvBody;
     }
     // Just the payment mode/reference text (no "Debit/Credit/Balance"
@@ -23285,7 +24255,7 @@
     // 'print' (builds the exact same document, then hands it straight to
     // the device's native print dialog via printGeneratedPDF_ below,
     // instead of saving a file at all).
-    async function exportPDF_(title, headers, rows, filename, orientation, footerLines, columnStyles, folder, mode){
+    async function exportPDF_(title, headers, rows, filename, orientation, footerLines, columnStyles, folder, mode, invoiceHeader){
       if(!window.jspdf){ alert('PDF library did not load — check your internet connection and try again.'); return; }
       const logo = await getLogoDataURL();
       const { jsPDF } = window.jspdf;
@@ -23297,13 +24267,36 @@
       doc.text('Amir Traders', textX, 18);
       doc.setFont('helvetica','normal'); doc.setFontSize(10);
       doc.text('Fan Accessories · Gujrat', textX, 24);
+      // ADD (2026-08-30, Tax Invoice feature): bold "INVOICE" heading,
+      // right-aligned on the same baseline as the "Amir Traders" name —
+      // only drawn when a caller explicitly passes invoiceHeader (only the
+      // Customer/Factory Ledger's "Include tax" export does). Every other
+      // export/print in the app calls this same shared function with
+      // invoiceHeader left undefined, so its layout is completely
+      // unaffected.
+      if(invoiceHeader){
+        doc.setFont('helvetica','bold'); doc.setFontSize(18);
+        doc.text('INVOICE', pageWidth - 14, 18, { align: 'right' });
+      }
       doc.setDrawColor(200); doc.line(14, 30, pageWidth - 14, 30);
+      // ADD (2026-08-30, Tax Invoice feature): NTN / Sales Tax Reg. # line,
+      // inline (same row) under the divider — blank values fall back to a
+      // dash rather than showing "NTN: " with nothing after it. Shifts the
+      // title/"Generated"/table start down by 6mm to make room, only when
+      // this line is actually being drawn.
+      const invoiceHeaderOffset = invoiceHeader ? 6 : 0;
+      if(invoiceHeader){
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90);
+        doc.text('NTN: ' + (invoiceHeader.ntn || '-'), 14, 36);
+        doc.text('Sales Tax Reg. #: ' + (invoiceHeader.salesTaxReg || '-'), pageWidth - 14, 36, { align: 'right' });
+        doc.setTextColor(0);
+      }
       doc.setFont('helvetica','bold'); doc.setFontSize(12);
-      doc.text(title, 14, 38);
+      doc.text(title, 14, 38 + invoiceHeaderOffset);
       doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(120);
-      doc.text('Generated ' + new Date().toLocaleString(), 14, 44);
+      doc.text('Generated ' + new Date().toLocaleString(), 14, 44 + invoiceHeaderOffset);
       doc.autoTable({
-        startY: 48, head: [headers], body: rows,
+        startY: 48 + invoiceHeaderOffset, head: [headers], body: rows,
         // FIX: cellPadding:4 (4mm each side = 8mm eaten out of every column's
         // width before any text even gets drawn) combined with most columns
         // here having no explicit cellWidth was leaving so little room that
@@ -23569,7 +24562,7 @@
     window.printInventoryPDF = (category) => exportInventoryPDF(category, true);
 
     // ---------------- JPG EXPORT ----------------
-    async function exportAsJPG_(title, headers, rows, filename, wide, footerLines, colWidths, folder){
+    async function exportAsJPG_(title, headers, rows, filename, wide, footerLines, colWidths, folder, invoiceHeader){
       if(!window.html2canvas){ alert('Image export library did not load — check your internet connection and try again.'); return; }
       const logo = await getLogoDataURL();
       const esc = v => (v === null || v === undefined) ? '' : String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -23586,14 +24579,32 @@
       // the same breathing room landscape gives the PDF export.
       const boxWidth = wide ? 1300 : 700;
       wrap.style.cssText = 'position:fixed; left:-9999px; top:0; width:' + boxWidth + 'px; background:#ffffff; padding:28px; font-family:Arial,Helvetica,sans-serif; color:#1a1a1a;';
+      // ADD (2026-08-30, Tax Invoice feature): JPG equivalent of exportPDF_'s
+      // bold "INVOICE" heading + NTN/Sales Tax Reg. line — same
+      // invoiceHeader param, only ever passed by the Customer/Factory
+      // Ledger's "Include tax" export; every other caller leaves this
+      // undefined and gets exactly the same markup as before.
+      const invoiceHeaderHtml = invoiceHeader
+        ? '<div style="font-size:22px; font-weight:700; letter-spacing:0.5px;">INVOICE</div>'
+        : '';
+      const taxRegLineHtml = invoiceHeader
+        ? '<div style="display:flex; justify-content:space-between; font-size:11px; color:#555; margin-top:8px;">' +
+            '<span>NTN: ' + esc(invoiceHeader.ntn || '-') + '</span>' +
+            '<span>Sales Tax Reg. #: ' + esc(invoiceHeader.salesTaxReg || '-') + '</span>' +
+          '</div>'
+        : '';
       const headHtml =
-        '<div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">' +
-          (logo ? '<img src="' + logo + '" style="width:44px;height:44px;">' : '') +
-          '<div>' +
-            '<div style="font-size:20px; font-weight:700;">Amir Traders</div>' +
-            '<div style="font-size:12px; color:#666;">Fan Accessories · Gujrat</div>' +
+        '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">' +
+          '<div style="display:flex; align-items:center; gap:12px;">' +
+            (logo ? '<img src="' + logo + '" style="width:44px;height:44px;">' : '') +
+            '<div>' +
+              '<div style="font-size:20px; font-weight:700;">Amir Traders</div>' +
+              '<div style="font-size:12px; color:#666;">Fan Accessories · Gujrat</div>' +
+            '</div>' +
           '</div>' +
+          invoiceHeaderHtml +
         '</div>' +
+        taxRegLineHtml +
         '<div style="border-top:1px solid #ddd; margin:10px 0 14px;"></div>' +
         '<div style="font-size:15px; font-weight:700; margin-bottom:2px;">' + esc(title) + '</div>' +
         '<div style="font-size:11px; color:#888; margin-bottom:14px;">Generated ' + new Date().toLocaleString() + '</div>';
@@ -23869,7 +24880,7 @@
             }
           }
 
-          rows.push([c.name, e.date, e.time || '', desc, itemsCell, sizeCell, colourCell, qtyCell, itemCountCell, rateCell, e.debit || 0, e.credit || 0, running, methodCell, paymentSeqLabel, chequeStatusCell, receivedCell]);
+          rows.push([c.name, e.date, e.time || '', desc, itemsCell, sizeCell, colourCell, qtyCell, itemCountCell, rateCell, e.debit || 0, e.credit || 0, running, methodCell, paymentSeqLabel, chequeStatusCell, receivedCell, e.taxPercent || 0, e.taxAmt || 0]);
         });
       });
       return rows;
@@ -24305,7 +25316,73 @@
     // passes the same entityExportPrefsKey_('customerledger', name) the
     // modal itself is scoped to, so a factory's unchecked columns are
     // actually left out.
-    function exportCustomerLedgerCSVRows_(rows, name){
+    // ADD (2026-08-30, Tax Invoice feature): everything below builds the
+    // separate, simpler Tax Invoice table — Date/Description/Amount/Tax %/
+    // Tax Amt/Debit(incl. tax)/Credit/Balance(tax-inclusive) — rather than
+    // reusing CUSTOMER_LEDGER_HEADERS' full item/size/colour/rate column
+    // set (per-column show/hide prefs from filterExportColumns_ don't
+    // apply here; a tax invoice always shows the same columns). Reads
+    // straight from customerLedgerRows_'s own row array — indices 1
+    // (date), 3 (desc), 10 (debit), 11 (credit), 17 (taxPercent), 18
+    // (taxAmt) — see customerLedgerRows_ for that array's exact shape.
+    const CUSTOMER_LEDGER_TAX_INVOICE_HEADERS = ['Date','Description','Amount','Tax %','Tax Amt','Debit','Credit','Balance'];
+    function customerLedgerTaxInvoiceRows_(rows){
+      let running = 0;
+      return rows.map(r=>{
+        const debit = r[10] || 0, credit = r[11] || 0, taxPercent = r[17] || 0, taxAmt = r[18] || 0;
+        const debitIncl = debit > 0 ? (debit + taxAmt) : 0;
+        running += debitIncl - credit;
+        return [
+          r[1], r[3],
+          debit > 0 ? fmt(debit) : '-',
+          taxPercent > 0 ? (taxPercent + '%') : '-',
+          taxAmt > 0 ? fmt(taxAmt) : '-',
+          debitIncl > 0 ? fmt(debitIncl) : '-',
+          credit > 0 ? fmt(credit) : '-',
+          fmt(running)
+        ];
+      });
+    }
+    function customerLedgerTaxInvoiceTotals_(rows){
+      let subtotal = 0, totalTax = 0, paid = 0;
+      rows.forEach(r=>{ subtotal += r[10] || 0; totalTax += r[18] || 0; paid += r[11] || 0; });
+      const grandTotal = subtotal + totalTax;
+      return { subtotal, totalTax, grandTotal, paid, balanceDue: grandTotal - paid };
+    }
+    function customerLedgerTaxInvoiceFooterLines_(totals){
+      return [
+        { text: 'Subtotal (excl. tax): ' + fmt(totals.subtotal) },
+        { text: 'Total Tax: ' + fmt(totals.totalTax) },
+        { text: 'Grand Total: ' + fmt(totals.grandTotal), bold: true },
+        { text: 'Paid: ' + fmt(totals.paid) },
+        { text: 'Balance Due: ' + fmt(totals.balanceDue), bold: true },
+        { text: amountInWordsEnglish_(totals.balanceDue) },
+        { text: amountInWordsUrdu_(totals.balanceDue), urdu: true },
+        signatureFooterRow_('Thank you for your business with us.')
+      ];
+    }
+    function customerLedgerTaxInvoiceHeader_(){
+      return { ntn, salesTaxReg };
+    }
+    function exportCustomerLedgerCSVRows_(rows, name, includeTax){
+      if(includeTax){
+        const invRows = customerLedgerTaxInvoiceRows_(rows);
+        const totals = customerLedgerTaxInvoiceTotals_(rows);
+        const csv = toCSV_(CUSTOMER_LEDGER_TAX_INVOICE_HEADERS, invRows);
+        const footer = '\r\n'
+          + csvEscape_('Subtotal (excl. tax)') + ',' + csvEscape_(fmt(totals.subtotal)) + '\r\n'
+          + csvEscape_('Total Tax') + ',' + csvEscape_(fmt(totals.totalTax)) + '\r\n'
+          + csvEscape_('Grand Total') + ',' + csvEscape_(fmt(totals.grandTotal)) + '\r\n'
+          + csvEscape_('Paid') + ',' + csvEscape_(fmt(totals.paid)) + '\r\n'
+          + csvEscape_('Balance Due') + ',' + csvEscape_(fmt(totals.balanceDue)) + '\r\n'
+          + csvEscape_('English Words') + ',' + csvEscape_(amountInWordsEnglish_(totals.balanceDue)) + '\r\n'
+          + csvEscape_('Urdu Words') + ',' + csvEscape_(amountInWordsUrdu_(totals.balanceDue)) + '\r\n'
+          + '\r\n'
+          + csvEscape_('Thank you for your business with us.') + '\r\n'
+          + csvEscape_('Signature') + ',' + csvEscape_('______________________');
+        downloadCSV_(exportFilename_('Tax-Invoice', name, 'csv'), withCompanyHeader_(csv, true) + footer, 'Customer-Ledger');
+        return;
+      }
       const total = customerLedgerTotalBalance_(rows);
       const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows, entityExportPrefsKey_('customerledger', name));
       const csv = toCSV_(f.headers, f.rows);
@@ -24318,13 +25395,27 @@
         + csvEscape_('Signature') + ',' + csvEscape_('______________________');
       downloadCSV_(exportFilename_('Customer-Ledger', name, 'csv'), withCompanyHeader_(csv) + footer, 'Customer-Ledger');
     }
-    function exportCustomerLedgerPDFRows_(rows, name, printMode){
+    function exportCustomerLedgerPDFRows_(rows, name, printMode, includeTax){
+      if(includeTax){
+        const invRows = customerLedgerTaxInvoiceRows_(rows);
+        const totals = customerLedgerTaxInvoiceTotals_(rows);
+        exportPDF_('Tax invoice — Customer ledger', CUSTOMER_LEDGER_TAX_INVOICE_HEADERS, invRows, exportFilename_('Tax-Invoice', name, 'pdf'), 'l',
+          customerLedgerTaxInvoiceFooterLines_(totals), undefined, 'Customer-Ledger', printMode ? 'print' : 'save', customerLedgerTaxInvoiceHeader_());
+        return;
+      }
       const total = customerLedgerTotalBalance_(rows);
       const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows, entityExportPrefsKey_('customerledger', name));
       exportPDF_('Customer / Factory Ledger', f.headers, f.rows, exportFilename_('Customer-Ledger', name, 'pdf'), 'l',
         customerLedgerFooterLines_(total), f.hidden ? undefined : CUSTOMER_LEDGER_PDF_COLUMN_STYLES, 'Customer-Ledger', printMode ? 'print' : 'save');
     }
-    function exportCustomerLedgerJPGRows_(rows, name){
+    function exportCustomerLedgerJPGRows_(rows, name, includeTax){
+      if(includeTax){
+        const invRows = customerLedgerTaxInvoiceRows_(rows);
+        const totals = customerLedgerTaxInvoiceTotals_(rows);
+        exportAsJPG_('Tax invoice — Customer ledger', CUSTOMER_LEDGER_TAX_INVOICE_HEADERS, invRows, exportFilename_('Tax-Invoice', name, 'jpg'), true,
+          customerLedgerTaxInvoiceFooterLines_(totals), undefined, 'Customer-Ledger', customerLedgerTaxInvoiceHeader_());
+        return;
+      }
       const total = customerLedgerTotalBalance_(rows);
       const f = filterExportColumns_('customerledger', CUSTOMER_LEDGER_HEADERS, rows, entityExportPrefsKey_('customerledger', name));
       exportAsJPG_('Customer / Factory Ledger', f.headers, f.rows, exportFilename_('Customer-Ledger', name, 'jpg'), true,
