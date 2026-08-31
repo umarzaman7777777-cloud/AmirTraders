@@ -1159,7 +1159,15 @@
       display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:13px 16px;
       background:var(--panel); border:1px solid var(--steel-line); border-radius:9px; margin-bottom:8px;
     }
-    .txn-row .txn-id{ font-family:var(--mono); font-size:12.5px; font-weight:600; width:80px; flex-shrink:0; }
+    .txn-row .txn-id{ font-family:var(--mono); font-size:12.5px; font-weight:600; width:auto; flex-shrink:0; }
+    /* ADD (2026-08-31, visual polish request): order number as its own
+       bordered/tinted badge instead of plain bold text — same accent
+       already used for the yellow status pills below, just applied to the
+       order id itself since it's the first thing a person scans a row for. */
+    .txn-id > div:first-child{
+      display:inline-block; background:rgba(var(--logo-a-rgb),0.12); border:1px solid var(--yellow);
+      color:var(--yellow); padding:4px 10px; border-radius:7px; font-weight:700;
+    }
     /* ADD (2026-08-24, user request): "order number should be double line
        and should add one more line that is order is delivered" — a second
        line under the order number, shown once its gate receipt/pass is
@@ -1184,12 +1192,20 @@
     /* Strikes a red line through the order's item text once its gate
        pass/receipt is attached — the "Red line across" the user asked
        for, right alongside the red DELIVERED tag + tick above. */
-    .txn-items-delivered > div:first-child{
+    .txn-items-delivered .txn-items-box > div:first-child{
       text-decoration:line-through; text-decoration-color:var(--red-bright); text-decoration-thickness:2.5px;
       color:var(--text-dim);
     }
     .txn-row .txn-when{ font-family:var(--mono); font-size:11.5px; color:var(--text-dim); width:150px; flex-shrink:0; }
     .txn-row .txn-items{ flex:1; font-size:12.5px; color:var(--text-dim); min-width:0; }
+    /* ADD (2026-08-31, visual polish request): the item summary + its meta
+       chips (Quantity/Size/Colour/Price) now sit inside their own bordered
+       sub-box, visually separating "what was ordered" from the rest of the
+       row instead of running straight into it. */
+    .txn-items-box{
+      border:1px solid var(--steel-line); border-radius:8px; padding:8px 10px;
+      background:var(--panel-raised);
+    }
     .txn-row .txn-items > div:first-child{ white-space:pre-line; line-height:1.6; }
     .txn-meta-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
     .txn-meta-chip{
@@ -1243,7 +1259,7 @@
        above), just never carried through to every OTHER row of icon
        buttons in the app. Widened from 24x24/4px-gap to the same
        comfortably-tappable size used there. */
-    .txn-row-actions{ display:flex; gap:8px; flex-shrink:0; }
+    .txn-row-actions{ display:flex; gap:8px; flex-shrink:0; flex-wrap:wrap; }
     .txn-row-actions button{
       width:32px; height:32px; border-radius:6px; border:1px solid var(--steel-line);
       background:var(--panel-raised); color:var(--text-dim); cursor:pointer;
@@ -1251,6 +1267,35 @@
     }
     .txn-row-actions button:hover{ border-color:var(--yellow); color:var(--yellow); }
     .txn-row-actions button.txn-delete:hover{ border-color:var(--red); color:var(--red); }
+    /* ADD (2026-08-31, visual polish request): labeled, color-coded action
+       buttons for the primary per-order actions — Confirm, Record Payment,
+       Attach Gate Pass, View Receipt — replacing plain icon-only buttons
+       for these specific ones so each action's purpose is readable at a
+       glance, not just guessable from an icon. Delete deliberately stays
+       small/icon-only (see .txn-row-actions button above) — a long-standing
+       app-wide pattern to avoid inviting accidental taps on a destructive
+       action (see the 2026-08-19 Factories delete-confirm FIX for the
+       original reasoning this follows).
+       Same width:auto / height:32px / mono-uppercase shape as the existing
+       .txn-confirm-tab, just factored into reusable color variants so all
+       four buttons look like one consistent family instead of one-off
+       styles. */
+    .txn-action-btn{
+      display:inline-flex; align-items:center; gap:5px; width:auto; height:32px;
+      font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.4px; font-weight:700;
+      padding:0 12px; border-radius:6px; cursor:pointer; flex-shrink:0; transition:all 0.15s; white-space:nowrap;
+    }
+    .txn-action-btn svg{ width:12px; height:12px; flex-shrink:0; }
+    .txn-action-btn.is-confirm{ border:1px solid var(--green); background:rgba(76,154,90,0.12); color:var(--green); }
+    .txn-action-btn.is-confirm:hover{ background:rgba(76,154,90,0.24); }
+    .txn-action-btn.is-pay{ border:1px solid var(--yellow); background:rgba(var(--logo-a-rgb),0.12); color:var(--yellow); }
+    .txn-action-btn.is-pay:hover{ background:rgba(var(--logo-a-rgb),0.24); }
+    .txn-action-btn.is-attach{ border:1px solid #4A90D9; background:rgba(74,144,217,0.12); color:#4A90D9; }
+    .txn-action-btn.is-attach:hover{ background:rgba(74,144,217,0.24); }
+    .txn-action-btn.is-receipt, .txn-action-btn.is-edit{
+      border:1px solid var(--steel-line); background:var(--panel-raised); color:var(--text-dim);
+    }
+    .txn-action-btn.is-receipt:hover, .txn-action-btn.is-edit:hover{ border-color:var(--yellow); color:var(--yellow); }
     .empty-state{ text-align:center; color:var(--text-dim); font-size:12.5px; font-family:var(--mono); padding:50px 10px; }
 
     /* FIX: these summary tables (Inventory, Raw/Paint/Labour/Custom Ledger
@@ -1540,6 +1585,21 @@
     }
     .cl-entry-kebab-menu button:hover{ background:var(--steel-line); color:var(--yellow); }
     .cl-entry-kebab-menu button.danger:hover{ color:var(--red); }
+    /* ADD (2026-08-31, visual polish request): Customer/Factory Ledger's
+       own entry actions now render directly in the row instead of behind
+       the kebab (⋮) menu above — same 26x26 icon-button sizing already
+       established elsewhere in the app (see .factory-card
+       .product-card-actions button) for a familiar, consistent touch
+       target. Scoped to this one ledger; the other ledgers still use the
+       shared kebab menu above. */
+    .cl-entry-actions-row{ display:flex; gap:6px; flex-shrink:0; }
+    .cl-entry-action-btn{
+      width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+      border:1px solid var(--steel-line); border-radius:6px; background:var(--panel);
+      color:var(--text-dim); cursor:pointer; padding:0; flex-shrink:0;
+    }
+    .cl-entry-action-btn:hover{ border-color:var(--yellow); color:var(--yellow); }
+    .cl-entry-action-btn.danger:hover{ border-color:var(--red); color:var(--red); }
     .cl-fab{
       width:46px; height:46px; border-radius:50%; background:var(--yellow); color:#1C1F22;
       border:none; display:flex; align-items:center; justify-content:center; cursor:pointer;
@@ -1547,6 +1607,38 @@
     }
     .cl-fab:hover{ transform:scale(1.06); }
     .cl-fab.open{ background:var(--panel-raised); color:var(--text); border:1px solid var(--steel-line); }
+    /* ADD (2026-08-31, visual polish request): Customer/Factory Ledger's
+       own Add Entry control — was a round floating "+" FAB (still true for
+       the other 5 ledgers, .cl-fab above), now a full-width labeled button
+       so its purpose reads without relying on the "+" icon convention. */
+    .cl-fab-labeled{
+      width:100%; display:flex; align-items:center; justify-content:center; gap:6px;
+      background:var(--yellow); color:#1C1F22; border:none; border-radius:8px;
+      padding:11px 0; cursor:pointer; font-family:var(--display); font-weight:600;
+      font-size:13px; letter-spacing:0.4px; text-transform:uppercase; transition:all 0.15s;
+    }
+    .cl-fab-labeled:hover{ opacity:0.92; }
+    .cl-fab-labeled.open{ background:var(--panel-raised); color:var(--text); border:1px solid var(--steel-line); }
+    /* ADD (2026-08-31, visual polish request): one-tap, color-coded export
+       buttons replacing the collapsed Export ▾ dropdown on the Customer/
+       Factory Ledger — same shape/color family as .txn-action-btn (Order
+       Booked's own labeled-button redesign), scoped here to keep the
+       change contained to the one modal that was actually discussed. */
+    .cl-export-btn{
+      display:inline-flex; align-items:center; gap:4px; height:32px;
+      font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:0.4px; font-weight:700;
+      padding:0 10px; border-radius:6px; cursor:pointer; flex-shrink:0; transition:all 0.15s; white-space:nowrap;
+      background:none;
+    }
+    .cl-export-btn svg{ width:13px; height:13px; flex-shrink:0; }
+    .cl-export-btn.is-pdf{ border:1px solid #A32D2D; background:rgba(226,75,74,0.12); color:#F09595; }
+    .cl-export-btn.is-pdf:hover{ background:rgba(226,75,74,0.24); }
+    .cl-export-btn.is-jpg{ border:1px solid #185FA5; background:rgba(55,138,221,0.12); color:#85B7EB; }
+    .cl-export-btn.is-jpg:hover{ background:rgba(55,138,221,0.24); }
+    .cl-export-btn.is-csv{ border:1px solid #3B6D11; background:rgba(99,153,34,0.12); color:#97C459; }
+    .cl-export-btn.is-csv:hover{ background:rgba(99,153,34,0.24); }
+    .cl-export-btn.is-print{ border:1px solid var(--yellow); background:rgba(var(--logo-a-rgb),0.12); color:var(--yellow); }
+    .cl-export-btn.is-print:hover{ background:rgba(var(--logo-a-rgb),0.24); }
     .ledger-entry-kind{
       font-family:var(--mono); font-size:8.5px; text-transform:uppercase; letter-spacing:0.3px;
       padding:2px 5px; border-radius:4px; flex-shrink:0; white-space:nowrap;
@@ -3182,6 +3274,19 @@
              whatever the last known backup email actually was, every time
              Settings opens (see renderBackupStatusCard_). -->
         <p id="settings-backup-lastsent" style="font-family:var(--mono); font-size:11.5px; margin:10px 0 0;"></p>
+        <!-- ADD (2026-08-31): "Weekly Vault" style visibility into WHERE
+             backups (and overdue-cheque alerts, and PIN-recovery codes —
+             see Code.gs's getBackupEmailAddress_) actually go. Previously
+             this was invisible from inside the app entirely — hardcoded to
+             whoever deployed the Apps Script, with no way to confirm or
+             change it. -->
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--steel-line);">
+          <label class="field-label" data-i18n="backup_email_label">Backup Email Address</label>
+          <div style="font-size:11.5px; color:var(--text-dim); margin:-4px 0 10px;" data-i18n="backup_email_desc">Backups, overdue-cheque alerts, and PIN-reset codes all go to this address. Leave blank to use the default (whichever Google account this was deployed under).</div>
+          <input type="email" id="settings-backup-email" class="field-input" placeholder="e.g. amirtraders.gujrat@gmail.com" autocomplete="off">
+          <p id="settings-backup-email-status" style="font-family:var(--mono); font-size:11.5px; margin:-8px 0 12px; display:none;"></p>
+          <button type="button" id="settings-backup-email-save-btn" style="background:none; border:1px solid var(--steel-line); color:var(--text); padding:9px 18px; border-radius:8px; font-family:var(--display); font-weight:600; font-size:12.5px; letter-spacing:0.4px; cursor:pointer; text-transform:uppercase;" data-i18n="save">Save</button>
+        </div>
       </div>
 
       <!-- MOVED (2026-08-24, user request): Notification Alerts settings
@@ -3310,16 +3415,23 @@
         <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openPainterModalLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
         <h3 id="pl-title" style="margin:0;">Painter</h3>
       </div>
-      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-        <div class="export-dropdown" data-export-dropdown>
-          <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="export-dropdown-menu">
-            <button onclick="openExportFilterModal('painterledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
-            <button onclick="openExportFilterModal('painterledger','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
-            <button onclick="openExportFilterModal('painterledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
-            <button onclick="openExportFilterModal('painterledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
-          </div>
-        </div>
+      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; flex-wrap:wrap;">
+        <button type="button" class="cl-export-btn is-pdf" onclick="openExportFilterModal('painterledger','pdf')" data-i18n-title="export_pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="export_pdf">PDF</span>
+        </button>
+        <button type="button" class="cl-export-btn is-jpg" onclick="openExportFilterModal('painterledger','jpg')" data-i18n-title="export_jpg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span data-i18n="export_jpg">JPG</span>
+        </button>
+        <button type="button" class="cl-export-btn is-csv" onclick="openExportFilterModal('painterledger','csv')" data-i18n-title="export_csv">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          <span data-i18n="export_csv">CSV</span>
+        </button>
+        <button type="button" class="cl-export-btn is-print" onclick="openExportFilterModal('painterledger','print')" data-i18n-title="export_print">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span data-i18n="export_print">Print</span>
+        </button>
         <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openPainterModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
@@ -3334,9 +3446,10 @@
       <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
     </div>
     <div id="pl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div id="pl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
-      <button type="button" id="pl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <div id="pl-fab-wrap" style="margin-bottom:14px;">
+      <button type="button" id="pl-fab" class="cl-fab-labeled" title="Add Entry" data-i18n-title="cl_fab_title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span data-i18n="cl_fab_title">Add Entry</span>
       </button>
     </div>
     <div id="pl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
@@ -3591,9 +3704,10 @@
       <button type="button" class="btn-cancel" id="wl-entries-filter-clear" style="padding:8px 12px; flex-shrink:0;" data-i18n="clear">Clear</button>
     </div>
     <div id="wl-entries-wrap" style="max-height:230px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div id="wl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
-      <button type="button" id="wl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <div id="wl-fab-wrap" style="margin-bottom:14px;">
+      <button type="button" id="wl-fab" class="cl-fab-labeled" title="Add Entry" data-i18n-title="cl_fab_title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span data-i18n="cl_fab_title">Add Entry</span>
       </button>
     </div>
     <div id="wl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
@@ -3737,18 +3851,23 @@
          targets to the currently open supplier's name each time it opens). -->
     <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:2px;">
       <h3 id="rl-title" style="margin:0;">Supplier</h3>
-      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-        <div class="export-dropdown" data-export-dropdown>
-          <button type="button" class="ledger-icon-btn" id="rl-export-btn" title="Export" onclick="toggleExportDropdown(this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </button>
-          <div class="export-dropdown-menu">
-            <button type="button" id="rl-export-pdf" data-i18n="export_pdf">PDF</button>
-            <button type="button" id="rl-export-print" data-i18n="export_print">Print</button>
-            <button type="button" id="rl-export-jpg" data-i18n="export_jpg">JPG</button>
-            <button type="button" id="rl-export-csv" data-i18n="export_csv">CSV</button>
-          </div>
-        </div>
+      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; flex-wrap:wrap;">
+        <button type="button" class="cl-export-btn is-pdf" id="rl-export-pdf" data-i18n-title="export_pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="export_pdf">PDF</span>
+        </button>
+        <button type="button" class="cl-export-btn is-jpg" id="rl-export-jpg" data-i18n-title="export_jpg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span data-i18n="export_jpg">JPG</span>
+        </button>
+        <button type="button" class="cl-export-btn is-csv" id="rl-export-csv" data-i18n-title="export_csv">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          <span data-i18n="export_csv">CSV</span>
+        </button>
+        <button type="button" class="cl-export-btn is-print" id="rl-export-print" data-i18n-title="export_print">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span data-i18n="export_print">Print</span>
+        </button>
         <button type="button" class="ledger-icon-btn" id="rl-export-settings-btn" title="Export Settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
         </button>
@@ -3765,9 +3884,10 @@
       <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
     </div>
     <div id="rl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div id="rl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
-      <button type="button" id="rl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <div id="rl-fab-wrap" style="margin-bottom:14px;">
+      <button type="button" id="rl-fab" class="cl-fab-labeled" title="Add Entry" data-i18n-title="cl_fab_title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span data-i18n="cl_fab_title">Add Entry</span>
       </button>
     </div>
     <div id="rl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
@@ -4012,9 +4132,10 @@
       <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
     </div>
     <div id="sl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div id="sl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
-      <button type="button" id="sl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <div id="sl-fab-wrap" style="margin-bottom:14px;">
+      <button type="button" id="sl-fab" class="cl-fab-labeled" title="Add Entry" data-i18n-title="cl_fab_title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span data-i18n="cl_fab_title">Add Entry</span>
       </button>
     </div>
     <div id="sl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
@@ -4227,16 +4348,23 @@
         <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openCustomLedgerModalLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
         <h3 id="cul-title" style="margin:0;">Custom Ledger</h3>
       </div>
-      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-        <div class="export-dropdown" data-export-dropdown>
-          <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="export-dropdown-menu">
-            <button onclick="openExportFilterModal('customledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
-            <button onclick="openExportFilterModal('customledger','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
-            <button onclick="openExportFilterModal('customledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
-            <button onclick="openExportFilterModal('customledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
-          </div>
-        </div>
+      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; flex-wrap:wrap;">
+        <button type="button" class="cl-export-btn is-pdf" onclick="openExportFilterModal('customledger','pdf')" data-i18n-title="export_pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="export_pdf">PDF</span>
+        </button>
+        <button type="button" class="cl-export-btn is-jpg" onclick="openExportFilterModal('customledger','jpg')" data-i18n-title="export_jpg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span data-i18n="export_jpg">JPG</span>
+        </button>
+        <button type="button" class="cl-export-btn is-csv" onclick="openExportFilterModal('customledger','csv')" data-i18n-title="export_csv">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          <span data-i18n="export_csv">CSV</span>
+        </button>
+        <button type="button" class="cl-export-btn is-print" onclick="openExportFilterModal('customledger','print')" data-i18n-title="export_print">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span data-i18n="export_print">Print</span>
+        </button>
         <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openCustomLedgerModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
@@ -4251,9 +4379,10 @@
       <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
     </div>
     <div id="cul-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div id="cul-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
-      <button type="button" id="cul-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <div id="cul-fab-wrap" style="margin-bottom:14px;">
+      <button type="button" id="cul-fab" class="cl-fab-labeled" title="Add Entry" data-i18n-title="cl_fab_title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span data-i18n="cl_fab_title">Add Entry</span>
       </button>
     </div>
     <div id="cul-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
@@ -4422,16 +4551,23 @@
         <button type="button" class="ledger-icon-btn" title="Ledger Settings" onclick="openCustomerLedgerModalLedgerSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg></button>
         <h3 id="cl-title" style="margin:0;">Customer</h3>
       </div>
-      <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-        <div class="export-dropdown" data-export-dropdown>
-          <button class="btn-export export-dropdown-btn" onclick="toggleExportDropdown(this)"><span data-i18n="export">Export</span> <svg class="caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="export-dropdown-menu">
-            <button onclick="openExportFilterModal('factoryledger','pdf'); closeExportDropdowns()" data-i18n="export_pdf">PDF</button>
-            <button onclick="openExportFilterModal('factoryledger','print'); closeExportDropdowns()" data-i18n="export_print">Print</button>
-            <button onclick="openExportFilterModal('factoryledger','jpg'); closeExportDropdowns()" data-i18n="export_jpg">JPG</button>
-            <button onclick="openExportFilterModal('factoryledger','csv'); closeExportDropdowns()" data-i18n="export_csv">CSV</button>
-          </div>
-        </div>
+      <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; flex-wrap:wrap;">
+        <button type="button" class="cl-export-btn is-pdf" onclick="openExportFilterModal('factoryledger','pdf')" data-i18n-title="export_pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="export_pdf">PDF</span>
+        </button>
+        <button type="button" class="cl-export-btn is-jpg" onclick="openExportFilterModal('factoryledger','jpg')" data-i18n-title="export_jpg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <span data-i18n="export_jpg">JPG</span>
+        </button>
+        <button type="button" class="cl-export-btn is-csv" onclick="openExportFilterModal('factoryledger','csv')" data-i18n-title="export_csv">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+          <span data-i18n="export_csv">CSV</span>
+        </button>
+        <button type="button" class="cl-export-btn is-print" onclick="openExportFilterModal('factoryledger','print')" data-i18n-title="export_print">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span data-i18n="export_print">Print</span>
+        </button>
         <button type="button" class="ledger-icon-btn" title="Export Settings" onclick="openCustomerLedgerModalExportSettings_()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg></button>
       </div>
     </div>
@@ -4454,9 +4590,10 @@
       <button type="button" class="cl-filter-chip" data-filter="pending" data-i18n="cl_filter_pending">Pending</button>
     </div>
     <div id="cl-entries-wrap" style="max-height:240px; overflow-y:auto; margin-bottom:14px;"></div>
-    <div id="cl-fab-wrap" style="position:sticky; bottom:10px; z-index:30; height:0; overflow:visible; display:flex; justify-content:flex-end; pointer-events:none;">
-      <button type="button" id="cl-fab" class="cl-fab" title="Add Entry" data-i18n-title="cl_fab_title" style="pointer-events:auto;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <div id="cl-fab-wrap" style="margin-bottom:14px;">
+      <button type="button" id="cl-fab" class="cl-fab-labeled" title="Add Entry" data-i18n-title="cl_fab_title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span data-i18n="cl_fab_title">Add Entry</span>
       </button>
     </div>
     <div id="cl-add-entry-form-wrap" style="display:none; border-top:1px solid var(--steel-line); padding-top:14px; margin-top:6px;">
@@ -8275,6 +8412,69 @@
       }
     }
 
+    // ADD (2026-08-31): Settings > Gmail Backup > "Backup Email Address" —
+    // loads the CURRENT destination (Code.gs's getBackupEmailAddress_,
+    // action=getBackupEmail) so the field always reflects reality rather
+    // than starting blank/guessed. Same jsonpRequest pattern as every other
+    // GET-style backend call in this file (e.g. sendBackupNow_ above).
+    // Silently leaves the field untouched on failure — this is informational,
+    // not something that should block the Settings page from opening.
+    let backupEmailLoaded_ = false;
+    async function renderBackupEmailCard_(){
+      const input = document.getElementById('settings-backup-email');
+      const statusEl = document.getElementById('settings-backup-email-status');
+      if(!input || !sheetConfigured()) return;
+      try{
+        const json = await jsonpRequest(SHEET_API_URL + '?action=getBackupEmail', 15000);
+        if(json && json.error) throw new Error(json.error);
+        // Only show the address as a placeholder when it's still the
+        // deploy-account DEFAULT (isOverride false) — that's Code.gs's own
+        // account, not something typed here, so it shouldn't look like a
+        // saved value the person could accidentally "clear" by editing.
+        // Once a real override IS set, it goes in the actual value instead.
+        if(json && json.email){
+          if(json.isOverride){ input.value = json.email; }
+          else { input.value = ''; input.placeholder = json.email; }
+        }
+        backupEmailLoaded_ = true;
+      }catch(err){
+        if(statusEl){ statusEl.style.display = 'block'; statusEl.style.color = 'var(--text-dim)'; statusEl.textContent = tr('backup_email_load_failed'); }
+      }
+    }
+    let backupEmailSaving_ = false;
+    async function saveBackupEmail_(){
+      if(backupEmailSaving_) return;
+      const input = document.getElementById('settings-backup-email');
+      const statusEl = document.getElementById('settings-backup-email-status');
+      if(!input) return;
+      if(!sheetConfigured()){
+        showSuccessDialog('Gmail backup needs the Google Sheet sync to be set up first — see the sync widget at the top of the app.', 'Not Set Up Yet');
+        return;
+      }
+      const raw = input.value.trim();
+      // Client-side check mirrors Code.gs's own — catches an obvious typo
+      // immediately instead of waiting on a round trip, but Code.gs still
+      // re-checks server-side too (never trust validation done only on one
+      // side of a network call).
+      if(raw && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw)){
+        if(statusEl){ statusEl.style.display = 'block'; statusEl.style.color = 'var(--red)'; statusEl.textContent = tr('backup_email_invalid'); }
+        return;
+      }
+      backupEmailSaving_ = true;
+      if(statusEl){ statusEl.style.display = 'block'; statusEl.style.color = 'var(--text-dim)'; statusEl.textContent = 'Saving…'; }
+      try{
+        const json = await postToBackend_('setBackupEmail', { email: raw });
+        if(!json) throw new Error('No response — check your connection.');
+        if(json.error) throw new Error(json.error);
+        if(statusEl){ statusEl.style.color = 'var(--green)'; statusEl.textContent = raw ? tr('backup_email_saved') : tr('backup_email_cleared'); }
+        renderBackupEmailCard_();
+      }catch(err){
+        if(statusEl){ statusEl.style.color = 'var(--red)'; statusEl.textContent = 'Failed: ' + (err && err.message ? err.message : String(err)); }
+      }finally{
+        backupEmailSaving_ = false;
+      }
+    }
+
     let PIN = "321";
     try{ const savedPin = localStorage.getItem('pos-pin'); if(savedPin && /^[0-9]{4}$/.test(savedPin)) PIN = savedPin; }catch(e){}
     // Answer to "What is the shop owner's name?" (not case-sensitive) — used
@@ -8640,6 +8840,7 @@
         rawmat_items_in: "Items In (pcs)", rawmat_items_used: "Items Used (pcs)", rawmat_items_remaining: "Items Remaining (pcs)",
         rawmat_threshold: "Low Stock At", rawmat_threshold_placeholder: "Not set", no_raw_material_stock: "No raw material stock yet — add a Raw Material Ledger entry with a Raw Material Name and weight/items received, or link a product's recipe, to see it here.",
         rawmat_item_threshold: "Low Stock At (Items)", rawmat_tracking_ok: "Genuinely tracked — stock has been received under this name", rawmat_tracking_none: "Not tracked yet — only referenced in a product recipe, nothing received under this name so far", rawmat_also_seen_as: "Also recorded as:",
+        rawmat_used_in: "Used in:", can_still_build: "Can Still Build",
         rl_stock_name: "Raw Material Name (for stock tracking, optional)", rl_stock_name_placeholder: "e.g. Steel Taar",
         rl_weight_in: "Weight Received", rl_items_in: "Items Received (pcs)",
         // ADD (2026-08-24, user request #2): Raw Material Ledger — Remaining
@@ -8710,6 +8911,7 @@
         paid: "Paid", unpaid: "Unpaid", partial: "Partial", total: "Total", due: "Due", no_transactions_yet: "No transactions yet this session",
         total_unpaid_balance: "Total Unpaid Balance",
         record_payment: "Record Payment", payment_method: "Payment Method", method_cash: "Cash", method_bank: "Bank",
+        order_confirm_btn: "Confirm Order",
         method_online: "Online", method_detail_optional: "Detail (optional)",
         method_cheque: "Cheque", method_item_material: "Item / Material", cheque_date: "Cheque Date (clearance due)", cheque_number_placeholder: "Cheque number",
         mark_cleared: "Mark Cleared", mark_bounced: "Mark Bounced", cheque_pending: "Cheque · Due", cheque_overdue: "Cheque OVERDUE · Was due",
@@ -8776,6 +8978,12 @@
         backup_now_btn: "Send Backup Now",
         backup_last_sent_label: "Last backup email:",
         backup_never_sent: "Never sent yet",
+        backup_email_label: "Backup Email Address",
+        backup_email_desc: "Backups, overdue-cheque alerts, and PIN-reset codes all go to this address. Leave blank to use the default (whichever Google account this was deployed under).",
+        backup_email_saved: "Saved — future backups and alerts will go here.",
+        backup_email_cleared: "Cleared — reverted to the default account.",
+        backup_email_invalid: "That doesn't look like a valid email address.",
+        backup_email_load_failed: "Couldn't load the current backup email — check your sync connection.",
         backup_sent_today: "Today ({date})",
         backup_sent_yesterday: "Yesterday ({date})",
         backup_sent_days_ago: "{n} days ago ({date})",
@@ -8985,6 +9193,7 @@
         cl_this_month_change: "{sign}{amount} this month",
         add_one_below_expense: "Add one below to start tracking",
         view_attached_receipt: "View attached receipt", receipt_attached: "Receipt Attached",
+        attach_gate_pass_btn: "Attach Gate Pass",
         nil_order_btn: "Nil", nil_order_title: "Write off the remaining balance and mark this order fully paid",
         confirm_nil_order: "Write off the remaining {amount} on Order #{id} and mark it fully paid? This can't be undone.",
         confirm_nil_order_with_payment: "{paid} was just recorded as payment. Write off the remaining {amount} on Order #{id} and mark it fully paid? This can't be undone.",
@@ -9045,6 +9254,7 @@
         rawmat_items_in: "آئٹمز آئے (عدد)", rawmat_items_used: "آئٹمز استعمال ہوئے (عدد)", rawmat_items_remaining: "باقی آئٹمز (عدد)",
         rawmat_threshold: "کم اسٹاک حد", rawmat_threshold_placeholder: "سیٹ نہیں", no_raw_material_stock: "ابھی تک کوئی خام مال اسٹاک نہیں — خام مال لیجر میں خام مال کا نام اور وزن/آئٹمز درج کریں، یا کسی پروڈکٹ کی ریسیپی سے لنک کریں۔",
         rawmat_item_threshold: "کم اسٹاک حد (آئٹمز)", rawmat_tracking_ok: "حقیقی طور پر ٹریک ہو رہا ہے — اس نام کے تحت اسٹاک موصول ہوا ہے", rawmat_tracking_none: "ابھی تک ٹریک نہیں ہو رہا — صرف پروڈکٹ ریسیپی میں موجود ہے، اس نام کے تحت کچھ موصول نہیں ہوا", rawmat_also_seen_as: "یہ نام بھی ریکارڈ ہوا:",
+        rawmat_used_in: "استعمال ہوتا ہے:", can_still_build: "مزید بنائے جا سکتے ہیں",
         rl_stock_name: "خام مال کا نام (اسٹاک ٹریکنگ کے لیے، اختیاری)", rl_stock_name_placeholder: "مثلاً اسٹیل تار",
         rl_weight_in: "وزن موصول ہوا", rl_items_in: "آئٹمز موصول ہوئے (عدد)",
         rl_remaining_items: "باقی آئٹمز",
@@ -9113,6 +9323,7 @@
         paid: "ادا شدہ", unpaid: "غیر ادا شدہ", partial: "جزوی", total: "کل", due: "باقی", no_transactions_yet: "اس سیشن میں ابھی تک کوئی ٹرانزیکشن نہیں",
         total_unpaid_balance: "کل غیر ادا شدہ بیلنس",
         record_payment: "ادائیگی درج کریں", payment_method: "ادائیگی کا طریقہ", method_cash: "نقد", method_bank: "بینک",
+        order_confirm_btn: "آرڈر کی تصدیق کریں",
         method_online: "آن لائن", method_detail_optional: "تفصیل (اختیاری)",
         method_cheque: "چیک", method_item_material: "سامان / مٹیریل", cheque_date: "چیک کی تاریخ (کلیئرنس)", cheque_number_placeholder: "چیک نمبر",
         mark_cleared: "کلیئر شدہ نشان زد کریں", mark_bounced: "باؤنس نشان زد کریں", cheque_pending: "چیک · تاریخ", cheque_overdue: "چیک تاخیر شدہ · مقررہ تاریخ",
@@ -9179,6 +9390,12 @@
         backup_now_btn: "ابھی بیک اپ بھیجیں",
         backup_last_sent_label: "آخری بیک اپ ای میل:",
         backup_never_sent: "ابھی تک نہیں بھیجا گیا",
+        backup_email_label: "بیک اپ ای میل ایڈریس",
+        backup_email_desc: "بیک اپس، میعاد گزشتہ چیک الرٹس، اور پن ری سیٹ کوڈز سب اسی ایڈریس پر جاتے ہیں۔ ڈیفالٹ (جس گوگل اکاؤنٹ سے یہ ڈیپلائے ہوا ہے) استعمال کرنے کے لیے خالی چھوڑ دیں۔",
+        backup_email_saved: "محفوظ ہو گیا — آئندہ بیک اپس اور الرٹس یہاں آئیں گے۔",
+        backup_email_cleared: "صاف ہو گیا — ڈیفالٹ اکاؤنٹ پر واپس چلا گیا۔",
+        backup_email_invalid: "یہ درست ای میل ایڈریس معلوم نہیں ہوتا۔",
+        backup_email_load_failed: "موجودہ بیک اپ ای میل لوڈ نہیں ہو سکا — اپنا سنک کنکشن چیک کریں۔",
         backup_sent_today: "آج ({date})",
         backup_sent_yesterday: "کل ({date})",
         backup_sent_days_ago: "{n} دن پہلے ({date})",
@@ -9191,7 +9408,7 @@
         completed_sales_appear: "مکمل سیلز یہاں ظاہر ہوں گی", no_x_transactions: "کوئی {x} ٹرانزیکشن نہیں",
         try_different_filter: "مختلف فلٹر آزمائیں",
         sales_title: "سیلز", sales_sub: "تمام منسلک ڈیوائسز کا مجموعہ۔ یہ ٹیب کھولتے ہی شیٹ سے تازہ ترین ڈیٹا حاصل کرتا ہے۔",
-        sales_by_factory: "فیکٹری کے مطابق سیلز", factory: "فیکٹری",
+        sales_by_factory: "فیکٹری کے مطابق سیلز", sales_by_factory_sub: "ہر سیل پر منتخب کردہ فیکٹری/ورکشاپ کے مطابق کل رقم کی گروپ بندی۔", factory: "فیکٹری",
         outstanding_leaderboard_title: "کس پر سب سے زیادہ واجب الادا ہے", no_outstanding_balances: "کوئی بقایا رقم نہیں — سب کا حساب برابر ہے",
         factories_title: "فیکٹریاں", factories_sub: "سپلائرز اور ورکشاپس جن کے ساتھ آپ کام کرتے ہیں۔",
         add_factory: "فیکٹری شامل کریں", location: "مقام", contact: "رابطہ",
@@ -9366,6 +9583,7 @@
         cl_this_month_change: "اس مہینے {sign}{amount}",
         add_one_below_expense: "ٹریک کرنا شروع کرنے کے لیے نیچے ایک شامل کریں",
         view_attached_receipt: "منسلک رسید دیکھیں", receipt_attached: "رسید منسلک",
+        attach_gate_pass_btn: "گیٹ رسید منسلک کریں",
         nil_order_btn: "نل", nil_order_title: "باقی رقم معاف کریں اور اس آرڈر کو مکمل ادا شدہ نشان زد کریں",
         confirm_nil_order: "آرڈر #{id} کی باقی رقم {amount} معاف کر کے اسے مکمل ادا شدہ نشان زد کریں؟ اسے واپس نہیں کیا جا سکتا۔",
         confirm_nil_order_with_payment: "{paid} ابھی بطور ادائیگی درج کیے گئے۔ آرڈر #{id} کی باقی رقم {amount} معاف کر کے اسے مکمل ادا شدہ نشان زد کریں؟ اسے واپس نہیں کیا جا سکتا۔",
@@ -9393,6 +9611,27 @@
         voice_cancel: "منسوخ کریں",
         voice_mic_denied: "صوتی کمانڈز کے لیے مائیکروفون کی اجازت درکار ہے۔",
         voice_not_supported: "اس ڈیوائس پر صوتی کمانڈز دستیاب نہیں ہیں۔",
+
+        // Added — previously fell back to English (PIN re-verify + weight/stock strings)
+        confirm_pin_title: "پن کی تصدیق کریں",
+        confirm_pin_generic_hint: "جاری رکھنے کے لیے اپنا پن درج کریں۔",
+        confirm_pin_reset_weight_hint: "وزن اور باقی وزن ری سیٹ کرنے کے لیے اپنا پن درج کریں — یہ واپس نہیں ہو سکتا۔",
+        confirm_pin_delete_hint: "اسے حذف کرنے کے لیے اپنا پن درج کریں — یہ واپس نہیں ہو سکتا۔",
+        confirm_pin_edit_hint: "یہ تبدیلیاں محفوظ کرنے کے لیے اپنا پن درج کریں۔",
+        wrong_pin_try_again: "غلط پن۔ دوبارہ کوشش کریں۔",
+        set_description_first: "پہلے تفصیل درج کریں۔",
+        set_item_size_first: "پہلے آئٹم سائز درج کریں۔",
+        item_count_exceeds_remaining: "آئٹم کی تعداد باقی وزن کی حد سے زیادہ نہیں ہو سکتی — زیادہ سے زیادہ {max} تک محدود۔",
+        add_stock_amount_placeholder: "شامل کرنے کے لیے مقدار",
+        add_stock_btn: "+ اسٹاک شامل کریں",
+        enter_stock_amount_first: "پہلے شامل کرنے کے لیے مقدار درج کریں۔",
+        remaining_weight: "باقی وزن", weight_per_item: "فی آئٹم وزن",
+        weight_per_scrap: "فی سکریپ وزن",
+        stock_added_msg: "اسٹاک شامل ہو گیا — وزن اور باقی وزن اپ ڈیٹ ہو گیا۔",
+        stock_added_selfweight_msg: "{paid} پہلے آپ کے باقی 'بذریعہ سیلف ویٹ اسٹاک' میں شمار ہوا؛ {rest} وزن اور باقی وزن میں شامل ہو گیا۔",
+        reset_weight_btn: "وزن ری سیٹ کریں",
+        weight_reset_msg: "وزن اور باقی وزن 0 پر ری سیٹ ہو گیا۔",
+        weight_stock_per_desc_hint: "نیچے دیا گیا وزن / باقی وزن پوری لیجر کے لیے مشترک ہے — ہر تفصیل کے لیے یکساں۔",
       }
     };
     let currentLang = (function(){ try{ return localStorage.getItem('posLang') || 'en'; } catch(e){ return 'en'; } })();
@@ -10913,6 +11152,7 @@
       renderGoogleAccountSettingsCard_();
       renderSyncSettingsCard_();
       renderBackupStatusCard_();
+      renderBackupEmailCard_();
     }
     document.getElementById('settings-pin-save').addEventListener('click', ()=>{
       const errorEl = document.getElementById('settings-pin-error');
@@ -11062,6 +11302,7 @@
       }
     });
     document.getElementById('settings-backup-now-btn').addEventListener('click', sendBackupNow_);
+    document.getElementById('settings-backup-email-save-btn').addEventListener('click', saveBackupEmail_);
 
     // ---------------- OVERVIEW CALENDAR PANEL (full month view, lives on the Overview page) ----------------
     // Rebuilt once per day (or on load) rather than on every render — the month
@@ -11858,6 +12099,40 @@
         return rec;
       }).sort((a,b)=> a.name.localeCompare(b.name));
     }
+    // ADD (2026-08-31): "Can Still Build" / "Used In" — a product needs
+    // EVERY material in its recipe at once, so the true buildable count is
+    // the SMALLEST of (that material's remaining stock ÷ how much this
+    // product uses per unit), across the whole recipe — not just whichever
+    // material happens to be checked first. Whole units only (partial units
+    // can't be produced), clamped at 0 so an over-consumed/negative
+    // remaining never shows as a negative "can build" number. Returns null
+    // for a product with no recipe set at all (nothing to compute — shown
+    // as "—" rather than 0, since 0 would wrongly imply "blocked").
+    function computeBuildableUnits_(p, stockByKey_){
+      if(!p || !Array.isArray(p.recipe) || !p.recipe.length) return null;
+      let min = Infinity;
+      p.recipe.forEach(r=>{
+        if(!r || !r.material) return;
+        const rec = stockByKey_.get(normMatKey_(r.material));
+        if(typeof r.weightPerUnit === 'number' && r.weightPerUnit > 0){
+          const remaining = rec ? rec.weightRemaining : 0;
+          min = Math.min(min, Math.floor(Math.max(0, remaining) / r.weightPerUnit));
+        }
+        if(typeof r.itemsPerUnit === 'number' && r.itemsPerUnit > 0){
+          const remaining = rec ? rec.itemsRemaining : 0;
+          min = Math.min(min, Math.floor(Math.max(0, remaining) / r.itemsPerUnit));
+        }
+      });
+      return min === Infinity ? null : min; // Infinity: recipe rows existed but none had a usable per-unit amount
+    }
+    // Reverse lookup for the Raw Material Stock table: which products'
+    // recipes reference this material, by the same normMatKey_ matching
+    // computeRawMaterialStock_ already uses (so a differently-cased/spaced
+    // recipe entry still matches its stock row correctly).
+    function productsUsingMaterial_(materialKey){
+      return PRODUCTS.filter(p => Array.isArray(p.recipe) && p.recipe.some(r => r && r.material && normMatKey_(r.material) === materialKey))
+        .map(p => p.name);
+    }
     // Plain (non-currency) number formatter for the Raw Material Stock
     // table — up to 2 decimals, trimming trailing zeros, since weights are
     // often fractional (e.g. 12.5kg) but item counts never need decimals.
@@ -11938,6 +12213,15 @@
         const aliasHtml = (rec.aliases && rec.aliases.length)
           ? `<div class="rawmat-name-sub" style="color:var(--yellow);">${escHtml_(tr('rawmat_also_seen_as'))} ${rec.aliases.map(escHtml_).join(', ')}</div>`
           : '';
+        // ADD (2026-08-31): reverse-lookup of every product whose recipe
+        // references this material, using productsUsingMaterial_ (same
+        // normMatKey_ matching as the alias detection above, so a recipe
+        // entry typed with slightly different spacing/casing than the
+        // ledger name still matches this row).
+        const usedInProducts_ = productsUsingMaterial_(rec.key);
+        const usedInHtml = usedInProducts_.length
+          ? `<div class="rawmat-name-sub">${escHtml_(tr('rawmat_used_in'))} ${usedInProducts_.map(escHtml_).join(', ')}</div>`
+          : '';
         // ADD (2026-08-28, user request): "Each raw material should have
         // it's own details box of weight received/items received till now
         // based on weight added in" — a small standalone box per material
@@ -11983,6 +12267,7 @@
                   <div>${escHtml_(rec.name)}</div>
                   ${descHtml}
                   ${aliasHtml}
+                  ${usedInHtml}
                 </div>
               </div>
             </td>
@@ -12112,10 +12397,20 @@
         return;
       }
 
+      // Built once for this whole table, not once per row — same shared-index
+      // idea as buildFactoryReconcileIndexes_ above, for the same reason
+      // (computeRawMaterialStock_ itself is already a full ledger scan; no
+      // need to pay for it again per product).
+      const stockByKey_ = new Map(computeRawMaterialStock_().map(rec => [rec.key, rec]));
+
       const rows = list.map(p=>{
         const level = (p.reorderLevel || p.reorderLevel === 0) ? p.reorderLevel : DEFAULT_REORDER_LEVEL_;
         const isLow = p.stock !== undefined && p.stock <= level;
         const lowStyle = isLow ? 'color:var(--red); font-weight:600;' : '';
+        const buildable = computeBuildableUnits_(p, stockByKey_);
+        const buildableHtml = buildable === null
+          ? '<span style="color:var(--text-dim);">—</span>'
+          : `<span style="${buildable === 0 ? 'color:var(--red); font-weight:600;' : ''}">${rawmatNum_(buildable)}</span>`;
         return `
           <tr>
             <td class="inv-name">${escHtml_(p.name)}</td>
@@ -12130,6 +12425,7 @@
                 value="${p.reorderLevel !== undefined ? p.reorderLevel : ''}" placeholder="${tr('reorder_level_placeholder')}"
                 style="width:100px; text-align:right; margin-bottom:0;">
             </td>
+            <td class="num">${buildableHtml}</td>
             <td>${isLow ? `<span style="color:var(--red); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('low_stock')}</span>` : (p.stock === undefined ? `<span style="color:var(--text-dim); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">${tr('not_tracked')}</span>` : '')}</td>
           </tr>`;
       }).join('');
@@ -12142,6 +12438,7 @@
               <th>${tr('category')}</th>
               <th class="num">${tr('stock_qty')}</th>
               <th class="num">${tr('reorder_level')}</th>
+              <th class="num">${tr('can_still_build')}</th>
               <th></th>
             </tr>
           </thead>
@@ -12322,8 +12619,8 @@
     // nothing computes it automatically — so the user can always tell which
     // build they're on by opening About, and a future session can tell what
     // last shipped without digging through project docs.
-    const APP_VERSION = "2.0";
-    const APP_VERSION_NOTE = "Build 2026.08.30.17. Rolled the dashboard-style ledger redesign out to every ledger (Customer/Factory, Painter, Raw Material, Scrap, Custom, and Worker/Labour): each ledger modal now has a Balance Owed/Advance hero card with a running-balance sparkline and a month-over-month trend line, Billed/Received (or ledger-appropriate) stat boxes, a per-ledger overdue-cheque banner, entry search + filter chips, a single kebab (⋮) menu per entry replacing the old row of separate icon buttons, and a floating + button that reveals the (now collapsed-by-default) add-entry form. Worker/Labour Ledger got its own hero card variant (Dues, same as before, correctly still excludes Advance/Loan entries) and kind-based filter chips (Attendance/Payment/Advance-Loan) instead of Debit/Credit. Also includes everything from build .16.";
+    const APP_VERSION = "3.0";
+    const APP_VERSION_NOTE = "Build 2026.08.31.1. Urdu translation gap closed (21 previously English-only strings, mainly PIN re-verify and weight/stock messages). Factory Ledger balance reconciliation now uses a shared prebuilt index instead of re-scanning all transactions/payments per factory (renderFactories, Overview leaderboard, receivables, global search, ledger export all faster, more so as order history grows). New \"Can Still Build\" column on Product Stock and \"Used In\" line on Raw Material Stock, computed from existing product recipes. Order Booked/Transactions: order number is now a boxed badge, item summary sits in its own bordered box, and Confirm/Record Payment/Attach Gate Pass/View Receipt are labeled color-coded buttons instead of small icons. Every ledger modal (Customer/Factory, Painter, Raw Material, Scrap, Custom, Worker/Labour) now shows export options (PDF/JPG/CSV/Print) as one-tap buttons instead of a dropdown where that ledger had export at all, shows Edit/Delete/View Receipt directly on each entry instead of behind a kebab menu, and has a labeled Add Entry button instead of an icon-only floating +. New Settings > Gmail Backup > Backup Email Address field (needs the paired Code.gs redeployed to take effect). Also includes everything from build .17.";
     function renderAboutVersion_(){
       const el = document.getElementById('about-version');
       if(el) el.textContent = tr('app_version_label') + ' ' + APP_VERSION + ' — ' + APP_VERSION_NOTE;
@@ -13463,6 +13760,10 @@
     }
     function renderFactories(){
       factoryGrid.innerHTML = '';
+      // PERF (2026-08-31): build the transaction/payment indexes once for
+      // this whole grid instead of once per factory — see
+      // buildFactoryReconcileIndexes_ for why.
+      const reconcileIdx_ = buildFactoryReconcileIndexes_();
       factories.forEach((f, idx)=>{
         const card = document.createElement('div');
         card.className = 'factory-card';
@@ -13472,7 +13773,7 @@
         // whatever the ledger's raw entries happened to be last time its
         // modal was opened, which can lag behind a just-confirmed order
         // until someone happens to open that factory's ledger.
-        reconcileFactoryLedgerOrders_(c);
+        reconcileFactoryLedgerOrders_(c, reconcileIdx_);
         const bl = balanceLabel_(customerLedgerBalance_(c));
         card.innerHTML = `
           <div class="product-card-actions">
@@ -13838,9 +14139,43 @@
     // the order is deleted or unconfirmed) — so the balance genuinely
     // reflects what's owed, and a Payment entered afterward nets against
     // that real amount instead of appearing as an advance.
-    function reconcileFactoryLedgerOrders_(c){
+    // PERF (2026-08-31): every call to reconcileFactoryLedgerOrders_ used to
+    // re-scan the FULL transactionsLog (to find this one factory's confirmed
+    // orders) and re-scan the FULL customerPayments array (once per order,
+    // to sum that order's direct payments) from scratch. Fine for one
+    // factory, but every caller that loops over ALL factories (renderFactories,
+    // the Overview outstanding-leaderboard, computeTotalReceivables_, global
+    // search, ledger export) paid that full re-scan cost once PER factory —
+    // O(factories × transactions) work where O(factories + transactions)
+    // suffices, and it gets slower as order history grows even though
+    // nothing on screen changed. This builds both lookups ONCE and callers
+    // that loop over multiple factories now build it once and pass it in
+    // (see call sites); single-factory callers (e.g. opening one ledger
+    // modal) still work unchanged by omitting the argument, which builds a
+    // throwaway index just for that one call. Purely a perf change — same
+    // inputs (fresh live transactionsLog/customerPayments), same reasoning,
+    // same output, just computed without redundant re-scanning.
+    function buildFactoryReconcileIndexes_(){
+      const txnsByFactory = new Map();
+      const txnById = new Map();
+      transactionsLog.forEach(t=>{
+        txnById.set(t.id, t);
+        if(t.confirmed !== false){
+          if(!txnsByFactory.has(t.factory)) txnsByFactory.set(t.factory, []);
+          txnsByFactory.get(t.factory).push(t);
+        }
+      });
+      const paidByTxnId = new Map();
+      customerPayments.forEach(p=>{
+        if(!p.txnId) return;
+        paidByTxnId.set(p.txnId, (paidByTxnId.get(p.txnId) || 0) + (p.amount || 0));
+      });
+      return { txnsByFactory, txnById, paidByTxnId };
+    }
+    function reconcileFactoryLedgerOrders_(c, idx_){
+      idx_ = idx_ || buildFactoryReconcileIndexes_();
       c.entries = c.entries || [];
-      const confirmedOrders = transactionsLog.filter(t => t.factory === c.name && t.confirmed !== false);
+      const confirmedOrders = idx_.txnsByFactory.get(c.name) || [];
       const confirmedIds = new Set(confirmedOrders.map(t=>t.id));
       let changed = false;
       // Entries synced to the sheet before Code.gs persisted txnId (fixed
@@ -13876,9 +14211,7 @@
         // amount. An order paid this second way is correctly represented
         // ONLY by the real manual credit entries a person enters directly
         // in this ledger — never duplicate those with an auto-entry.
-        const directPaid = customerPayments
-          .filter(p => p.txnId === t.id)
-          .reduce((s,p)=> s + (p.amount || 0), 0);
+        const directPaid = idx_.paidByTxnId.get(t.id) || 0;
         const existing = c.entries.find(e => orderIdOf(e) === t.id);
         if(!existing){
           // FIX (2026-08-28): this used to omit `time` entirely, leaving every
@@ -13929,7 +14262,8 @@
       c.entries = c.entries.filter(e=>{
         const oid = orderIdOf(e);
         if(!oid || confirmedIds.has(oid)) return true;
-        const stillPresentButUnconfirmed = transactionsLog.some(t => t.id === oid && t.factory === c.name);
+        const oidTxn = idx_.txnById.get(oid);
+        const stillPresentButUnconfirmed = !!(oidTxn && oidTxn.factory === c.name);
         if(stillPresentButUnconfirmed) return false;
         if(isDeleted_('transactionsLog', oid)) return false;
         return true; // can't prove it's gone — keep it rather than risk losing real data
@@ -14204,32 +14538,31 @@
           passesSearch = hay.includes(term);
         }
         if(!passesFilter || !passesSearch) return;
-        // Consolidated kebab (⋮) menu — replaces the old row of separate
-        // icon buttons with a single dropdown, reusing the exact same
-        // classes (cl-entry-receipt / cl-entry-edit / cl-entry-del-ghost /
-        // plain ledger-entry-del) the click handlers below already query
-        // for, so none of that wiring had to change.
-        const menuItems = `
+        // ADD (2026-08-31, visual polish request): the actions that used to
+        // hide behind the kebab (⋮) menu now render directly in the row —
+        // same classes as before (cl-entry-receipt / cl-entry-edit /
+        // cl-entry-del-ghost / plain ledger-entry-del), so every click
+        // handler further below (all class-selector-based, not dependent
+        // on DOM nesting) keeps working completely unchanged.
+        const actionButtons = `
             ${hasReceipt ? `
-            <button class="ledger-entry-del cl-entry-receipt" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn cl-entry-receipt" data-idx="${eIdx}" title="${tr('cl_menu_view_receipt')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              ${tr('cl_menu_view_receipt')}
             </button>` : ''}
             ${isOrderLinked ? (linkedOrderGone ? `
-            <button class="ledger-entry-del cl-entry-del-ghost danger" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn cl-entry-del-ghost danger" data-idx="${eIdx}" title="${tr('cl_menu_remove_ghost')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              ${tr('cl_menu_remove_ghost')}
             </button>
             ` : `
-            <div style="font-size:9.5px; color:var(--text-dim); padding:6px 9px; max-width:150px; white-space:normal;">${tr('order_linked_row_note')}</div>
+            <span title="${tr('order_linked_row_note')}" style="display:flex; color:var(--text-dim); flex-shrink:0;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
             `) : `
-            <button class="ledger-entry-del cl-entry-edit" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn ledger-entry-del cl-entry-edit" data-idx="${eIdx}" title="${tr('cl_menu_edit')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              ${tr('cl_menu_edit')}
             </button>
-            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn ledger-entry-del danger" data-idx="${eIdx}" title="${tr('cl_menu_delete')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              ${tr('cl_menu_delete')}
             </button>
             `}`;
         blocks.push(`
@@ -14240,29 +14573,12 @@
             <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
             <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
             <div class="ledger-entry-bal">${fmt(running)}</div>
-            <div class="cl-entry-kebab-wrap" data-kebab="${eIdx}">
-              <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}" title="${tr('cl_menu_edit')}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-              </button>
-              <div class="cl-entry-kebab-menu">${menuItems}</div>
-            </div>
+            <div class="cl-entry-actions-row">${actionButtons}</div>
           </div>
           ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
           </div>`);
       });
       entriesWrap.innerHTML = blocks.length ? joinLedgerBlocks_(blocks, 'customerledger') : '<div class="empty-state" style="padding:20px 10px;">' + tr('cl_no_matching_entries') + '</div>';
-      entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
-        btn.addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          const wrap = btn.closest('.cl-entry-kebab-wrap');
-          const wasOpen = wrap.classList.contains('open');
-          closeClEntryKebabs_();
-          if(!wasOpen) wrap.classList.add('open');
-        });
-      });
-      entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
-        btn.addEventListener('click', ()=> closeClEntryKebabs_());
-      });
       entriesWrap.querySelectorAll('.cl-entry-receipt').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const eIdx = parseInt(btn.dataset.idx,10);
@@ -15401,19 +15717,16 @@
           if(e.itemCount) specParts.push(tr('item_count') + ': ' + e.itemCount);
           if(e.ratePerItem) specParts.push(tr('rate_per_item') + ': ' + fmt(e.ratePerItem));
           const specLine = specParts.length ? `<div class="ledger-entry-spec-row">${specParts.join(' · ')}</div>` : '';
-          const menuItems = `
+          const actionButtons = `
             ${hasReceipt ? `
-            <button class="ledger-entry-del pl-entry-receipt" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn pl-entry-receipt" data-idx="${eIdx}" title="${tr('cl_menu_view_receipt')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              ${tr('cl_menu_view_receipt')}
             </button>` : ''}
-            <button class="ledger-entry-del pl-entry-edit" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn ledger-entry-del pl-entry-edit" data-idx="${eIdx}" title="${tr('cl_menu_edit')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              ${tr('cl_menu_edit')}
             </button>
-            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn ledger-entry-del danger" data-idx="${eIdx}" title="${tr('cl_menu_delete')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              ${tr('cl_menu_delete')}
             </button>`;
           blocks.push(`
             <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
@@ -15423,30 +15736,13 @@
               <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
               <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
               <div class="ledger-entry-bal">${fmt(running)}</div>
-              <div class="cl-entry-kebab-wrap">
-                <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-                </button>
-                <div class="cl-entry-kebab-menu">${menuItems}</div>
-              </div>
+              <div class="cl-entry-actions-row">${actionButtons}</div>
             </div>
             ${specLine}
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
         entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'paint') : '<div class="empty-state" style="padding:20px 10px;">' + tr('no_matching_orders') + '</div>';
-        entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
-          btn.addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            const wrap = btn.closest('.cl-entry-kebab-wrap');
-            const wasOpen = wrap.classList.contains('open');
-            closeClEntryKebabs_();
-            if(!wasOpen) wrap.classList.add('open');
-          });
-        });
-        entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
-          btn.addEventListener('click', ()=> closeClEntryKebabs_());
-        });
         entriesWrap.querySelectorAll('.pl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -16224,19 +16520,16 @@
           if(e.gaugeCount) specParts.push(tr('gauge_count') + ': ' + e.gaugeCount);
           if(e.sizeCount) specParts.push(tr('size_count') + ': ' + e.sizeCount);
           const specLine = specParts.length ? `<div class="ledger-entry-spec-row">${specParts.join(' · ')}</div>` : '';
-          const menuItems = `
+          const actionButtons = `
             ${hasReceipt ? `
-            <button class="ledger-entry-del rl-entry-receipt" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn rl-entry-receipt" data-idx="${eIdx}" title="${tr('cl_menu_view_receipt')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              ${tr('cl_menu_view_receipt')}
             </button>` : ''}
-            <button class="ledger-entry-del rl-entry-edit" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn ledger-entry-del rl-entry-edit" data-idx="${eIdx}" title="${tr('cl_menu_edit')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              ${tr('cl_menu_edit')}
             </button>
-            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn ledger-entry-del danger" data-idx="${eIdx}" title="${tr('cl_menu_delete')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              ${tr('cl_menu_delete')}
             </button>`;
           blocks.push(`
             <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
@@ -16246,30 +16539,13 @@
               <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
               <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
               <div class="ledger-entry-bal">${fmt(running)}</div>
-              <div class="cl-entry-kebab-wrap">
-                <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-                </button>
-                <div class="cl-entry-kebab-menu">${menuItems}</div>
-              </div>
+              <div class="cl-entry-actions-row">${actionButtons}</div>
             </div>
             ${specLine}
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
         entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'raw') : '<div class="empty-state" style="padding:20px 10px;">' + tr('cl_no_matching_entries') + '</div>';
-        entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
-          btn.addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            const wrap = btn.closest('.cl-entry-kebab-wrap');
-            const wasOpen = wrap.classList.contains('open');
-            closeClEntryKebabs_();
-            if(!wasOpen) wrap.classList.add('open');
-          });
-        });
-        entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
-          btn.addEventListener('click', ()=> closeClEntryKebabs_());
-        });
         entriesWrap.querySelectorAll('.rl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -17071,14 +17347,12 @@
           if(e.weight !== undefined && e.weight !== '') specParts.push(tr('weight') + ': ' + e.weight + 'kg');
           if(e.rate !== undefined && e.rate !== '') specParts.push(tr('rate_per_kg') + ': ' + fmt(e.rate));
           const specLine = specParts.length ? `<div class="ledger-entry-spec-row">${specParts.join(' · ')}</div>` : '';
-          const menuItems = `
-            <button class="ledger-entry-del sl-entry-edit" data-idx="${eIdx}">
+          const actionButtons = `
+            <button class="cl-entry-action-btn ledger-entry-del sl-entry-edit" data-idx="${eIdx}" title="${tr('cl_menu_edit')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-              ${tr('cl_menu_edit')}
             </button>
-            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn ledger-entry-del danger" data-idx="${eIdx}" title="${tr('cl_menu_delete')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              ${tr('cl_menu_delete')}
             </button>`;
           blocks.push(`
             <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
@@ -17088,30 +17362,13 @@
               <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
               <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
               <div class="ledger-entry-bal">${fmt(running)}</div>
-              <div class="cl-entry-kebab-wrap">
-                <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-                </button>
-                <div class="cl-entry-kebab-menu">${menuItems}</div>
-              </div>
+              <div class="cl-entry-actions-row">${actionButtons}</div>
             </div>
             ${specLine}
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
         entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'scrap') : '<div class="empty-state" style="padding:20px 10px;">' + tr('cl_no_matching_entries') + '</div>';
-        entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
-          btn.addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            const wrap = btn.closest('.cl-entry-kebab-wrap');
-            const wasOpen = wrap.classList.contains('open');
-            closeClEntryKebabs_();
-            if(!wasOpen) wrap.classList.add('open');
-          });
-        });
-        entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
-          btn.addEventListener('click', ()=> closeClEntryKebabs_());
-        });
         entriesWrap.querySelectorAll('.sl-entry-edit').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -18320,19 +18577,16 @@
           return `<div class="ledger-entry-spec-row ${rowCls}">${(culItems.length > 1 ? (it.desc ? escHtml_(it.desc) + ' — ' : '') : '')}${specParts.join(' · ')}${badge || actions ? `<div class="cheque-sub-row" style="padding:4px 0 0 0;">${badge}${actions}</div>` : ''}</div>`;
         }).filter(Boolean);
         const specLine = specLines.join('');
-        const menuItems = `
+        const actionButtons = `
           ${hasReceipt ? `
-          <button class="ledger-entry-del cul-entry-receipt" data-idx="${eIdx}">
+          <button class="cl-entry-action-btn cul-entry-receipt" data-idx="${eIdx}" title="${tr('cl_menu_view_receipt')}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            ${tr('cl_menu_view_receipt')}
           </button>` : ''}
-          <button class="ledger-entry-del cul-entry-edit" data-idx="${eIdx}">
+          <button class="cl-entry-action-btn ledger-entry-del cul-entry-edit" data-idx="${eIdx}" title="${tr('cl_menu_edit')}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-            ${tr('cl_menu_edit')}
           </button>
-          <button class="ledger-entry-del danger" data-idx="${eIdx}">
+          <button class="cl-entry-action-btn ledger-entry-del danger" data-idx="${eIdx}" title="${tr('cl_menu_delete')}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-            ${tr('cl_menu_delete')}
           </button>`;
         blocks.push(`
           <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
@@ -18342,30 +18596,13 @@
             <div class="ledger-entry-debit">${e.debit ? fmt(e.debit) : ''}</div>
             <div class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</div>
             <div class="ledger-entry-bal">${fmt(running)}</div>
-            <div class="cl-entry-kebab-wrap">
-              <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-              </button>
-              <div class="cl-entry-kebab-menu">${menuItems}</div>
-            </div>
+            <div class="cl-entry-actions-row">${actionButtons}</div>
           </div>
           ${specLine}
           ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
           </div>`);
       });
       entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'custom') : '<div class="empty-state" style="padding:20px 10px;">' + tr('cl_no_matching_entries') + '</div>';
-      entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
-        btn.addEventListener('click', (ev)=>{
-          ev.stopPropagation();
-          const wrap = btn.closest('.cl-entry-kebab-wrap');
-          const wasOpen = wrap.classList.contains('open');
-          closeClEntryKebabs_();
-          if(!wasOpen) wrap.classList.add('open');
-        });
-      });
-      entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
-        btn.addEventListener('click', ()=> closeClEntryKebabs_());
-      });
       entriesWrap.querySelectorAll('.cul-entry-receipt').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           const eIdx = parseInt(btn.dataset.idx,10);
@@ -20017,15 +20254,13 @@
           const methodBadge = e.method ? `<span class="cheque-badge method">${e.method}${e.detail ? ' (' + e.detail + ')' : ''}</span>` : '';
           const receivedBadge = (e.receivedBy || e.receivedIn) ? `<span class="cheque-badge method">${[e.receivedBy, e.receivedIn].filter(Boolean).join(' · ')}</span>` : '';
           const seqBadge = paymentSeqLabel ? `<span class="cheque-badge method">${paymentSeqLabel}</span>` : '';
-          const menuItems = `
+          const actionButtons = `
             ${hasReceipt ? `
-            <button class="wl-entry-receipt" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn wl-entry-receipt" data-idx="${eIdx}" title="${tr('cl_menu_view_receipt')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              ${tr('cl_menu_view_receipt')}
             </button>` : ''}
-            <button class="ledger-entry-del danger" data-idx="${eIdx}">
+            <button class="cl-entry-action-btn ledger-entry-del danger" data-idx="${eIdx}" title="${tr('cl_menu_delete')}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              ${tr('cl_menu_delete')}
             </button>`;
           blocks.push(`
             <div class="ledger-entry-block ${chequeCls} ${(e.debit>0)?'is-debit':((e.credit>0)?'is-credit':'')}">
@@ -20036,29 +20271,12 @@
               <span class="ledger-entry-debit" ${e.debit < 0 ? 'style="color:var(--green);"' : ''}>${e.debit ? fmtSigned_(e.debit) : ''}</span>
               <span class="ledger-entry-credit">${e.credit ? fmt(e.credit) : ''}</span>
               <span class="ledger-entry-bal">${fmt(running)}</span>
-              <div class="cl-entry-kebab-wrap">
-                <button type="button" class="cl-entry-kebab-btn" data-idx="${eIdx}">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
-                </button>
-                <div class="cl-entry-kebab-menu">${menuItems}</div>
-              </div>
+              <div class="cl-entry-actions-row">${actionButtons}</div>
             </div>
             ${e.method ? `<div class="cheque-sub-row">${methodBadge}${receivedBadge}${e.method === 'Cheque' ? chequeBadgeHtml_(e) : ''}${seqBadge}${receiptBadgeHtml_(hasReceipt)}${isPendingCheque ? chequeActionsHtml_(eIdx) : ''}</div>` : ''}
             </div>`);
         });
         entriesWrap.innerHTML = shownCount > 0 ? joinLedgerBlocks_(blocks, 'labour') : '<div class="empty-state">' + tr('cl_no_matching_entries') + '</div>';
-        entriesWrap.querySelectorAll('.cl-entry-kebab-btn').forEach(btn=>{
-          btn.addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            const wrap = btn.closest('.cl-entry-kebab-wrap');
-            const wasOpen = wrap.classList.contains('open');
-            closeClEntryKebabs_();
-            if(!wasOpen) wrap.classList.add('open');
-          });
-        });
-        entriesWrap.querySelectorAll('.cl-entry-kebab-menu button').forEach(btn=>{
-          btn.addEventListener('click', ()=> closeClEntryKebabs_());
-        });
         entriesWrap.querySelectorAll('.wl-entry-receipt').forEach(btn=>{
           btn.addEventListener('click', ()=>{
             const eIdx = parseInt(btn.dataset.idx,10);
@@ -21656,9 +21874,10 @@
     // in the "bound once" section near factory-add-btn, not here, since
     // wrap.innerHTML gets fully replaced on every renderOverview() call.
     function analyticsOutstandingLeaderboardHtml_(){
+      const reconcileIdx_ = buildFactoryReconcileIndexes_();
       const rowsData = factories.map(f=>{
         const c = getOrCreateCustomerLedgerEntry_(f.name);
-        reconcileFactoryLedgerOrders_(c);
+        reconcileFactoryLedgerOrders_(c, reconcileIdx_);
         return { name: f.name, balance: customerLedgerBalance_(c) };
       }).filter(r => r.balance > 0).sort((a,b)=> b.balance - a.balance).slice(0, 5);
       if(!rowsData.length){
@@ -22152,9 +22371,10 @@
     // receivables; the Raw Ledger / Painter / Custom Ledger module cards
     // for payables), so this card's totals always agree with those.
     function computeTotalReceivables_(){
+      const reconcileIdx_ = buildFactoryReconcileIndexes_();
       return factories.reduce((sum,f)=>{
         const c = getOrCreateCustomerLedgerEntry_(f.name);
-        reconcileFactoryLedgerOrders_(c);
+        reconcileFactoryLedgerOrders_(c, reconcileIdx_);
         const bal = customerLedgerBalance_(c);
         return bal > 0 ? sum + bal : sum;
       }, 0);
@@ -22535,8 +22755,10 @@
           </div>
           <div class="txn-when">${t.date} · ${formatTime12_(t.time)}</div>
           <div class="txn-items${hasReceipt ? ' txn-items-delivered' : ''}">
-            <div>${t.itemsSummary}${t.factory ? ` <span class="txn-factory-tag">${t.factory}</span>` : ''}</div>
-            ${chips.length ? `<div class="txn-meta-chips">${chips.join('')}</div>` : ''}
+            <div class="txn-items-box">
+              <div>${t.itemsSummary}${t.factory ? ` <span class="txn-factory-tag">${t.factory}</span>` : ''}</div>
+              ${chips.length ? `<div class="txn-meta-chips">${chips.join('')}</div>` : ''}
+            </div>
           </div>
           <div class="txn-amt">${fmt(t.total)}</div>
           <span class="txn-paid-toggle ${statusCls}" ${(info.due > 0 && !t.factory) ? '' : 'style="cursor:default;"'}>${statusTxt}</span>
@@ -22546,15 +22768,27 @@
                Only attaching the gate pass/receipt (see the delivered line
                above) makes it count as a sale — see isCountedSale_(). -->
           ${t.factory ? (t.confirmed === false
-            ? `<button type="button" class="txn-confirm-tab" data-act="confirm" title="Mark this factory order as confirmed — moves it into Stock Ready and the factory's ledger">Order Confirm</button>`
+            ? `<button type="button" class="txn-action-btn is-confirm" data-act="confirm" title="Mark this factory order as confirmed — moves it into Stock Ready and the factory's ledger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>${tr('order_confirm_btn')}</button>`
             : `<span class="txn-confirmed-tag" title="Ready at the factory — attach the gate receipt to count it as a sale">✓ Confirmed</span>`) : ''}
           <div class="txn-row-actions">
-            ${(receiptFiles[t.id] || t.receiptUrl) ? `
-            <button data-act="receipt" title="${tr('view_attached_receipt')}">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            ${(info.due > 0 && !t.factory) ? `
+            <button type="button" class="txn-action-btn is-pay" data-act="pay" title="${tr('record_payment')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <span>${tr('record_payment')}</span>
             </button>` : ''}
-            <button data-act="edit" title="${tr('edit')}">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            ${(t.factory && !(receiptFiles[t.id] || t.receiptUrl)) ? `
+            <button type="button" class="txn-action-btn is-attach" data-act="attach-receipt" title="${tr('attach_gate_pass_btn')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              <span>${tr('attach_gate_pass_btn')}</span>
+            </button>` : ''}
+            ${(receiptFiles[t.id] || t.receiptUrl) ? `
+            <button type="button" class="txn-action-btn is-receipt" data-act="receipt" title="${tr('view_attached_receipt')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              <span>${tr('view_attached_receipt')}</span>
+            </button>` : ''}
+            <button type="button" class="txn-action-btn is-edit" data-act="edit" title="${tr('edit')}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              <span>${tr('edit')}</span>
             </button>
             <button class="txn-delete" data-act="delete" title="${tr('delete')}">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
@@ -22587,6 +22821,19 @@
             else if(t.receiptUrl) window.open(t.receiptUrl, '_blank');
           });
         }
+        // ADD (2026-08-31, visual polish request): dedicated "Record
+        // Payment" button alongside the status pill — purely additive, the
+        // pill's own click handler right above is untouched, so both still
+        // do the exact same thing (openRecordPaymentModal(idx)).
+        const payBtn = row.querySelector('[data-act="pay"]');
+        if(payBtn) payBtn.addEventListener('click', ()=> openRecordPaymentModal(idx));
+        // ADD (2026-08-31): "Attach Gate Pass" — reuses the SAME real
+        // receipt-attach modal already reachable from the topbar's Add
+        // Receipt button (openAddOrderReceiptModal_), just preset to this
+        // exact order so there's no need to search for it manually. No new
+        // attach logic — this is the existing, already-working flow.
+        const attachBtn = row.querySelector('[data-act="attach-receipt"]');
+        if(attachBtn) attachBtn.addEventListener('click', ()=> openAddOrderReceiptModal_(t.id));
         row.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
           if(!confirm(tr('confirm_delete_order'))) return;
           requirePinReverify_(()=>{
@@ -22868,6 +23115,7 @@
         globalSearchResults_.innerHTML = `<div class="empty-state" style="padding:20px 10px;">${escHtml_(tr('global_search_hint'))}</div>`;
         return;
       }
+      const reconcileIdx_ = buildFactoryReconcileIndexes_();
       const results = [];
       transactionsLog.forEach(t=>{
         if(String(t.id).toLowerCase().includes(term) || (t.factory || '').toLowerCase().includes(term)){
@@ -22881,7 +23129,7 @@
       factories.forEach(f=>{
         if((f.name || '').toLowerCase().includes(term)){
           const c = getOrCreateCustomerLedgerEntry_(f.name);
-          reconcileFactoryLedgerOrders_(c);
+          reconcileFactoryLedgerOrders_(c, reconcileIdx_);
           const bal = customerLedgerBalance_(c);
           const fname = f.name;
           results.push({
@@ -24769,9 +25017,10 @@
     // matches exactly what the ledger itself shows.
     function customerLedgerRows_(dateFrom, dateTo, factoryName, orderNumber){
       const rows = [];
+      const reconcileIdx_ = buildFactoryReconcileIndexes_();
       (inventory.customerledger || []).forEach(c=>{
         if(factoryName && c.name !== factoryName) return;
-        reconcileFactoryLedgerOrders_(c);
+        reconcileFactoryLedgerOrders_(c, reconcileIdx_);
         let running = 0;
         // Same Received/Given payment-count as the on-screen ledger (see
         // renderCustomerLedgerModalContent_) — counted across EVERY entry in
