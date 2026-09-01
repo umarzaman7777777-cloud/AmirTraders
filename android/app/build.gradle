@@ -24,8 +24,13 @@ android {
         // apply that relabeling to a throwaway staging copy only, the same
         // way minification is already handled — never edit these two
         // lines directly on this file for that purpose again.
-        versionCode 2026090116
-        versionName "3.0.16"
+        // NOTE (2026-09-01): the debug.keystore itself changed at this build
+        // (new Gmail migration, user's deliberate choice of a fresh
+        // keystore) — versionCode alone won't make this install cleanly
+        // over the previous 2026090116 install; that one needs a full
+        // uninstall first since the signing certificate is different now.
+        versionCode 2026090120
+        versionName "3.0.20"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

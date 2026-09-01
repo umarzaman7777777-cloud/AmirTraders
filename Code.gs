@@ -1081,7 +1081,7 @@ const SHEET_ID = "1sSuJiionVM2GZRr_V7f5y3_TGW0jjZGqNwsVrkWEVZ4";
 // MUST match SHEET_API_TOKEN in index.html exactly — if you ever rotate
 // this, update both files together and redeploy, or the app will show
 // "sync failed" on every request.
-const API_TOKEN_ = "b9041187885007be5415b93a7fc59d96186fc1ec8c2c8972";
+const API_TOKEN_ = "6d26d6a6551fd99a972cf6798290c75b7f6678a28acb1f89";
 function isAuthorized_(token){
   return typeof token === 'string' && token === API_TOKEN_;
 }
