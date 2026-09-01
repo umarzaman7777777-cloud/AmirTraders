@@ -7,8 +7,25 @@ android {
         applicationId "com.amirtraders.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // FIX (2026-08-31, user request): versionCode/versionName had never
+        // been bumped past their initial defaults (1 / "1.0") despite this
+        // app going through many real builds — Android's own package
+        // installer uses versionCode (not the in-app APP_VERSION_NOTE
+        // string) to decide whether an APK is actually an update.
+        // versionCode is date-encoded (YYYYMMDDNN) so it keeps increasing
+        // across future days automatically with zero manual bookkeeping.
+        // NOTE (2026-09-01): a separate "1.0.1" plain-semantic-versioning
+        // scheme was briefly applied HERE (this file) for a one-off
+        // "buyer's version" resale-template zip, then reverted back to
+        // this date-encoded scheme once it became clear this file doubles
+        // as the seller's own ongoing working copy — the buyer's-version
+        // labeling belongs only on that separate delivered zip, never on
+        // this shared source. If a buyer's-version build is needed again,
+        // apply that relabeling to a throwaway staging copy only, the same
+        // way minification is already handled — never edit these two
+        // lines directly on this file for that purpose again.
+        versionCode 2026090116
+        versionName "3.0.16"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
