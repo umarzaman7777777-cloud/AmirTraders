@@ -1066,7 +1066,7 @@ const BACKUP_FOLDER_NAME = BUSINESS_NAME + " Backups";
 // /d/ and /edit, e.g. docs.google.com/spreadsheets/d/THIS_PART/edit).
 // Using an explicit ID avoids "active spreadsheet" issues that can happen
 // when this script runs as a Web App triggered from an external URL.
-const SHEET_ID = "1-xkK2lph1mfF7OHBf0Bg2Fh3EXMDZQ72W2NkRvmp62E";
+const SHEET_ID = "1sSuJiionVM2GZRr_V7f5y3_TGW0jjZGqNwsVrkWEVZ4";
 // ================================================================
 
 // ADD (2026-08-20): shared-secret gate on the web app. Before this, the
@@ -1081,7 +1081,7 @@ const SHEET_ID = "1-xkK2lph1mfF7OHBf0Bg2Fh3EXMDZQ72W2NkRvmp62E";
 // MUST match SHEET_API_TOKEN in index.html exactly — if you ever rotate
 // this, update both files together and redeploy, or the app will show
 // "sync failed" on every request.
-const API_TOKEN_ = "6d26d6a6551fd99a972cf6798290c75b7f6678a28acb1f89";
+const API_TOKEN_ = "b9041187885007be5415b93a7fc59d96186fc1ec8c2c8972";
 function isAuthorized_(token){
   return typeof token === 'string' && token === API_TOKEN_;
 }
