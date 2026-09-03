@@ -945,6 +945,13 @@ const SHEETS = {
   // Expenses), NOT roster+entries like ScrapBuyers/ScrapLedger above, since
   // a withdrawal has no per-party balance concept.
   withdrawal: 'Withdrawal',
+  // ADD (2026-09-02, user request): Product Returns/Complaints — flat
+  // array like Withdrawal above (each return is independent, no
+  // per-factory roster/balance concept the way ScrapBuyers/RawLedger
+  // have), tracking a returned product through to its resolution
+  // (reworked-and-redelivered, or scrapped) — see readProductReturns_/
+  // the ProductReturns write block in saveAll_ below.
+  productReturns: 'ProductReturns',
   labour: 'Labour', // the one ledger tab — every row belongs to a worker, profile columns repeated on each row
   labourLists: 'Labour Lists', // the 4 saved-suggestion lists (different kind of data — settings, not ledger rows)
   products: 'Products',
@@ -2159,6 +2166,24 @@ function saveAll_(data){
     null, null, confirmedEmpty.withdrawals
   );
 
+  // ADD (2026-09-02, user request): Product Returns/Complaints. Flat rows,
+  // one per returned product, carrying every field either resolution path
+  // (Reworked or Scrapped) might have filled in — a row for a return still
+  // Pending simply has all the resolution columns blank.
+  safeWriteRows_(SHEETS.productReturns,
+    ['id','date','factory','product','quantity','reason','originalOrderId','status',
+     'reworkCost','billingChoice','refundAmount','destinationChoice','extraCustomerMaterial',
+     'compensationRs','compensationWeight','device'],
+    (data.productReturns || []).map(x => [
+      x.id || '', x.date, x.factory || '', x.product || '', x.quantity || 0, x.reason || '',
+      x.originalOrderId || '', x.status || 'pending',
+      x.reworkCost || '', x.billingChoice || '', x.refundAmount || '', x.destinationChoice || '', x.extraCustomerMaterial || '',
+      x.compensationRs || '', x.compensationWeight || '', x.device || ''
+    ]),
+    [1,2,3,5,6,7,8,9],
+    null, null, confirmedEmpty.productReturns
+  );
+
   // Expense Categories — the user-editable list shown in the Category
   // dropdown (Add/Edit Expense), so custom categories they add or remove
   // persist across reloads instead of resetting to the built-in defaults.
@@ -2878,6 +2903,7 @@ function loadAll_(){
     expenses: readExpenses_(),
     expenseCategories: readExpenseCategories_(),
     withdrawals: readWithdrawal_(),
+    productReturns: readProductReturns_(),
     workTypes: labourLists.workTypes,
     guardSizes: labourLists.guardSizes,
     guardWeights: labourLists.guardWeights,
@@ -3611,6 +3637,18 @@ function readWithdrawal_(){
     method: r.method || '', detail: r.detail || '',
     chequeDate: r.chequeDate || '', chequeStatus: r.chequeStatus || '',
     withdrawnBy: r.withdrawnBy || '', withdrawnIn: r.withdrawnIn || '', device: r.device || ''
+  }));
+}
+
+function readProductReturns_(){
+  return readTable_(SHEETS.productReturns).map(r => ({
+    id: r.id || '', date: cellDateStr_(r.date), factory: r.factory || '', product: r.product || '',
+    quantity: r.quantity || 0, reason: r.reason || '', originalOrderId: r.originalOrderId || '',
+    status: r.status || 'pending',
+    reworkCost: r.reworkCost || '', billingChoice: r.billingChoice || '', refundAmount: r.refundAmount || '',
+    destinationChoice: r.destinationChoice || '', extraCustomerMaterial: r.extraCustomerMaterial || '',
+    compensationRs: r.compensationRs || '', compensationWeight: r.compensationWeight || '',
+    device: r.device || ''
   }));
 }
 

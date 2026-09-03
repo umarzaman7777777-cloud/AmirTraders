@@ -29,8 +29,8 @@ android {
         // keystore) — versionCode alone won't make this install cleanly
         // over the previous 2026090116 install; that one needs a full
         // uninstall first since the signing certificate is different now.
-        versionCode 2026090120
-        versionName "3.0.20"
+        versionCode 2026090330
+        versionName "4.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
