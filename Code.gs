@@ -2148,7 +2148,7 @@ function saveAll_(data){
       return [x.id || '', x.date, x.desc, x.category, x.amount, receiptUrl, x.method || '', x.detail || '', '', x.device || ''];
     }),
     [1,2,7,8],
-    null, null, undefined, [6, 9]
+    null, null, confirmedEmpty.expenses, [6, 9]
   );
 
   // ADD (2026-08-25, user request): Withdrawal Ledger — flat array (like
