@@ -1382,14 +1382,6 @@ function saveAll_(data){
   // name that's actually being deleted in this same save (it's simply
   // never in the incoming inventory list from the moment it's deleted).
   clearStaleRosterTombstonesForSave_(data);
-  // TEMPORARY DIAGNOSTIC — remove once inventory sync is confirmed working.
-  Logger.log('saveAll_ received keys: ' + JSON.stringify(Object.keys(data || {})));
-  Logger.log('products received: ' + ((data && data.products) ? data.products.length : 'undefined/missing') + ' items');
-  const invDebug = (data && data.inventory) ? data.inventory : null;
-  Logger.log('inventory keys: ' + (invDebug ? JSON.stringify(Object.keys(invDebug)) : 'undefined/missing'));
-  Logger.log('labour items: ' + (invDebug && invDebug.labour ? invDebug.labour.length : 'n/a'));
-  Logger.log('rawledger suppliers: ' + (invDebug && invDebug.rawledger ? invDebug.rawledger.length : 'n/a'));
-  Logger.log('labourledger workers: ' + (invDebug && invDebug.labourledger ? invDebug.labourledger.length : 'n/a'));
 
   // FIX (2026-08-19): Status/AmountPaid/Due used to live here too, fully
   // duplicating what the Customer/Factory Ledger and Customer Payments tabs
@@ -2394,10 +2386,18 @@ function uploadReceiptToDrive_(dataUrl, filename, folderName){
     return url;
   } catch(err){
     Logger.log('[receipt-upload] failed: ' + err);
-    // TEMPORARY DIAGNOSTIC — write the actual error into the sheet cell
-    // itself so it's visible immediately without digging through
-    // Executions. Remove this once uploads are confirmed working.
-
+    // KEPT DELIBERATELY (2026-09-03): this used to be flagged as a
+    // temporary diagnostic to remove once uploads were confirmed working
+    // — that framing was wrong and is corrected here. Returning a bare ''
+    // on failure is what let a stale cell value get silently preserved
+    // indefinitely with no visible sign the upload never happened. This
+    // ERROR string stays permanently, so a failure is immediately visible
+    // directly in the sheet cell without digging through Executions.
+    // The app's own isHttpUrl_() check (see index.html) is what makes
+    // this safe on the app side: anything that isn't a real http(s) URL
+    // — including this string — is correctly treated as "no receipt yet"
+    // everywhere a receipt gets shown or opened, rather than being
+    // mistaken for a working link.
     return 'ERROR: ' + err;
   }
 }
