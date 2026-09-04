@@ -2042,7 +2042,16 @@ function saveAll_(data){
     customLedgersData.map(cl => {
       const bal = (cl.entries || []).reduce((s,e)=> e.chequeStatus === 'bounced' ? s : s + (e.debit||0) - (e.credit||0), 0);
       return [cl.name, bal, JSON.stringify(cl.weightStock || {}), cl.selfWeightStock || 0];
-    })
+    }),
+    // FIX (2026-09-03, found during a full sync audit): every other roster
+    // tab (Painters, Suppliers, Scrap Buyers, Factories) correctly passes
+    // its own confirmedEmpty flag here — this one never did. Not a
+    // data-loss risk (safeWriteRows_ already defaults to refusing an
+    // unconfirmed wipe), but it meant a genuine "delete every Custom
+    // Ledger party" could never actually clear this specific tab on the
+    // sheet, leaving stale rows behind indefinitely. Now consistent with
+    // every other roster tab.
+    null, null, null, confirmedEmpty.customLedgers
   );
   const existingCustomLedgerReceipts = {};
   try{
