@@ -28,8 +28,19 @@ public class MainActivity extends BridgeActivity {
     // correctly resolve back to 0 from the WebView's own now-safe
     // viewport, so there's no double-padding — either this fixes it
     // alone, or the two layers agree and nothing is added twice.
+    //
+    // ADD (2026-09-05, hands-on whisper.cpp integration): also registers
+    // the new offline Roman-Urdu voice recognition plugin here — see
+    // WhisperVoicePlugin.kt in this same package for the full reasoning.
+    // Capacitor's npm-installed plugins (like the existing
+    // @capacitor-community/speech-recognition) register themselves
+    // automatically via capacitor.plugins.json during `npx cap sync` —
+    // but a project-local plugin like this one, not published to npm,
+    // needs this explicit registerPlugin() call instead, made before
+    // super.onCreate() per Capacitor's own documented registration order.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(WhisperVoicePlugin.class);
         super.onCreate(savedInstanceState);
         View content = findViewById(android.R.id.content);
         ViewCompat.setOnApplyWindowInsetsListener(content, (v, windowInsets) -> {

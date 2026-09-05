@@ -1,0 +1,85 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.whispercpp'
+    // FIX (2026-09-05): matched to the main app's own shared SDK versions
+    // (see ../variables.gradle) rather than this example's original
+    // standalone values, so this module builds against the exact same
+    // SDK the rest of the app already targets instead of a second,
+    // slightly different one.
+    compileSdk rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+
+        // FIX (2026-09-05): dropped x86/x86_64 — those are emulator/desktop
+        // architectures, never real Android phones, and building them
+        // roughly doubles native compile time and APK size for
+        // architectures nobody in this app's real userbase runs on.
+        // arm64-v8a covers effectively all Android phones from the last
+        // ~8 years; armeabi-v7a is kept as a safety net for any older
+        // 32-bit device still in use.
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
+        externalNativeBuild {
+            cmake {
+                // When set, builds whisper.android against the version located
+                // at GGML_HOME instead of the copy bundled with whisper.cpp.
+                if (
+                    project.hasProperty('GGML_HOME') &&
+                    project.findProperty('GGML_CLBLAST') == 'ON'
+                ) {
+                    // Turning on CLBlast requires GGML_HOME
+                    arguments "-DGGML_HOME=${project.property('GGML_HOME')}",
+                         "-DGGML_CLBLAST=ON",
+                         "-DOPENCL_LIB=${project.property('OPENCL_LIB')}",
+                         "-DCLBLAST_HOME=${project.property('CLBLAST_HOME')}",
+                         "-DOPENCL_ROOT=${project.property('OPENCL_ROOT')}",
+                         "-DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH",
+                         "-DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=BOTH"
+                } else if (project.hasProperty('GGML_HOME')) {
+                    arguments "-DGGML_HOME=${project.property('GGML_HOME')}"
+                }
+
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    ndkVersion "25.2.9519653"
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/jni/whisper/CMakeLists.txt")
+        }
+    }
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.8.0'
+}

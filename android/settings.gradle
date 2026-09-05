@@ -1,5 +1,10 @@
 include ':app'
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+// ADD (2026-09-05, user request: hands-on whisper.cpp integration for
+// offline Roman-Urdu voice recognition — see whisper-lib/ and
+// whispercpp-src/). Built from the official ggml-org/whisper.cpp
+// examples/whisper.android module, not a third-party prebuilt binary.
+include ':whisper-lib'
 
 apply from: 'capacitor.settings.gradle'

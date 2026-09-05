@@ -1,4 +1,10 @@
 apply plugin: 'com.android.application'
+// ADD (2026-09-05, hands-on whisper.cpp integration): needed to write
+// WhisperVoicePlugin.kt in Kotlin, matching whisper-lib's own language,
+// rather than a more awkward Java bridge calling into Kotlin suspend
+// functions. This app's other code stays exactly as-is (Java); only this
+// one new plugin file uses Kotlin.
+apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
     namespace = "com.amirtraders.app"
@@ -29,8 +35,8 @@ android {
         // keystore) — versionCode alone won't make this install cleanly
         // over the previous 2026090116 install; that one needs a full
         // uninstall first since the signing certificate is different now.
-        versionCode 2026090442
-        versionName "4.1.2"
+        versionCode 2026090548
+        versionName "4.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -65,6 +71,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    // ADD (2026-09-05, hands-on whisper.cpp integration): required once
+    // Kotlin is in this module (WhisperVoicePlugin.kt) alongside the
+    // existing Java code — Java 8 matches whisper-lib's own setting.
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
 }
 
 repositories {
@@ -79,6 +95,14 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    // ADD (2026-09-05): offline Roman-Urdu voice recognition — see
+    // whisper-lib/ (built from the official ggml-org/whisper.cpp Android
+    // example) and the WhisperVoicePlugin Capacitor plugin that uses it.
+    implementation project(':whisper-lib')
+    // ADD (2026-09-05): WhisperVoicePlugin uses coroutines (lifecycleScope)
+    // to call whisper-lib's suspend functions and to run the model
+    // download off the main thread without blocking the UI.
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

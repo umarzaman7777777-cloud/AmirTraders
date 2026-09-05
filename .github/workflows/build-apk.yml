@@ -1,15 +1,10 @@
-name: Build Amir Traders APK
+name: Build Android APK
 
-# Runs automatically every time index.html (or anything else) is pushed to
-# main, and can also be triggered manually from the Actions tab ("Run
-# workflow" button) without needing to push anything.
-on:
+"on":
   push:
-    branches: [ main ]
-  workflow_dispatch: {}
+    branches: [main]
+  workflow_dispatch:
 
-# Needed so this workflow is allowed to publish/update the GitHub Release
-# the finished APK gets attached to.
 permissions:
   contents: write
 
@@ -17,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Node.js
@@ -25,55 +20,48 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install Capacitor dependencies
-        # FIX (2026-08-29): switched from `npm ci` to `npm install` —
-        # `npm ci` requires package-lock.json to already have an exact
-        # matching entry for every dependency in package.json, and refuses
-        # to run otherwise. `@capacitor-community/speech-recognition` was
-        # just added to package.json (for the voice-commands feature);
-        # package-lock.json doesn't have it pinned yet, so `npm ci` fails
-        # with a usage/error dump. `npm install` resolves and adds new
-        # packages fine regardless of lockfile state. Once this build runs
-        # once and the regenerated package-lock.json is committed back
-        # (this step won't do that automatically — commit the updated
-        # package-lock.json from a local `npm install` run, or just leave
-        # this as `npm install` going forward), it's safe to switch back to
-        # `npm ci` for the faster, fully-locked installs it normally gives.
-        run: npm install
+      - name: Install npm dependencies
+        run: npm ci
 
-      - name: Copy www/ into the native Android project
+      - name: Sync Capacitor Android project
         run: npx cap sync android
 
-      - name: Set up Java
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 21
+          distribution: 'temurin'
+          java-version: '21'
 
-      - name: Build the debug APK
+      # ADD (2026-09-05, whisper.cpp native voice recognition module):
+      # required from this build onward. whisper-lib/build.gradle compiles
+      # real C++ (whisper.cpp itself) via CMake, which needs the Android
+      # NDK present — something this workflow never needed before, since
+      # every previous build was pure Java/Kotlin plus the WebView content.
+      # The version below must stay matched to whisper-lib/build.gradle's
+      # own ndkVersion line; if that line ever changes, update this to
+      # match or the build will fail with an "NDK not found" style error.
+      - name: Install Android NDK
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "ndk;25.2.9519653"
+
+      - name: Make gradlew executable and build debug APK
         working-directory: android
-        run: chmod +x ./gradlew && ./gradlew assembleDebug --no-daemon
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Find the built APK
-        id: apk
-        run: echo "path=$(find android/app/build/outputs/apk/debug -name '*.apk' | head -n 1)" >> "$GITHUB_OUTPUT"
-
-      - name: Upload as a build artifact (every run)
+      - name: Upload APK as build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: amir-traders-debug-apk
-          path: ${{ steps.apk.outputs.path }}
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Publish/update the "latest build" release (easiest way to install on your phone)
+      - name: Publish to Latest debug build release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest-debug-build
           name: Latest debug build
-          body: |
-            Automatically built from the latest `index.html` on `main`.
-            Open this page on your phone, tap the `.apk` file below to
-            download it, then tap the downloaded file to install
-            (Android will ask you to allow "install from this source"
-            the first time — that's expected for a debug build).
-          prerelease: true
-          files: ${{ steps.apk.outputs.path }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
