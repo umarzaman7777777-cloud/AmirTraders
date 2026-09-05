@@ -71,24 +71,27 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    // FIX (2026-09-05, user report: build failing on a version-related
-    // error after the whisper.cpp Kotlin integration was added): this
-    // project's Kotlin Gradle Plugin is 2.0.21 (see android/build.gradle),
-    // which requires JVM 17 and expects the modern jvmToolchain() approach
-    // rather than the older kotlinOptions{jvmTarget=...} block — mixing
-    // Java 1.8 compileOptions with a Kotlin plugin this new is exactly
-    // the kind of setup that throws an "inconsistent JVM-target
-    // compatibility" error. Both this and whisper-lib/build.gradle are
-    // set to 17 together, since a mismatch between modules can throw the
-    // same error even when each one looks fine in isolation.
+    // FIX (2026-09-05, v2 - user report: "inconsistent JVM-target" error
+    // persisted even after installing both JDK 17 and 21 in CI): the
+    // previous fix (Java 17 here) was solving the wrong problem. With two
+    // JDKs installed, Gradle was compiling Java under whichever JDK it
+    // runs under (21) regardless of this compileOptions setting, while
+    // Kotlin correctly used the explicit jvmToolchain(17) — an
+    // inconsistency BETWEEN Java and Kotlin within this same module, not
+    // between modules. The actual Kotlin Gradle Plugin requirement is
+    // just "Gradle must run on JDK 17+", not "bytecode must target
+    // exactly 17" — 21 satisfies that just as well. Targeting 21
+    // everywhere, matching capacitor-android's own requirement exactly,
+    // removes the mismatch entirely rather than fighting it — one
+    // consistent JDK version, no ambiguity about which task uses which.
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
     }
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }
 
 repositories {

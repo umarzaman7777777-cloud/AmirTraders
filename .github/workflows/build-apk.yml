@@ -30,29 +30,19 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          # FIX (2026-09-05, user report: "invalid source release: 21" on
-          # :capacitor-android:compileDebugJavaWithJavac): installing only
-          # 17 (the previous fix) broke a DIFFERENT module — capacitor-
-          # android isn't one of this project's own files at all, it's
-          # generated fresh by "Sync Capacitor Android project" above from
-          # the @capacitor/android npm package (see package.json), which
-          # bakes in its own sourceCompatibility/targetCompatibility =
-          # Java 21, entirely outside this project's control. So both
-          # versions are genuinely needed at once: 21 for Capacitor's own
-          # generated module, 17 for app/build.gradle and whisper-lib/
-          # build.gradle's jvmToolchain(17) (required by this project's
-          # Kotlin Gradle Plugin version — see those files' own comments).
-          # Listing both here installs both; setup-java also sets a
-          # JAVA_HOME_17_X64-style variable for each, which is exactly
-          # what lets Gradle's own toolchain auto-detection find the 17
-          # JDK for jvmToolchain(17) without needing to download anything,
-          # while Gradle itself runs under 21 (the last one listed becomes
-          # the active JAVA_HOME) — satisfying capacitor-android's plain
-          # sourceCompatibility setting directly, with no toolchain
-          # involved for that module at all.
-          java-version: |
-            17
-            21
+          # FIX (2026-09-05, v2): simplified back to a single JDK version.
+          # The dual-JDK approach (17 + 21) didn't actually fix the
+          # underlying issue — with two JDKs installed, Gradle compiled
+          # Java under whichever one it runs under (21) regardless of
+          # this project's compileOptions setting, while Kotlin correctly
+          # respected the explicit jvmToolchain() — an inconsistency
+          # WITHIN the app module, not between modules. Both
+          # app/build.gradle and whisper-lib/build.gradle now target 21
+          # directly (matching what capacitor-android already needs, and
+          # satisfying this project's Kotlin Gradle Plugin, which just
+          # needs Gradle running on 17+) — one consistent JDK, no
+          # ambiguity about which task uses which.
+          java-version: '21'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
