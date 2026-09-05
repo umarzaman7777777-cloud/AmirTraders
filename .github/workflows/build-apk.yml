@@ -40,10 +40,11 @@ jobs:
       # The version below must stay matched to whisper-lib/build.gradle's
       # own ndkVersion line; if that line ever changes, update this to
       # match or the build will fail with an "NDK not found" style error.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install Android NDK
-        run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager --install "ndk;25.2.9519653"
+        run: sdkmanager --install "ndk;25.2.9519653"
 
       - name: Make gradlew executable and build debug APK
         working-directory: android
