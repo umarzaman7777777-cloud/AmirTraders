@@ -71,16 +71,24 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    // ADD (2026-09-05, hands-on whisper.cpp integration): required once
-    // Kotlin is in this module (WhisperVoicePlugin.kt) alongside the
-    // existing Java code — Java 8 matches whisper-lib's own setting.
+    // FIX (2026-09-05, user report: build failing on a version-related
+    // error after the whisper.cpp Kotlin integration was added): this
+    // project's Kotlin Gradle Plugin is 2.0.21 (see android/build.gradle),
+    // which requires JVM 17 and expects the modern jvmToolchain() approach
+    // rather than the older kotlinOptions{jvmTarget=...} block — mixing
+    // Java 1.8 compileOptions with a Kotlin plugin this new is exactly
+    // the kind of setup that throws an "inconsistent JVM-target
+    // compatibility" error. Both this and whisper-lib/build.gradle are
+    // set to 17 together, since a mismatch between modules can throw the
+    // same error even when each one looks fine in isolation.
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = '1.8'
-    }
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 repositories {

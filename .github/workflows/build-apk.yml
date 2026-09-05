@@ -30,16 +30,16 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          # FIX (2026-09-05): changed from 21 to exactly 17 — the Kotlin
+          # Gradle Plugin (2.0.21) added for the whisper.cpp integration
+          # requires jvmToolchain(17) in both build.gradle files. Gradle
+          # can auto-download a matching JDK when the one it's running
+          # under doesn't match a requested toolchain version, but that
+          # adds a network-dependent step during CI that can fail on its
+          # own — simpler and more reliable to just give it exactly what
+          # it's asking for directly.
+          java-version: '17'
 
-      # ADD (2026-09-05, whisper.cpp native voice recognition module):
-      # required from this build onward. whisper-lib/build.gradle compiles
-      # real C++ (whisper.cpp itself) via CMake, which needs the Android
-      # NDK present — something this workflow never needed before, since
-      # every previous build was pure Java/Kotlin plus the WebView content.
-      # The version below must stay matched to whisper-lib/build.gradle's
-      # own ndkVersion line; if that line ever changes, update this to
-      # match or the build will fail with an "NDK not found" style error.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 

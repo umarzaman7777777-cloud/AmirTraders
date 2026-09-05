@@ -57,12 +57,17 @@ android {
             minifyEnabled false
         }
     }
+    // FIX (2026-09-05): matched to 17 to stay consistent with the main
+    // app module (app/build.gradle) — see that file's own comment on why;
+    // a mismatch between modules can throw the same "inconsistent
+    // JVM-target" error even when each module's own settings look correct
+    // in isolation. The old kotlinOptions block is replaced by the
+    // top-level kotlin{jvmToolchain(17)} block at the end of this file —
+    // the modern approach this Kotlin Gradle Plugin version (2.0.21)
+    // expects, kept in one shared place rather than repeated per-module.
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = '1.8'
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     ndkVersion "25.2.9519653"
@@ -76,6 +81,10 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
