@@ -1203,6 +1203,40 @@ function doGet(e){
       // override or just the deploy-account default until asked.
       const override = PropertiesService.getScriptProperties().getProperty(BACKUP_EMAIL_OVERRIDE_PROP_);
       payload = { ok: true, email: getBackupEmailAddress_(), isOverride: !!override };
+    } else if(action === 'listReceipts'){
+      // ADD (2026-09-07, user request, called "mandatory" — the Gallery's
+      // Receipts tab, so receipts already uploaded to Drive can be
+      // browsed without leaving the app, the same as ledger exports
+      // already saved locally). Deliberately lists what's actually in
+      // the folder right now rather than anything cached — the app
+      // calls this fresh every time the Receipts tab opens, so a receipt
+      // deleted directly in Drive (by the person, or anyone else with
+      // edit access to it) correctly disappears from the Gallery on the
+      // very next open, never lingering as a stale, now-broken entry.
+      const folderName = e.parameter.folder;
+      const knownFolder = Object.keys(RECEIPT_FOLDERS).some(function(k){ return RECEIPT_FOLDERS[k] === folderName; });
+      if(!folderName || !knownFolder){
+        payload = { error: 'Unknown receipt folder' };
+      } else {
+        const files = [];
+        const folders = DriveApp.getFoldersByName(folderName);
+        while(folders.hasNext()){
+          const folder = folders.next();
+          const fileIter = folder.getFiles();
+          while(fileIter.hasNext()){
+            const file = fileIter.next();
+            files.push({
+              name: file.getName(),
+              url: file.getUrl(),
+              id: file.getId(),
+              mimeType: file.getMimeType(),
+              modified: file.getLastUpdated().getTime()
+            });
+          }
+        }
+        files.sort(function(a, b){ return b.modified - a.modified; });
+        payload = { ok: true, files: files };
+      }
     } else {
       payload = { error: 'Unknown action' };
     }
@@ -2373,6 +2407,46 @@ function getReceiptsFolder_(folderName){
   const folders = DriveApp.getFoldersByName(name);
   if(folders.hasNext()) return folders.next();
   return DriveApp.createFolder(name);
+}
+// ADD (2026-09-05, user report with screenshots: opening an older receipt
+// prompts "Request access from file owner" for the new Gmail account).
+// uploadReceiptToDrive_ below already sets ANYONE_WITH_LINK sharing on
+// every receipt at upload time — but that line was added at some point
+// after this project started, so receipts uploaded before it (like the
+// one in the user's screenshot, dated Aug 26) never got that sharing
+// applied, and stayed private to whichever account uploaded them. Rather
+// than guess which receipts are old enough to be affected, this
+// unconditionally re-applies the same sharing to every file in every
+// receipt folder — safe to run repeatedly, since re-sharing an
+// already-shared file is a no-op. Run manually once from this editor
+// (Run > select this function) to fix every existing receipt at once,
+// not just the one from the screenshot.
+function fixAllReceiptSharing_(){
+  let checked = 0, fixed = 0;
+  const folderNames = Object.keys(RECEIPT_FOLDERS).map(function(k){ return RECEIPT_FOLDERS[k]; });
+  folderNames.forEach(function(name){
+    const folders = DriveApp.getFoldersByName(name);
+    while(folders.hasNext()){
+      const folder = folders.next();
+      const files = folder.getFiles();
+      while(files.hasNext()){
+        const file = files.next();
+        checked++;
+        try{
+          const access = file.getSharingAccess();
+          if(access !== DriveApp.Access.ANYONE_WITH_LINK && access !== DriveApp.Access.ANYONE){
+            file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+            fixed++;
+          }
+        }catch(e){
+          Logger.log('[fixAllReceiptSharing_] could not fix "' + file.getName() + '" in "' + name + '": ' + e);
+        }
+      }
+    }
+  });
+  const msg = 'Checked ' + checked + ' receipt file(s) across ' + folderNames.length + ' folders. Fixed sharing on ' + fixed + ' that weren\'t already accessible. Reload the app on any device to confirm receipts open correctly now.';
+  Logger.log(msg);
+  return msg;
 }
 function uploadReceiptToDrive_(dataUrl, filename, folderName){
   try{

@@ -1,9 +1,12 @@
 package com.amirtraders.app
 
 import android.Manifest
+import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -19,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
 import java.net.URL
 
 // ADD (2026-09-05, user request: "hands-on" whisper.cpp integration for
@@ -37,15 +41,30 @@ import java.net.URL
 // Urdu script instead of the Roman/Latin script this app's voice command
 // matching expects — see transcribeData's call site below.
 //
-// HONEST LIMITATION, stated directly to the user before this was built:
-// this plugin's actual transcription accuracy has not been verified in
-// this sandbox — there is no way to download the real model file (this
-// sandbox's network cannot reach Hugging Face at all, confirmed) or to
-// produce genuine Roman-Urdu speech to test against (no microphone here).
-// This code is careful, follows the official example's own patterns, and
-// is syntax-reviewed as closely as possible without a Kotlin compiler in
-// this sandbox — but the real first test of whether it actually works is
-// the built app, on a real device, with a real voice.
+// REWRITE (2026-09-06, user question: "what about the 139MB download on
+// mobile data, and its updates?"). The original downloadModel used a
+// fixed timeout on the JS side and no network-type awareness at all —
+// on real mobile data (not WiFi, as the user clarified they're actually
+// testing on), a 139MB download can genuinely take several minutes, so a
+// short timeout would kill a perfectly good, still-in-progress download
+// and report it as failed. That's very likely the actual reason the mic
+// looked broken. This version: checks WiFi vs mobile data before
+// downloading and requires explicit opt-in for mobile data given the
+// data cost, reports real progress via a downloadProgress event instead
+// of relying on any timeout, resumes a partial download instead of
+// restarting from zero if interrupted, and exposes a lightweight
+// (HEAD-request only, no body download) update check so a future model
+// revision doesn't mean silently re-downloading 139MB.
+//
+// HONEST LIMITATION, unchanged from before: this plugin's actual
+// transcription accuracy, and now this download logic too, has not been
+// verified against a real network/device from this sandbox — there is
+// no way to download the real model file here (this sandbox's network
+// cannot reach Hugging Face at all, confirmed) and no way to simulate a
+// real mobile-data connection's exact behavior. This code is careful,
+// follows documented Android APIs, and is syntax-reviewed as closely as
+// possible without a live device — but the real first test is still the
+// built app, on a real phone, on real mobile data.
 @CapacitorPlugin(
     name = "WhisperVoice",
     permissions = [Permission(strings = [Manifest.permission.RECORD_AUDIO], alias = "microphone")]
@@ -69,13 +88,38 @@ class WhisperVoicePlugin : Plugin() {
         // handles fine; a future version could add real silence detection
         // to cut this short automatically.
         private const val MAX_RECORD_SECONDS = 8
+        // How often a progress event is emitted at minimum — every 1%,
+        // not on every single buffer read, so a fast WiFi download
+        // doesn't flood the JS bridge with hundreds of events per second.
+        private const val PROGRESS_STEP_PERCENT = 1
     }
 
     private var whisperContext: WhisperContext? = null
     private val pluginScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     @Volatile private var isRecording = false
+    @Volatile private var downloadCancelled = false
 
     private fun modelFile(): File = File(context.filesDir, MODEL_FILENAME)
+    private fun partialFile(): File = File(context.filesDir, "$MODEL_FILENAME.part")
+    // Stores the remote file's ETag (or Last-Modified as a fallback, for
+    // servers that don't send one) from the last completed download —
+    // compared against on checkForUpdate to detect a real revision
+    // without downloading the file itself.
+    private fun modelMetaFile(): File = File(context.filesDir, "$MODEL_FILENAME.meta")
+
+    private fun isWifiConnected(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+    }
+
+    private fun hasAnyConnection(): Boolean {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
     // Lets the JS side check, before showing any "listening" UI, whether
     // the model has actually finished downloading yet — so a first-run
@@ -88,36 +132,177 @@ class WhisperVoicePlugin : Plugin() {
         call.resolve(ret)
     }
 
-    // Downloads the model to this app's private files directory. Safe to
-    // call repeatedly — a no-op once the file already exists. Runs off
-    // the main thread; the JS side awaits this before the first mic use.
+    // ADD (2026-09-06): lets the JS side know which kind of connection is
+    // active before deciding whether to download (or ask first) at all —
+    // separate from downloadModel itself so the JS side can show its own
+    // "download over mobile data?" confirmation UI before ever calling it.
+    @PluginMethod
+    fun getNetworkStatus(call: PluginCall) {
+        val ret = JSObject()
+        ret.put("isWifi", isWifiConnected())
+        ret.put("hasConnection", hasAnyConnection())
+        call.resolve(ret)
+    }
+
+    // ADD (2026-09-06): a lightweight (HEAD request only, no file body)
+    // check for whether the model on the server has changed since the
+    // last completed download. Safe to call often — costs almost nothing
+    // — the actual 139MB re-download only ever happens if this reports
+    // true AND the JS side then explicitly calls downloadModel again,
+    // going through the exact same WiFi/mobile-data rules as the first
+    // download.
+    @PluginMethod
+    fun checkForUpdate(call: PluginCall) {
+        if (!modelFile().exists() || modelFile().length() == 0L) {
+            // Nothing downloaded yet — this isn't an "update" question,
+            // it's a first-download question, which isModelReady/
+            // downloadModel already handle.
+            val ret = JSObject()
+            ret.put("updateAvailable", false)
+            ret.put("reason", "no-model-yet")
+            call.resolve(ret)
+            return
+        }
+        if (!hasAnyConnection()) {
+            call.reject("no-connection")
+            return
+        }
+        pluginScope.launch {
+            var conn: HttpURLConnection? = null
+            try {
+                conn = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "HEAD"
+                    connectTimeout = 15000
+                    readTimeout = 15000
+                    connect()
+                }
+                val remoteTag = conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified") ?: ""
+                val remoteSize = conn.contentLengthLong
+                val storedTag = if (modelMetaFile().exists()) modelMetaFile().readText().trim() else ""
+                val ret = JSObject()
+                // Only reports an update as available when there's an
+                // actual, comparable tag on both sides and they differ —
+                // never guesses "yes" just because nothing was stored
+                // before (e.g. an app update from before this metadata
+                // tracking existed at all).
+                ret.put("updateAvailable", remoteTag.isNotEmpty() && storedTag.isNotEmpty() && remoteTag != storedTag)
+                ret.put("sizeBytes", remoteSize)
+                withContext(Dispatchers.Main) { call.resolve(ret) }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { call.reject("update-check-failed: " + (e.message ?: e.toString())) }
+            } finally {
+                conn?.disconnect()
+            }
+        }
+    }
+
+    // REWRITE (2026-09-06): now checks connection type first (mobile data
+    // requires explicit allowMobileData=true from the JS side, given the
+    // real data cost of 139MB), reports live progress via a
+    // "downloadProgress" event instead of the caller having to guess how
+    // long is too long, and resumes a partial download via an HTTP Range
+    // request instead of restarting from zero if a previous attempt was
+    // interrupted — which matters more on mobile data, where a dropped
+    // connection is more common than on WiFi.
     @PluginMethod
     fun downloadModel(call: PluginCall) {
+        val allowMobileData = call.getBoolean("allowMobileData", false) ?: false
+        if (!hasAnyConnection()) {
+            call.reject("no-connection")
+            return
+        }
+        if (!isWifiConnected() && !allowMobileData) {
+            call.reject("wifi-required")
+            return
+        }
+        val file = modelFile()
+        if (file.exists() && file.length() > 0) {
+            call.resolve()
+            return
+        }
+        downloadCancelled = false
         pluginScope.launch {
+            var conn: HttpURLConnection? = null
             try {
-                val file = modelFile()
-                if (!file.exists() || file.length() == 0L) {
-                    // Downloaded to a temp name first, only renamed to the
-                    // real filename once the copy completes fully — so a
-                    // connection drop mid-download can never leave a
-                    // half-written file sitting at the name isModelReady()
-                    // checks for, which would otherwise look like a valid,
-                    // ready model on the next app open.
-                    val tmp = File(context.filesDir, "$MODEL_FILENAME.part")
-                    URL(MODEL_URL).openStream().use { input ->
-                        FileOutputStream(tmp).use { output ->
-                            input.copyTo(output, bufferSize = 1 shl 20)
+                val tmp = partialFile()
+                val existingBytes = if (tmp.exists()) tmp.length() else 0L
+
+                conn = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 30000
+                    readTimeout = 30000
+                    if (existingBytes > 0) setRequestProperty("Range", "bytes=$existingBytes-")
+                    connect()
+                }
+
+                // Not every server honors Range — if it comes back 200
+                // (full content) instead of 206 (partial content) despite
+                // asking to resume, that partial file can't be trusted as
+                // a genuine prefix of the same content, so start over
+                // rather than risk silently corrupting the model with a
+                // mismatched resume.
+                val resumed = conn.responseCode == HttpURLConnection.HTTP_PARTIAL
+                val startByte = if (resumed) existingBytes else 0L
+                if (!resumed && existingBytes > 0) tmp.delete()
+
+                val totalBytes = startByte + conn.contentLengthLong
+                var downloaded = startByte
+                var lastReportedPercent = -1
+
+                conn.inputStream.use { input ->
+                    FileOutputStream(tmp, resumed && existingBytes > 0).use { output ->
+                        val buffer = ByteArray(1 shl 16)
+                        while (!downloadCancelled) {
+                            val n = input.read(buffer)
+                            if (n <= 0) break
+                            output.write(buffer, 0, n)
+                            downloaded += n
+                            if (totalBytes > 0) {
+                                val percent = ((downloaded * 100) / totalBytes).toInt()
+                                if (percent >= lastReportedPercent + PROGRESS_STEP_PERCENT || percent == 100) {
+                                    lastReportedPercent = percent
+                                    notifyListeners("downloadProgress", JSObject().apply {
+                                        put("percent", percent)
+                                        put("bytesDownloaded", downloaded)
+                                        put("totalBytes", totalBytes)
+                                    })
+                                }
+                            }
                         }
                     }
-                    if (!tmp.renameTo(file)) {
-                        throw java.io.IOException("Could not finalize downloaded model file")
-                    }
                 }
+
+                if (downloadCancelled) {
+                    withContext(Dispatchers.Main) { call.reject("download-cancelled") }
+                    return@launch
+                }
+
+                // ETag captured BEFORE disconnect() — some connection
+                // implementations invalidate header access once closed.
+                val tag = conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified") ?: ""
+
+                if (!tmp.renameTo(file)) {
+                    throw java.io.IOException("Could not finalize downloaded model file")
+                }
+                if (tag.isNotEmpty()) modelMetaFile().writeText(tag)
+
                 withContext(Dispatchers.Main) { call.resolve() }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { call.reject("download-failed: " + (e.message ?: e.toString())) }
+            } finally {
+                conn?.disconnect()
             }
         }
+    }
+
+    // ADD (2026-09-06): lets the JS side offer a real Cancel button during
+    // a long mobile-data download rather than the only way out being
+    // force-closing the app. The partial file is left in place
+    // deliberately — the next downloadModel call resumes from here
+    // instead of losing that progress.
+    @PluginMethod
+    fun cancelDownload(call: PluginCall) {
+        downloadCancelled = true
+        call.resolve()
     }
 
     // Shaped to match @capacitor-community/speech-recognition's own

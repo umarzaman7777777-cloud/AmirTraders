@@ -39,6 +39,12 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- ADD (2026-09-06, whisper.cpp model download): needed by
+         ConnectivityManager to tell WiFi apart from mobile data before
+         downloading the 139MB voice model — see WhisperVoicePlugin.kt's
+         isWifiConnected(). A "normal" permission, granted automatically
+         at install time, no runtime prompt needed. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Push notifications (@capacitor/push-notifications, added 2026-08-26):
          required on Android 13+ (API 33+, and this app targets API 36) for the
          runtime permission prompt to even appear - without this declared here,
