@@ -955,6 +955,13 @@ const SHEETS = {
   labour: 'Labour', // the one ledger tab — every row belongs to a worker, profile columns repeated on each row
   labourLists: 'Labour Lists', // the 4 saved-suggestion lists (different kind of data — settings, not ledger rows)
   products: 'Products',
+  // ADD (2026-09-08, user-guided feature): a separate, simpler list from
+  // Products specifically for job-work Custom Ledger entries — no price,
+  // no per-recipe-row "customer supplies" flag (this business always
+  // supplies these materials itself, that concept genuinely doesn't
+  // apply here, confirmed directly with the user), just a name and a
+  // recipe for precise raw material deduction.
+  items: 'Items',
   salesSummary: 'Sales Summary',
   expensesSummary: 'Expenses Summary',
   factories: 'Factories',
@@ -1478,7 +1485,7 @@ function saveAll_(data){
       let receiptUrl = (t.id && existingTxnReceipts[t.id]) || '';
       if(t.receiptData){
         const uploaded = uploadReceiptToDrive_(t.receiptData, t.receiptName || ((t.id || 'receipt') + '.jpg'), RECEIPT_FOLDERS.transactions);
-        if(uploaded) receiptUrl = uploaded;
+        if(uploaded){ trashOldReceiptIfReplaced_(receiptUrl, uploaded); receiptUrl = uploaded; }
       }
       return [
         t.id, t.factory || '', t.date, to12Hour_(t.time), t.itemsSummary, t.itemCount, t.itemCounts || '', t.sizes || '', t.colors || '', t.total,
@@ -1535,7 +1542,7 @@ function saveAll_(data){
     let receiptUrl = (p.id && existingPaymentReceipts[p.id]) || '';
     if(p.receiptData){
       const uploaded = uploadReceiptToDrive_(p.receiptData, p.receiptName || ((p.id || 'receipt') + '.jpg'), RECEIPT_FOLDERS.customerPayments);
-      if(uploaded) receiptUrl = uploaded;
+      if(uploaded){ trashOldReceiptIfReplaced_(receiptUrl, uploaded); receiptUrl = uploaded; }
     }
     return [p.txnId || '', p.id || '', p.date || '', to12Hour_(p.time || ''), p.amount || 0, p.method || '', p.detail || '', p.receivedBy || '', p.receivedIn || '', receiptUrl, '', p.device || ''];
   });
@@ -1602,7 +1609,7 @@ function saveAll_(data){
       let receiptUrl = (e.id && existingPaintReceipts[e.id]) || '';
       if(e.receiptData){
         const uploaded = uploadReceiptToDrive_(e.receiptData, e.receiptName || ((e.id || 'receipt') + '.jpg'), RECEIPT_FOLDERS.paintLedger);
-        if(uploaded) receiptUrl = uploaded;
+        if(uploaded){ trashOldReceiptIfReplaced_(receiptUrl, uploaded); receiptUrl = uploaded; }
       }
       paintRows.push([p.name, e.id || '', e.date || '', to12Hour_(e.time || ''), e.desc || '', e.color || '', e.itemSize || '', e.itemType || '', e.itemFactory || '', e.itemCount || '', e.ratePerItem || '', e.debit || 0, e.credit || 0, running, e.method || '', e.detail || '', e.chequeDate || '', e.chequeStatus || '', e.receivedBy || '', e.receivedIn || '', receiptUrl, '', e.device || '']);
       paintRowColors.push(chequeRowColor_(e));
@@ -1646,7 +1653,7 @@ function saveAll_(data){
       let receiptUrl = (e.id && existingRawReceipts[e.id]) || '';
       if(e.receiptData){
         const uploaded = uploadReceiptToDrive_(e.receiptData, e.receiptName || ((e.id || 'receipt') + '.jpg'), RECEIPT_FOLDERS.rawLedger);
-        if(uploaded) receiptUrl = uploaded;
+        if(uploaded){ trashOldReceiptIfReplaced_(receiptUrl, uploaded); receiptUrl = uploaded; }
       }
       // 'stockName'/'weightIn'/'itemsIn' appended (2026-08-24, "Raw Material
       // Stock" feature) — structured stock-tracking fields, separate from
@@ -1758,7 +1765,7 @@ function saveAll_(data){
       let receiptUrl = (e.id && existingLabourReceipts[e.id]) || '';
       if(e.receiptData){
         const uploaded = uploadReceiptToDrive_(e.receiptData, e.receiptName || ((e.id || 'receipt') + '.jpg'), RECEIPT_FOLDERS.labour);
-        if(uploaded) receiptUrl = uploaded;
+        if(uploaded){ trashOldReceiptIfReplaced_(receiptUrl, uploaded); receiptUrl = uploaded; }
       }
       const entryFields = {
         RowType: 'Entry', Rate: w.rate || 0, EntryId: e.id || '', Date: e.date || '', Time: to12Hour_(e.time || ''),
@@ -1925,6 +1932,17 @@ function saveAll_(data){
     [12], null, null, confirmedEmpty.products
   );
 
+  // ADD (2026-09-08): Items — same recipe-as-JSON-column pattern as
+  // Products just above, deliberately much simpler (no cat/price/color/
+  // weight/size/cost/stock/reorderLevel, none of which apply to a
+  // job-work tracking item).
+  safeWriteRows_(SHEETS.items,
+    ['id','name','device','recipe'],
+    (data.items || []).map(it => [it.id, it.name, it.device || '', JSON.stringify(it.recipe || [])]),
+    [3], null, null, confirmedEmpty.items
+  );
+
+
   // Sales Summary — one row per period (Daily, Last Day, Weekly, Last Week,
   // Monthly, Last Month, Yearly, Last Year), recomputed fresh on every save
   // so it always reflects the current date when it was last synced.
@@ -2014,7 +2032,7 @@ function saveAll_(data){
       let receiptUrl = (e.id && existingCustomerReceipts[e.id]) || '';
       if(e.receiptData){
         const uploaded = uploadReceiptToDrive_(e.receiptData, e.receiptName || ((e.id || 'receipt') + '.jpg'), RECEIPT_FOLDERS.customerLedger);
-        if(uploaded) receiptUrl = uploaded;
+        if(uploaded){ trashOldReceiptIfReplaced_(receiptUrl, uploaded); receiptUrl = uploaded; }
       }
       customerLedgerRows.push([c.name, e.id || '', e.date || '', to12Hour_(e.time || ''), e.desc || '', e.debit || 0, e.credit || 0, running, e.method || '', e.detail || '', e.chequeDate || '', e.chequeStatus || '', receiptUrl, '', e.txnId || '', e.device || '', e.receivedBy || '', e.receivedIn || '']);
       customerRowColors.push(chequeRowColor_(e));
@@ -2102,7 +2120,7 @@ function saveAll_(data){
       let receiptUrl = (e.id && existingCustomLedgerReceipts[e.id]) || '';
       if(e.receiptData){
         const uploaded = uploadReceiptToDrive_(e.receiptData, e.receiptName || ((e.id || 'receipt') + '.jpg'), RECEIPT_FOLDERS.customLedgerEntries);
-        if(uploaded) receiptUrl = uploaded;
+        if(uploaded){ trashOldReceiptIfReplaced_(receiptUrl, uploaded); receiptUrl = uploaded; }
       }
       customLedgerRows.push([
         cl.name, e.id || '', e.date || '', to12Hour_(e.time || ''), e.desc || '',
@@ -2175,10 +2193,26 @@ function saveAll_(data){
     (data.expenses || []).map(x => {
       let receiptUrl = (x.id && existingExpenseReceipts[x.id]) || '';
       if(x.receiptRemoved){
+        // Same orphan problem as a replace (trashOldReceiptIfReplaced_'s
+        // own comment above explains it), just triggered by explicit
+        // removal instead of a new upload — the old file was never
+        // getting cleaned up here either, only the sheet's own pointer
+        // to it was being cleared.
+        if(receiptUrl){
+          const removedFileId = extractDriveFileId_(receiptUrl);
+          if(removedFileId){
+            try{
+              DriveApp.getFileById(removedFileId).setTrashed(true);
+              Logger.log('[receipt-remove] trashed removed receipt file (id=' + removedFileId + ')');
+            }catch(err){
+              Logger.log('[receipt-remove] could not trash removed receipt file (id=' + removedFileId + '): ' + err);
+            }
+          }
+        }
         receiptUrl = '';
       } else if(x.receiptData){
         const uploaded = uploadReceiptToDrive_(x.receiptData, x.receiptName || ((x.id || 'receipt') + '.jpg'), RECEIPT_FOLDERS.expenses);
-        if(uploaded) receiptUrl = uploaded;
+        if(uploaded){ trashOldReceiptIfReplaced_(receiptUrl, uploaded); receiptUrl = uploaded; }
       }
       return [x.id || '', x.date, x.desc, x.category, x.amount, receiptUrl, x.method || '', x.detail || '', '', x.device || ''];
     }),
@@ -2402,6 +2436,31 @@ function isHttpUrl_(v){
 // typical photo blows past easily — so Drive + a link in the cell is the
 // robust approach. See RECEIPT_FOLDERS near the top of the file for which
 // folder each section uses.
+// ADD (2026-09-08, user report: replacing a receipt uploads the new file
+// correctly, but the OLD one was never being deleted anywhere — every
+// "replace" left an orphaned file behind in Drive forever, invisible to
+// the sheet (which only ever stores the current/latest URL) but still
+// sitting in the folder, which is exactly what was cluttering Gallery's
+// own listing with old, no-longer-referenced files. Trashes (not
+// permanently deletes — recoverable from Drive's own Trash for 30 days,
+// matching the same safety margin every other cleanup in this file
+// already uses) the PREVIOUS file only when a genuinely NEW, different
+// one is actually replacing it — never touches anything if the value
+// didn't actually change, and a failure to trash (already gone,
+// permission issue, anything) is caught and logged but never allowed to
+// block or fail the actual save itself, which must always succeed
+// regardless of whether this cleanup does.
+function trashOldReceiptIfReplaced_(oldUrl, newUrl){
+  if(!oldUrl || !newUrl || oldUrl === newUrl) return;
+  const oldFileId = extractDriveFileId_(oldUrl);
+  if(!oldFileId) return;
+  try{
+    DriveApp.getFileById(oldFileId).setTrashed(true);
+    Logger.log('[receipt-replace] trashed old receipt file (id=' + oldFileId + '), superseded by a new upload');
+  }catch(err){
+    Logger.log('[receipt-replace] could not trash old receipt file (id=' + oldFileId + '): ' + err);
+  }
+}
 function getReceiptsFolder_(folderName){
   const name = folderName || RECEIPT_FOLDERS.expenses;
   const folders = DriveApp.getFoldersByName(name);
@@ -2982,6 +3041,7 @@ function loadAll_(){
     customerPayments: readCustomerPayments_(),
     inventory: inventory,
     products: readProducts_(),
+    items: readItems_(),
     factories: readFactories_(),
     expenses: readExpenses_(),
     expenseCategories: readExpenseCategories_(),
@@ -3701,6 +3761,21 @@ function readProducts_(){
       catch(e){ /* older row / malformed cell — leave p.recipe unset */ }
     }
     return p;
+  });
+}
+
+// ADD (2026-09-08): mirrors readProducts_ above, deliberately simpler —
+// no cat/price/color/weight/size/cost/stock/reorderLevel, this list is
+// only ever a name and a raw-material recipe.
+function readItems_(){
+  return readTable_(SHEETS.items).map(r => {
+    const it = { id: Number(r.id), name: r.name };
+    if(r.device) it.device = r.device;
+    if(r.recipe){
+      try{ const parsed = JSON.parse(r.recipe); if(Array.isArray(parsed) && parsed.length) it.recipe = parsed; }
+      catch(e){ /* older row / malformed cell — leave it.recipe unset */ }
+    }
+    return it;
   });
 }
 

@@ -88,6 +88,27 @@ class WhisperVoicePlugin : Plugin() {
         // handles fine; a future version could add real silence detection
         // to cut this short automatically.
         private const val MAX_RECORD_SECONDS = 8
+        // ADD (2026-09-08, user report: "listening interval too much, it
+        // doesn't get and react" — the mic always recorded for the full
+        // fixed window no matter how quickly the person actually finished
+        // speaking, feeling slow/unresponsive before processing could even
+        // start). Simple amplitude-based voice-activity detection: once
+        // real speech has been heard, stop recording early after a short
+        // period of genuine silence, rather than always waiting out the
+        // full MAX_RECORD_SECONDS regardless of what's actually happening.
+        // MIN_RECORD_SECONDS guards against stopping instantly during the
+        // natural brief pause before someone starts speaking — early-stop
+        // is only even considered once this much time has passed.
+        private const val MIN_RECORD_SECONDS = 1.0
+        // Silence held continuously for this long, AFTER speech was heard,
+        // is treated as "done talking" — short enough to feel responsive,
+        // long enough not to cut off a person\u0027s natural mid-sentence pause.
+        private const val SILENCE_STOP_SECONDS = 1.2
+        // 16-bit PCM samples range \u00b132767; genuine speech is typically
+        // several thousand in amplitude, normal background/room noise is
+        // usually well under this \u2014 conservative enough to avoid a quiet
+        // room falsely registering as "speech detected".
+        private const val SPEECH_AMPLITUDE_THRESHOLD = 800
         // How often a progress event is emitted at minimum — every 1%,
         // not on every single buffer read, so a fast WiFi download
         // doesn't flood the JS bridge with hundreds of events per second.
@@ -383,15 +404,37 @@ class WhisperVoicePlugin : Plugin() {
             AudioFormat.ENCODING_PCM_16BIT, minBufSize * 4
         )
         val maxSamples = SAMPLE_RATE * MAX_RECORD_SECONDS
+        val minSamplesBeforeEarlyStop = (SAMPLE_RATE * MIN_RECORD_SECONDS).toInt()
+        val silenceSamplesToStop = (SAMPLE_RATE * SILENCE_STOP_SECONDS).toInt()
         val buffer = ShortArray(maxSamples)
         var samplesRead = 0
+        var hasDetectedSpeech = false
+        var silentSamplesInARow = 0
         isRecording = true
         record.startRecording()
         try {
             while (isRecording && samplesRead < maxSamples) {
                 val toRead = minOf(minBufSize, maxSamples - samplesRead)
                 val n = record.read(buffer, samplesRead, toRead)
-                if (n > 0) samplesRead += n else break
+                if (n <= 0) break
+                // Peak absolute amplitude of just this chunk — cheap and
+                // sufficient for a simple loud/quiet decision, no need for
+                // a full RMS calculation for this purpose.
+                var chunkPeak = 0
+                for (i in samplesRead until samplesRead + n) {
+                    val abs = kotlin.math.abs(buffer[i].toInt())
+                    if (abs > chunkPeak) chunkPeak = abs
+                }
+                samplesRead += n
+                if (chunkPeak >= SPEECH_AMPLITUDE_THRESHOLD) {
+                    hasDetectedSpeech = true
+                    silentSamplesInARow = 0
+                } else {
+                    silentSamplesInARow += n
+                }
+                if (hasDetectedSpeech && samplesRead >= minSamplesBeforeEarlyStop && silentSamplesInARow >= silenceSamplesToStop) {
+                    break
+                }
             }
         } finally {
             isRecording = false
