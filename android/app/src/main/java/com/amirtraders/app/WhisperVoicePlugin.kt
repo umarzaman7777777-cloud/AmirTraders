@@ -326,6 +326,54 @@ class WhisperVoicePlugin : Plugin() {
         call.resolve()
     }
 
+    // ADD (2026-09-10, user report: "mic says timeout but didn't react and
+    // process my voice"). Root cause: start() below used to load the
+    // ~139MB Whisper model into memory synchronously before it ever
+    // started recording, but the JS side showed "Listening…" the instant
+    // the mic button was tapped — so for however long model-loading took,
+    // the app *looked* like it was listening while it genuinely wasn't,
+    // and the JS side's fixed timeout could expire before recording even
+    // began, abandoning the whole attempt with nothing ever transcribed.
+    // This lets the JS side warm the model up ahead of time (right after
+    // app start, once the model file is known to be downloaded — see
+    // index.html), so that by the time the mic is actually tapped,
+    // start() below usually only has to record + transcribe, not also
+    // load a large model first. Emits modelLoadStart so the JS side can
+    // show an honest "loading" status for the rare case a tap arrives
+    // before the background preload has finished.
+    @PluginMethod
+    fun preloadModel(call: PluginCall) {
+        val file = modelFile()
+        if (!file.exists() || file.length() == 0L) {
+            call.reject("model-not-downloaded")
+            return
+        }
+        if (whisperContext != null) {
+            call.resolve()
+            return
+        }
+        pluginScope.launch {
+            try {
+                notifyListeners("modelLoadStart", JSObject())
+                whisperContext = WhisperContext.createContextFromFile(file.absolutePath)
+                withContext(Dispatchers.Main) { call.resolve() }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    call.reject("model-load-failed: " + (e.message ?: e.toString()))
+                }
+            }
+        }
+    }
+
+    // Lets the JS side check the model's already-loaded (not just
+    // downloaded) state without triggering a load itself.
+    @PluginMethod
+    fun isModelLoaded(call: PluginCall) {
+        val ret = JSObject()
+        ret.put("loaded", whisperContext != null)
+        call.resolve(ret)
+    }
+
     // Shaped to match @capacitor-community/speech-recognition's own
     // start() result ({ matches: [...] }) so the existing JS call site
     // needs only a minimal change, not a rewrite of its result handling.
@@ -362,9 +410,20 @@ class WhisperVoicePlugin : Plugin() {
                 // Loaded once, reused across calls — reloading a ~139MB
                 // model on every single mic tap would make each command
                 // noticeably slower than it needs to be after the first.
+                // Normally this has already happened via the JS side's
+                // background preloadModel() call (see there for why), so
+                // this is just a safety net for whenever that hasn't run
+                // or hasn't finished yet.
                 if (whisperContext == null) {
+                    withContext(Dispatchers.Main) { notifyListeners("modelLoadStart", JSObject()) }
                     whisperContext = WhisperContext.createContextFromFile(file.absolutePath)
                 }
+                // Fires only once the model is actually loaded and audio
+                // capture is about to begin — this is the point the JS
+                // side's "Listening…" status is genuinely true, unlike
+                // before when that text was shown the instant the mic
+                // button was tapped, well before recording had started.
+                withContext(Dispatchers.Main) { notifyListeners("recordingStarted", JSObject()) }
                 val audio = recordAudio()
                 if (audio.isEmpty()) {
                     withContext(Dispatchers.Main) { call.reject("no-speech") }
