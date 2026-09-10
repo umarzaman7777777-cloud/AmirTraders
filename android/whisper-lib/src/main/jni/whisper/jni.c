@@ -192,6 +192,23 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_fullTranscribe(
     params.offset_ms = 0;
     params.no_context = true;
     params.single_segment = false;
+    // FIX (2026-09-09, user report: voice commands reliably time out at
+    // 60s with "recognition-timed-out" in the error log). Root cause:
+    // whisper's encoder always processes a fixed audio_ctx-sized window
+    // regardless of how much real audio it was given — left at its
+    // default (0 = full 1500, i.e. the full 30-second window), every
+    // single command paid encoder cost for 30 seconds of mostly silence,
+    // even a 2-second "Open Paint Ledger". The app's own recorder
+    // (WhisperVoicePlugin.kt, MAX_RECORD_SECONDS) already hard-caps
+    // recording at 8 seconds, so there is never a reason to pay for more
+    // than that. 512 audio_ctx frames covers ~10.24s (20ms/frame after
+    // the encoder's internal 2x downsampling) — comfortable headroom
+    // over the 8s cap without wasting time on unused window. This is a
+    // real whisper.cpp-supported speed knob (see whisper.h's audio_ctx
+    // field), not a workaround — same model, same weights, same
+    // accuracy for anything that actually fits in 8 seconds; it only
+    // stops the encoder from analyzing silence nobody recorded.
+    params.audio_ctx = 512;
 
     whisper_reset_timings(context);
 

@@ -38,9 +38,15 @@ public class MainActivity extends BridgeActivity {
     // but a project-local plugin like this one, not published to npm,
     // needs this explicit registerPlugin() call instead, made before
     // super.onCreate() per Capacitor's own documented registration order.
+    //
+    // ADD (2026-09-09, voice reply feature): AppTtsPlugin.kt, same
+    // reasoning and same registration requirement as WhisperVoicePlugin
+    // above — project-local, not npm-published, so it needs the explicit
+    // call too.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(WhisperVoicePlugin.class);
+        registerPlugin(AppTtsPlugin.class);
         super.onCreate(savedInstanceState);
         View content = findViewById(android.R.id.content);
         ViewCompat.setOnApplyWindowInsetsListener(content, (v, windowInsets) -> {

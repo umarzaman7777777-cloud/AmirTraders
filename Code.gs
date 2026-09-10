@@ -854,13 +854,59 @@ function getBackupEmailAddress_(){
   if(override) return override;
   return Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
 }
+// ADD (2026-09-09, user report + real cause traced together): fixes
+// "every backup creates a new Untitled project". Root cause: the live
+// Data Guard spreadsheet has THIS Apps Script project bound to it —
+// DriveApp.makeCopy() on a spreadsheet with a bound script ALWAYS
+// duplicates that bound script into its own brand-new, unnamed container
+// too, as an automatic side effect of copying the file itself. There is
+// no flag on makeCopy() anywhere to suppress this — it was never
+// something this code was doing wrong, it's inherent to copying a
+// script-bound spreadsheet at the file level at all.
+// The real fix: stop copying the FILE. Build the backup by copying only
+// the underlying sheets/data into a brand-new, blank spreadsheet that
+// was never associated with any script — Sheet.copyTo() operates one tab
+// at a time and carries no bound script with it, unlike File.makeCopy().
+// Same tabs, same data, same formatting; zero bound script, so zero new
+// "Untitled project" appears anywhere, ever again.
+function makeScriptlessBackupCopy_(sourceSpreadsheet, name, folder){
+  const newSpreadsheet = SpreadsheetApp.create(name);
+  // SpreadsheetApp.create() always creates the file in Drive's own root
+  // folder — there's no folder parameter on the call itself — so it has
+  // to be moved into the real backup folder right after creation.
+  const newFile = DriveApp.getFileById(newSpreadsheet.getId());
+  folder.addFile(newFile);
+  DriveApp.getRootFolder().removeFile(newFile);
+  // A brand-new spreadsheet always starts with exactly one default blank
+  // sheet — keep a reference to it now, so it can be removed once every
+  // REAL sheet has been copied in (a spreadsheet can never be left with
+  // zero sheets, so this can't be deleted until at least one other real
+  // sheet already exists in newSpreadsheet).
+  const placeholderSheet = newSpreadsheet.getSheets()[0];
+  sourceSpreadsheet.getSheets().forEach(function(sheet){
+    // copyTo() names its result "Copy of <original name>" — renamed back
+    // to the real tab name right after, so the backup's own tabs read
+    // identically to the live sheet's (Transactions, PaintLedger, etc.),
+    // not a wall of "Copy of ..." labels.
+    const copied = sheet.copyTo(newSpreadsheet);
+    copied.setName(sheet.getName());
+  });
+  newSpreadsheet.deleteSheet(placeholderSheet);
+  return newFile;
+}
 function sendBackupEmail_(){
   const email = getBackupEmailAddress_();
   if(!email) return;
   const folder = getBackupFolder_();
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'GMT+5', 'dd-MMM-yyyy HH-mm');
-  const original = DriveApp.getFileById(SHEET_ID);
-  const copy = original.makeCopy(BUSINESS_NAME + ' Backup — ' + stamp, folder);
+  // FIX (2026-09-09): was DriveApp.getFileById(SHEET_ID).makeCopy(...) —
+  // see makeScriptlessBackupCopy_'s own comment just above for exactly
+  // why that always spawned a new, unwanted "Untitled project" Apps
+  // Script container alongside every single backup. `copy` here is still
+  // a real DriveApp File either way (see makeScriptlessBackupCopy_'s own
+  // return value), so copy.getUrl() below needed no change at all.
+  const sourceSpreadsheet = SpreadsheetApp.openById(SHEET_ID);
+  const copy = makeScriptlessBackupCopy_(sourceSpreadsheet, BUSINESS_NAME + ' Backup — ' + stamp, folder);
   pruneOldBackups_(folder, 10);
   MailApp.sendEmail({
     to: email,
