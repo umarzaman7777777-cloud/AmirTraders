@@ -15,8 +15,10 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
 import com.whispercpp.whisper.WhisperContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -119,6 +121,18 @@ class WhisperVoicePlugin : Plugin() {
     private val pluginScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     @Volatile private var isRecording = false
     @Volatile private var downloadCancelled = false
+    // ADD (2026-09-10, bug report: "voice box remains open, not processing
+    // my voice"). Root cause: the JS side's own timeout was shorter than
+    // record (up to 8s) + on-device inference could genuinely take on a
+    // real phone, so it gave up and showed an error while this coroutine
+    // kept running in the background — its eventual result/error was
+    // silently dropped, and isRecording could be left stuck, causing the
+    // *next* mic tap to fail with "already-recording" too. currentJob lets
+    // stop() actually cancel the in-flight work instead of abandoning it;
+    // activeCallToken lets a cancelled call's late completion recognize
+    // it's stale and skip resolving/rejecting the (already-timed-out) call.
+    private var currentJob: Job? = null
+    @Volatile private var activeCallToken: Long = 0
 
     private fun modelFile(): File = File(context.filesDir, MODEL_FILENAME)
     private fun partialFile(): File = File(context.filesDir, "$MODEL_FILENAME.part")
@@ -405,7 +419,8 @@ class WhisperVoicePlugin : Plugin() {
             call.reject("already-recording")
             return
         }
-        pluginScope.launch {
+        val myToken = ++activeCallToken
+        currentJob = pluginScope.launch {
             try {
                 // Loaded once, reused across calls — reloading a ~139MB
                 // model on every single mic tap would make each command
@@ -425,13 +440,21 @@ class WhisperVoicePlugin : Plugin() {
                 // button was tapped, well before recording had started.
                 withContext(Dispatchers.Main) { notifyListeners("recordingStarted", JSObject()) }
                 val audio = recordAudio()
+                if (myToken != activeCallToken) return@launch // cancelled/stale — JS already gave up on this call
                 if (audio.isEmpty()) {
                     withContext(Dispatchers.Main) { call.reject("no-speech") }
                     return@launch
                 }
+                // ADD: lets the JS side switch its status text from
+                // "Listening…" to something that reflects what's actually
+                // happening now — on-device inference on a real phone can
+                // take several more seconds after recording ends, and
+                // without this the mic modal looked frozen the whole time.
+                withContext(Dispatchers.Main) { notifyListeners("transcribing", JSObject()) }
                 // printTimestamp = false: this app wants plain command
                 // text, not a timestamped transcript.
                 val text = whisperContext!!.transcribeData(audio, printTimestamp = false)
+                if (myToken != activeCallToken) return@launch // JS timed out while we were transcribing — drop this result
                 val cleaned = text.trim()
                 if (cleaned.isEmpty()) {
                     withContext(Dispatchers.Main) { call.reject("no-speech") }
@@ -444,8 +467,14 @@ class WhisperVoicePlugin : Plugin() {
                     ret.put("matches", arr)
                     call.resolve(ret)
                 }
+            } catch (e: CancellationException) {
+                // Expected when stop() cancels this job (JS-side timeout) — not a real error, nothing to report.
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { call.reject("transcribe-failed: " + (e.message ?: e.toString())) }
+                if (myToken == activeCallToken) {
+                    withContext(Dispatchers.Main) { call.reject("transcribe-failed: " + (e.message ?: e.toString())) }
+                }
+            } finally {
+                isRecording = false
             }
         }
     }
@@ -506,6 +535,9 @@ class WhisperVoicePlugin : Plugin() {
     @PluginMethod
     fun stop(call: PluginCall) {
         isRecording = false
+        activeCallToken++ // invalidates the in-flight call's token so its late completion is dropped
+        currentJob?.cancel()
+        currentJob = null
         call.resolve()
     }
 
