@@ -133,6 +133,23 @@ class WhisperVoicePlugin : Plugin() {
     // it's stale and skip resolving/rejecting the (already-timed-out) call.
     private var currentJob: Job? = null
     @Volatile private var activeCallToken: Long = 0
+    // FIX (2026-09-11, root cause of repeated "recognition-timed-out"
+    // errors): `isRecording` only covers the audio-capture phase — it
+    // flips back to false the moment recordAudio() returns, even though
+    // transcribeData() (the slow part, and the part actually responsible
+    // for exceeding the JS side's timeout on real devices) keeps running
+    // after that. Coroutine cancel() is cooperative and recordAudio()/
+    // transcribeData() are blocking native calls with no cancellation
+    // checkpoints inside them, so a "cancelled" (JS-timed-out) job keeps
+    // running for real in the background. Without a guard spanning the
+    // WHOLE call (not just capture), a second mic tap during that window
+    // could start a second transcribeData() call reusing the same
+    // whisperContext concurrently — whisper.cpp contexts aren't safe for
+    // that, which is the likely reason the error log shows repeated
+    // timeouts rather than one isolated slow one. isBusy now spans
+    // beginTranscription()'s entire lifetime and is the sole guard used
+    // to reject an overlapping call.
+    @Volatile private var isBusy = false
 
     private fun modelFile(): File = File(context.filesDir, MODEL_FILENAME)
     private fun partialFile(): File = File(context.filesDir, "$MODEL_FILENAME.part")
@@ -415,10 +432,17 @@ class WhisperVoicePlugin : Plugin() {
             call.reject("model-not-downloaded")
             return
         }
-        if (isRecording) {
-            call.reject("already-recording")
+        if (isBusy) {
+            // More accurate than "already-recording" now that this guard
+            // spans transcription too — a previous call's inference may
+            // still be finishing in the background even though the JS
+            // side already gave up on it. The JS side can show a
+            // friendlier "still working on the last command" message
+            // for this specific reason.
+            call.reject("still-processing")
             return
         }
+        isBusy = true
         val myToken = ++activeCallToken
         currentJob = pluginScope.launch {
             try {
@@ -475,6 +499,7 @@ class WhisperVoicePlugin : Plugin() {
                 }
             } finally {
                 isRecording = false
+                isBusy = false
             }
         }
     }
