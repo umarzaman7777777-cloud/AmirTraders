@@ -17,9 +17,11 @@ import com.getcapacitor.annotation.PermissionCallback
 import com.whispercpp.whisper.WhisperContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -150,6 +152,57 @@ class WhisperVoicePlugin : Plugin() {
     // beginTranscription()'s entire lifetime and is the sole guard used
     // to reject an overlapping call.
     @Volatile private var isBusy = false
+
+    // FIX (2026-09-12, user report: "voice box always open with didn't
+    // catch and timeout error without listening to my new voice command").
+    // Root cause: preloadModel() is fired once in the background right
+    // after app start (see index.html), and its coroutine keeps running
+    // regardless of what the JS side does with the returned promise. The
+    // JS side then calls preloadModel() a SECOND time when the mic is
+    // tapped (racing it against its own 20s wait), and beginTranscription
+    // itself could start a THIRD load if whisperContext was still null at
+    // that point. Each of those checked only `whisperContext == null` and
+    // then unconditionally started its own
+    // `WhisperContext.createContextFromFile()` — so on a slow first run
+    // (or a quick re-tap before the background preload finished), two or
+    // three concurrent loads of the same ~139MB model could end up
+    // running at once, fighting over memory/CPU. That easily runs past
+    // the JS side's 60s recognition timeout — and since recordAudio()
+    // never even starts until a load finishes, the mic box sits there
+    // "listening" while nothing is actually being recorded, and the
+    // attempt eventually fails with a timeout with no chance to have
+    // caught anything the person said.
+    // modelLoadJob makes every call site (background preload, mic-tap
+    // preload, and beginTranscription's own fallback) share the SAME
+    // in-flight load instead of racing separate ones: the first caller
+    // starts it, everyone else just awaits that one job.
+    private val modelLoadLock = Any()
+    @Volatile private var modelLoadJob: Deferred<WhisperContext>? = null
+
+    private fun ensureModelLoaded(file: File): Deferred<WhisperContext> {
+        whisperContext?.let { existing ->
+            return pluginScope.async { existing }
+        }
+        synchronized(modelLoadLock) {
+            whisperContext?.let { existing ->
+                return pluginScope.async { existing }
+            }
+            modelLoadJob?.let { return it }
+            val job = pluginScope.async {
+                withContext(Dispatchers.Main) { notifyListeners("modelLoadStart", JSObject()) }
+                val ctx = WhisperContext.createContextFromFile(file.absolutePath)
+                whisperContext = ctx
+                ctx
+            }
+            job.invokeOnCompletion {
+                synchronized(modelLoadLock) {
+                    if (modelLoadJob === job) modelLoadJob = null
+                }
+            }
+            modelLoadJob = job
+            return job
+        }
+    }
 
     private fun modelFile(): File = File(context.filesDir, MODEL_FILENAME)
     private fun partialFile(): File = File(context.filesDir, "$MODEL_FILENAME.part")
@@ -385,8 +438,11 @@ class WhisperVoicePlugin : Plugin() {
         }
         pluginScope.launch {
             try {
-                notifyListeners("modelLoadStart", JSObject())
-                whisperContext = WhisperContext.createContextFromFile(file.absolutePath)
+                // Shares one in-flight load with any other caller (the
+                // background startup preload, or a concurrent mic tap)
+                // instead of starting a second, competing native load of
+                // the same model — see ensureModelLoaded's comment.
+                ensureModelLoaded(file).await()
                 withContext(Dispatchers.Main) { call.resolve() }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -453,9 +509,11 @@ class WhisperVoicePlugin : Plugin() {
                 // background preloadModel() call (see there for why), so
                 // this is just a safety net for whenever that hasn't run
                 // or hasn't finished yet.
+                // Shares the same in-flight load as preloadModel() rather
+                // than starting a second concurrent one — see
+                // ensureModelLoaded's comment for why that mattered.
                 if (whisperContext == null) {
-                    withContext(Dispatchers.Main) { notifyListeners("modelLoadStart", JSObject()) }
-                    whisperContext = WhisperContext.createContextFromFile(file.absolutePath)
+                    ensureModelLoaded(file).await()
                 }
                 // Fires only once the model is actually loaded and audio
                 // capture is about to begin — this is the point the JS
