@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
@@ -117,6 +118,13 @@ class WhisperVoicePlugin : Plugin() {
         // not on every single buffer read, so a fast WiFi download
         // doesn't flood the JS bridge with hundreds of events per second.
         private const val PROGRESS_STEP_PERCENT = 1
+        // FIX (2026-09-13): a genuinely well-formed ~139MB model loads in
+        // a few seconds even on modest hardware — 25s is generous headroom
+        // for a slow phone while still being far short of the JS side's
+        // 60s recognition timeout, so a hang gets caught and reported by
+        // THIS layer (with a clear, specific reason) rather than silently
+        // surfacing as just another generic "recognition-timed-out".
+        private const val MODEL_LOAD_TIMEOUT_MS = 25000L
     }
 
     private var whisperContext: WhisperContext? = null
@@ -190,7 +198,27 @@ class WhisperVoicePlugin : Plugin() {
             modelLoadJob?.let { return it }
             val job = pluginScope.async {
                 withContext(Dispatchers.Main) { notifyListeners("modelLoadStart", JSObject()) }
-                val ctx = WhisperContext.createContextFromFile(file.absolutePath)
+                // FIX (2026-09-13): createContextFromFile is a blocking
+                // native/JNI call into whisper.cpp with no cancellation
+                // checkpoints of its own, so withTimeoutOrNull can't
+                // actually interrupt it mid-call if it's truly hung on a
+                // bad file — but it DOES stop this coroutine from waiting
+                // on it forever, which is what was leaving the mic stuck
+                // on "Listening…" indefinitely. Running it on Dispatchers.IO
+                // (rather than the plugin's default dispatcher) keeps a
+                // hung load from starving other coroutine work too.
+                val ctx = withTimeoutOrNull(MODEL_LOAD_TIMEOUT_MS) {
+                    withContext(Dispatchers.IO) {
+                        WhisperContext.createContextFromFile(file.absolutePath)
+                    }
+                } ?: run {
+                    // Whatever this file is, it isn't safely usable —
+                    // delete it and its meta so the very next attempt
+                    // starts a clean, verified re-download instead of
+                    // hitting this exact same hang again.
+                    deleteUnverifiedModel()
+                    throw java.io.IOException("model-load-timeout: native load did not return within ${MODEL_LOAD_TIMEOUT_MS}ms")
+                }
                 whisperContext = ctx
                 ctx
             }
@@ -211,6 +239,69 @@ class WhisperVoicePlugin : Plugin() {
     // compared against on checkForUpdate to detect a real revision
     // without downloading the file itself.
     private fun modelMetaFile(): File = File(context.filesDir, "$MODEL_FILENAME.meta")
+
+    // FIX (2026-09-13, user report: voice always goes straight to
+    // "Listening…" with no download bar, "Check for Voice Model Updates"
+    // says up to date, but recognition has NEVER once worked and always
+    // times out). Root cause: isModelReady() only ever checked
+    // exists()/length()>0 — it trusted ANY file at this path, including
+    // one left behind by an older/unverified code path (this plugin's own
+    // download logic didn't always verify completeness — see the download
+    // rewrite history above). A truncated/corrupt model file handed to
+    // WhisperContext.createContextFromFile() (native whisper.cpp/GGML
+    // code) can hang indefinitely with no exception ever thrown back to
+    // Kotlin — so preloadModel()'s coroutine just never completes, the
+    // mic sits on "Listening…" forever, and the JS side's 60s timeout
+    // fires every single time, with nothing ever actually attempted.
+    // modelMetaFile() now stores BOTH the ETag/Last-Modified tag (line 1)
+    // and the exact expected byte size (line 2) — written only once
+    // downloadModel() has itself verified the downloaded bytes match the
+    // server's reported Content-Length (see downloadModel below).
+    // isModelReady()/isModelFileVerified() below now require a match
+    // against that stored size, not just "a file exists" — a file that
+    // predates this fix (no meta, or a size mismatch) is treated as NOT
+    // ready, which makes the JS side show the real download progress bar
+    // and fetch a verified copy instead of trusting a possibly-broken one
+    // forever.
+    private fun readModelMeta(): Pair<String, Long>? {
+        val f = modelMetaFile()
+        if (!f.exists()) return null
+        val lines = try { f.readText().trim().lines() } catch (e: Exception) { return null }
+        if (lines.isEmpty()) return null
+        val tag = lines[0]
+        val size = lines.getOrNull(1)?.toLongOrNull() ?: return null
+        return tag to size
+    }
+
+    private fun writeModelMeta(tag: String, size: Long) {
+        try {
+            modelMetaFile().writeText("$tag\n$size")
+        } catch (e: Exception) {
+            // Non-fatal — worst case, the next isModelReady() call treats
+            // the file as unverified and re-downloads it, which is safe.
+        }
+    }
+
+    // A model file only counts as trustworthy when its size exactly
+    // matches what downloadModel() itself confirmed and recorded — never
+    // just "exists and is non-empty". Deletes the untrusted file+meta so
+    // nothing else in the app can accidentally treat it as usable either.
+    private fun isModelFileVerified(): Boolean {
+        val file = modelFile()
+        if (!file.exists() || file.length() <= 0) return false
+        val meta = readModelMeta()
+        if (meta == null || meta.second != file.length()) {
+            deleteUnverifiedModel()
+            return false
+        }
+        return true
+    }
+
+    private fun deleteUnverifiedModel() {
+        try { modelFile().delete() } catch (e: Exception) {}
+        try { modelMetaFile().delete() } catch (e: Exception) {}
+        whisperContext = null
+    }
 
     private fun isWifiConnected(): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
@@ -233,7 +324,7 @@ class WhisperVoicePlugin : Plugin() {
     @PluginMethod
     fun isModelReady(call: PluginCall) {
         val ret = JSObject()
-        ret.put("ready", modelFile().exists() && modelFile().length() > 0)
+        ret.put("ready", isModelFileVerified())
         call.resolve(ret)
     }
 
@@ -258,10 +349,14 @@ class WhisperVoicePlugin : Plugin() {
     // download.
     @PluginMethod
     fun checkForUpdate(call: PluginCall) {
-        if (!modelFile().exists() || modelFile().length() == 0L) {
-            // Nothing downloaded yet — this isn't an "update" question,
-            // it's a first-download question, which isModelReady/
-            // downloadModel already handle.
+        if (!isModelFileVerified()) {
+            // Nothing downloaded (or verified) yet — this isn't an
+            // "update" question, it's a first-download question, which
+            // isModelReady/downloadModel already handle. Also covers the
+            // unverified-legacy-file case: isModelFileVerified() already
+            // deleted it above, so this correctly stops reporting a false
+            // "up to date" for a file that was never actually confirmed
+            // complete.
             val ret = JSObject()
             ret.put("updateAvailable", false)
             ret.put("reason", "no-model-yet")
@@ -283,7 +378,7 @@ class WhisperVoicePlugin : Plugin() {
                 }
                 val remoteTag = conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified") ?: ""
                 val remoteSize = conn.contentLengthLong
-                val storedTag = if (modelMetaFile().exists()) modelMetaFile().readText().trim() else ""
+                val storedTag = readModelMeta()?.first ?: ""
                 val ret = JSObject()
                 // Only reports an update as available when there's an
                 // actual, comparable tag on both sides and they differ —
@@ -320,11 +415,11 @@ class WhisperVoicePlugin : Plugin() {
             call.reject("wifi-required")
             return
         }
-        val file = modelFile()
-        if (file.exists() && file.length() > 0) {
+        if (isModelFileVerified()) {
             call.resolve()
             return
         }
+        val file = modelFile()
         downloadCancelled = false
         pluginScope.launch {
             var conn: HttpURLConnection? = null
@@ -381,6 +476,24 @@ class WhisperVoicePlugin : Plugin() {
                     return@launch
                 }
 
+                // FIX (2026-09-13): verify the bytes actually on disk match
+                // what the server told us to expect BEFORE trusting this as
+                // a real, usable model — this is the check that was
+                // missing before, which let a truncated/interrupted
+                // download quietly become the "ready" model file and hang
+                // native loading forever on every future attempt with no
+                // error ever surfacing. Only checked when totalBytes is
+                // known (>0); a server that never reported a length can't
+                // be verified this way, so such a download is rejected
+                // outright rather than trusted blind.
+                if (totalBytes <= 0 || tmp.length() != totalBytes) {
+                    tmp.delete()
+                    withContext(Dispatchers.Main) {
+                        call.reject("download-incomplete: expected $totalBytes bytes, got ${tmp.length()}")
+                    }
+                    return@launch
+                }
+
                 // ETag captured BEFORE disconnect() — some connection
                 // implementations invalidate header access once closed.
                 val tag = conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified") ?: ""
@@ -388,7 +501,13 @@ class WhisperVoicePlugin : Plugin() {
                 if (!tmp.renameTo(file)) {
                     throw java.io.IOException("Could not finalize downloaded model file")
                 }
-                if (tag.isNotEmpty()) modelMetaFile().writeText(tag)
+                // Meta is only ever written here, AFTER the size check
+                // above passes — this is precisely what makes
+                // isModelFileVerified() trustworthy: a file with no
+                // matching meta was never confirmed complete by this code
+                // path, so it's always treated as unverified rather than
+                // silently assumed good.
+                writeModelMeta(tag, file.length())
 
                 withContext(Dispatchers.Main) { call.resolve() }
             } catch (e: Exception) {
@@ -428,7 +547,7 @@ class WhisperVoicePlugin : Plugin() {
     @PluginMethod
     fun preloadModel(call: PluginCall) {
         val file = modelFile()
-        if (!file.exists() || file.length() == 0L) {
+        if (!isModelFileVerified()) {
             call.reject("model-not-downloaded")
             return
         }
@@ -484,7 +603,7 @@ class WhisperVoicePlugin : Plugin() {
 
     private fun beginTranscription(call: PluginCall) {
         val file = modelFile()
-        if (!file.exists() || file.length() == 0L) {
+        if (!isModelFileVerified()) {
             call.reject("model-not-downloaded")
             return
         }
