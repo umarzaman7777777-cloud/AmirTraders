@@ -114,6 +114,30 @@ class WhisperVoicePlugin : Plugin() {
         // usually well under this \u2014 conservative enough to avoid a quiet
         // room falsely registering as "speech detected".
         private const val SPEECH_AMPLITUDE_THRESHOLD = 800
+        // ADD (2026-09-14, user request): "mic should auto-adjust like a
+        // real mic system, not use one fixed number for every phone and
+        // every room". A single hardcoded threshold can't be right for
+        // both a cheap phone mic in a noisy shop AND a sensitive mic in a
+        // quiet room — one setting is always wrong for someone. Real
+        // voice-assistant mic pipelines instead measure the room's own
+        // noise floor for a brief moment the instant listening starts,
+        // then set the speech threshold relative to THAT measurement —
+        // this does the same thing. SPEECH_AMPLITUDE_THRESHOLD above is
+        // now only the fallback used if calibration can't run for some
+        // reason (e.g. the very first chunk read fails).
+        private const val NOISE_CALIBRATION_MS = 250
+        // Speech must be at least this many times louder than the
+        // measured noise floor to count as real speech, not just
+        // background sound — 3x is a common, conservative multiplier for
+        // this kind of simple peak-based detection.
+        private const val SPEECH_THRESHOLD_MULTIPLIER = 3.0
+        // Absolute bounds regardless of what calibration measures — a
+        // near-silent room shouldn't push the threshold so low that mic
+        // self-noise/hum falsely counts as speech, and a very noisy shop
+        // floor shouldn't push it so high that normal speech never
+        // registers at all.
+        private const val SPEECH_THRESHOLD_FLOOR = 300
+        private const val SPEECH_THRESHOLD_CEILING = 4000
         // How often a progress event is emitted at minimum — every 1%,
         // not on every single buffer read, so a fast WiFi download
         // doesn't flood the JS bridge with hundreds of events per second.
@@ -160,6 +184,27 @@ class WhisperVoicePlugin : Plugin() {
     // beginTranscription()'s entire lifetime and is the sole guard used
     // to reject an overlapping call.
     @Volatile private var isBusy = false
+
+    // FIX (2026-09-14, real device evidence: user's own error log showed
+    // "waited-for-recording=never-started" every single time, and a
+    // follow-up screenshot showed the mic then permanently stuck showing
+    // "still-processing" on every later tap). Root cause: stop() (called
+    // by the JS side's own 60s timeout) only ever set isRecording=false
+    // and cancelled the coroutine Job cooperatively — but recordAudio()'s
+    // AudioRecord.read() is a synchronous, blocking native call with no
+    // suspension point, so a cooperative cancel can't touch it, and the
+    // isRecording flag is only checked BETWEEN read() calls, never during
+    // one that's actually blocked. If read() itself never returns (mic
+    // hardware/driver not delivering samples, audio focus held elsewhere,
+    // etc.) the coroutine simply never finishes — isBusy stays true
+    // forever, which is exactly why every later tap started rejecting
+    // instantly with "still-processing" once this had happened once.
+    // Keeping the active AudioRecord reachable here lets stop() call
+    // stop()/release() directly ON that same object from a different
+    // thread — the standard, documented way to force a concurrently
+    // blocked AudioRecord.read() call to return early instead of hanging
+    // indefinitely, rather than relying on a flag it may never check.
+    @Volatile private var activeRecorder: AudioRecord? = null
 
     // FIX (2026-09-12, user report: "voice box always open with didn't
     // catch and timeout error without listening to my new voice command").
@@ -295,6 +340,32 @@ class WhisperVoicePlugin : Plugin() {
             return false
         }
         return true
+    }
+
+    // ADD (2026-09-14, user request): "it downloaded 100% but I can't see
+    // anywhere which file/size actually got installed" — lets Settings
+    // show real, on-device proof (actual file size on disk right now,
+    // not just a one-time toast message) instead of asking the person to
+    // just trust that a download succeeded.
+    @PluginMethod
+    fun getModelInfo(call: PluginCall) {
+        val file = modelFile()
+        val ret = JSObject()
+        ret.put("exists", file.exists())
+        ret.put("sizeBytes", if (file.exists()) file.length() else 0L)
+        ret.put("verified", isModelFileVerified())
+        ret.put("loadedInMemory", whisperContext != null)
+        call.resolve(ret)
+    }
+
+    // ADD (2026-09-14, user request): a manual way to discard a model file
+    // and force a genuinely fresh re-download, for when someone wants to
+    // rule out a bad file themselves rather than waiting for the
+    // automatic verification to catch it.
+    @PluginMethod
+    fun deleteModel(call: PluginCall) {
+        deleteUnverifiedModel()
+        call.resolve()
     }
 
     private fun deleteUnverifiedModel() {
@@ -640,7 +711,7 @@ class WhisperVoicePlugin : Plugin() {
                 // before when that text was shown the instant the mic
                 // button was tapped, well before recording had started.
                 withContext(Dispatchers.Main) { notifyListeners("recordingStarted", JSObject()) }
-                val audio = recordAudio()
+                val audio = withContext(Dispatchers.IO) { recordAudio() }
                 if (myToken != activeCallToken) return@launch // cancelled/stale — JS already gave up on this call
                 if (audio.isEmpty()) {
                     withContext(Dispatchers.Main) { call.reject("no-speech") }
@@ -696,11 +767,18 @@ class WhisperVoicePlugin : Plugin() {
         val maxSamples = SAMPLE_RATE * MAX_RECORD_SECONDS
         val minSamplesBeforeEarlyStop = (SAMPLE_RATE * MIN_RECORD_SECONDS).toInt()
         val silenceSamplesToStop = (SAMPLE_RATE * SILENCE_STOP_SECONDS).toInt()
+        val calibrationSamples = (SAMPLE_RATE * NOISE_CALIBRATION_MS / 1000.0).toInt()
         val buffer = ShortArray(maxSamples)
         var samplesRead = 0
         var hasDetectedSpeech = false
         var silentSamplesInARow = 0
+        // Measured from this device's own mic during the first moment of
+        // listening, not assumed — see NOISE_CALIBRATION_MS above.
+        var noiseFloorPeak = 0
+        var calibrated = false
+        var speechThreshold = SPEECH_AMPLITUDE_THRESHOLD
         isRecording = true
+        activeRecorder = record
         record.startRecording()
         try {
             while (isRecording && samplesRead < maxSamples) {
@@ -716,7 +794,20 @@ class WhisperVoicePlugin : Plugin() {
                     if (abs > chunkPeak) chunkPeak = abs
                 }
                 samplesRead += n
-                if (chunkPeak >= SPEECH_AMPLITUDE_THRESHOLD) {
+                if (!calibrated) {
+                    // Still within the calibration window — this chunk is
+                    // treated as ambient room/mic noise, not a speech
+                    // decision yet, however loud or quiet it actually is.
+                    if (chunkPeak > noiseFloorPeak) noiseFloorPeak = chunkPeak
+                    if (samplesRead >= calibrationSamples) {
+                        calibrated = true
+                        speechThreshold = (noiseFloorPeak * SPEECH_THRESHOLD_MULTIPLIER)
+                            .toInt()
+                            .coerceIn(SPEECH_THRESHOLD_FLOOR, SPEECH_THRESHOLD_CEILING)
+                    }
+                    continue
+                }
+                if (chunkPeak >= speechThreshold) {
                     hasDetectedSpeech = true
                     silentSamplesInARow = 0
                 } else {
@@ -728,8 +819,9 @@ class WhisperVoicePlugin : Plugin() {
             }
         } finally {
             isRecording = false
-            record.stop()
-            record.release()
+            activeRecorder = null
+            try { record.stop() } catch (e: Exception) {}
+            try { record.release() } catch (e: Exception) {}
         }
         return FloatArray(samplesRead) { i -> buffer[i] / 32768.0f }
     }
@@ -738,8 +830,25 @@ class WhisperVoicePlugin : Plugin() {
     fun stop(call: PluginCall) {
         isRecording = false
         activeCallToken++ // invalidates the in-flight call's token so its late completion is dropped
+        // FIX (2026-09-14): force-stop the actual AudioRecord, not just the
+        // isRecording flag — a blocked read() call only checks that flag
+        // BETWEEN reads, never while genuinely stuck inside one. Calling
+        // stop()/release() directly on the same AudioRecord instance from
+        // this thread is what actually makes a concurrently blocked
+        // read() call on another thread return, instead of hanging until
+        // the device's mic driver eventually delivers data on its own —
+        // which on this evidence may be never. Also releases isBusy
+        // immediately here rather than only in recordAudio()'s own
+        // finally block, so a stuck attempt can't lock out every future
+        // mic tap with "still-processing" the way it just did.
+        activeRecorder?.let {
+            try { it.stop() } catch (e: Exception) {}
+            try { it.release() } catch (e: Exception) {}
+        }
+        activeRecorder = null
         currentJob?.cancel()
         currentJob = null
+        isBusy = false
         call.resolve()
     }
 
