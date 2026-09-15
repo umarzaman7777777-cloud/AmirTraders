@@ -101,16 +101,30 @@ class WhisperVoicePlugin : Plugin() {
         private data class ModelConfig(val url: String, val filename: String, val whisperLang: String)
         private val MODEL_CONFIGS = mapOf(
             "ur" to ModelConfig(
-                // ggerganov/whisper.cpp's own official multilingual
-                // "small" model, q5_1 quantized (~190MB) — confirmed
-                // directly against the real hosted file size before
-                // wiring this in, not assumed. "auto" (unchanged from
-                // before) lets it follow whichever language is actually
-                // being spoken, including switching mid-utterance, rather
-                // than committing to one language for the whole
-                // recording.
-                url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
-                filename = "ggml-model-multilingual-small-q5_1.bin",
+                // CHANGED (2026-09-15, user report: "why keep too much
+                // time to understand and convert into text" — real cause
+                // traced to the 190MB "small" model's inference time on
+                // real phone hardware, not the recording step). Swapped
+                // to ggerganov/whisper.cpp's official multilingual
+                // "base" model, q5_1 quantized (~60MB) — a genuine
+                // speed/accuracy trade-off, not a free win: base has a
+                // real (published) higher word-error-rate than small on
+                // general multilingual speech. Kept anyway as a live
+                // trial because this app's voice commands are a narrow,
+                // mostly-fixed vocabulary (view names, party names from
+                // the user's own data, add/edit/delete/export/balance),
+                // where a smaller model tends to do much better than its
+                // raw benchmark score suggests. If accuracy on real
+                // commands turns out worse than the speed gain is worth,
+                // revert this url/filename pair to
+                // ggml-small-q5_1.bin / ggml-model-multilingual-small-q5_1.bin
+                // — nothing else in this file needs to change to roll
+                // back. "auto" (unchanged) lets it follow whichever
+                // language is actually being spoken, including switching
+                // mid-utterance, rather than committing to one language
+                // for the whole recording.
+                url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin",
+                filename = "ggml-model-multilingual-base-q5_1.bin",
                 whisperLang = "auto"
             ),
             "en" to ModelConfig(
