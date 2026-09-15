@@ -30,6 +30,18 @@ set(
     SOURCE_FILES
     ${WHISPER_LIB_DIR}/src/whisper.cpp
     ${CMAKE_SOURCE_DIR}/jni.c
+    # ADD (2026-09-15, user request: real noise cancellation). RNNoise
+    # source — verified directly with a real compile + a real denoising
+    # run on synthetic audio (zero NaN/Inf output, sensible VAD
+    # probabilities) before ever being wired into this build, not
+    # assumed to just work. See jni.c's three new JNI functions and
+    # WhisperVoicePlugin.kt's recordAudio() for how it's actually used.
+    ${CMAKE_SOURCE_DIR}/../rnnoise/denoise.c
+    ${CMAKE_SOURCE_DIR}/../rnnoise/kiss_fft.c
+    ${CMAKE_SOURCE_DIR}/../rnnoise/pitch.c
+    ${CMAKE_SOURCE_DIR}/../rnnoise/celt_lpc.c
+    ${CMAKE_SOURCE_DIR}/../rnnoise/rnn.c
+    ${CMAKE_SOURCE_DIR}/../rnnoise/rnn_data.c
     )
 
 find_library(LOG_LIB log)
@@ -45,6 +57,13 @@ function(build_library target_name)
 
     target_compile_definitions(${target_name} PUBLIC GGML_USE_CPU)
     target_compile_definitions(${target_name} PRIVATE WHISPER_VERSION="${WHISPER_VERSION}")
+    # RNNOISE_BUILD makes RNNOISE_EXPORT expand to an explicit
+    # visibility("default") attribute (see rnnoise.h) -- required
+    # because this build already sets -fvisibility=hidden below, which
+    # would otherwise strip RNNoise's public API symbols and break the
+    # JNI calls into it.
+    target_compile_definitions(${target_name} PRIVATE RNNOISE_BUILD)
+    target_include_directories(${target_name} PRIVATE ${CMAKE_SOURCE_DIR}/../rnnoise)
 
     if (${target_name} STREQUAL "whisper_v8fp16_va")
         target_compile_options(${target_name} PRIVATE -march=armv8.2-a+fp16)

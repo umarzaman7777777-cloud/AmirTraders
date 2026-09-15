@@ -3,10 +3,22 @@
 #include <android/asset_manager_jni.h>
 #include <android/log.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <sys/sysinfo.h>
 #include <string.h>
 #include "whisper.h"
 #include "ggml.h"
+// ADD (2026-09-15, user request: "did you install active noise
+// cancellation" -> "yes do it"). Real DSP noise suppression, not a
+// setting tweak: xiph/rnnoise (via the mumble-voip/rnnoise fork, the
+// same portable, non-vectorized source Android itself vendors at
+// android.googlesource.com/platform/external/rnnoise — confirmed
+// directly, not assumed compatible). A recurrent-network-based denoiser
+// built specifically for real-time voice, the same category of tool
+// real voice-assistant pipelines use, not something bolted on. See the
+// three new JNI functions at the bottom of this file and
+// WhisperVoicePlugin.kt's recordAudio() for how it's actually used.
+#include "rnnoise.h"
 
 #define UNUSED(x) (void)(x)
 #define TAG "JNI"
@@ -163,11 +175,20 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_freeContext(
 
 JNIEXPORT void JNICALL
 Java_com_whispercpp_whisper_WhisperLib_00024Companion_fullTranscribe(
-        JNIEnv *env, jobject thiz, jlong context_ptr, jint num_threads, jfloatArray audio_data) {
+        JNIEnv *env, jobject thiz, jlong context_ptr, jint num_threads, jfloatArray audio_data, jstring lang_str) {
     UNUSED(thiz);
     struct whisper_context *context = (struct whisper_context *) context_ptr;
     jfloat *audio_data_arr = (*env)->GetFloatArrayElements(env, audio_data, NULL);
     const jsize audio_data_length = (*env)->GetArrayLength(env, audio_data);
+    // ADD (2026-09-15, user request: "English as a 2nd language option").
+    // language is now passed in per-call instead of hardcoded, since the
+    // two models this app can use need opposite settings: the Roman-Urdu
+    // fine-tune must stay on "auto" (see the note below, unchanged from
+    // before), but an English-only (.en) model should just be told "en"
+    // directly per whisper.cpp's own documented guidance for .en models —
+    // forcing detection on a model that only understands one language
+    // wastes time and can pick a low-confidence wrong guess.
+    const char *lang_chars = (*env)->GetStringUTFChars(env, lang_str, NULL);
 
     // The below adapted from the Objective-C iOS sample
     struct whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
@@ -187,7 +208,7 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_fullTranscribe(
     // "auto" instead — the exact value whisper.h itself documents for
     // auto-detection (see the language field's comment: "for
     // auto-detection, set to nullptr, "" or "auto"").
-    params.language = "auto";
+    params.language = lang_chars;
     params.n_threads = num_threads;
     params.offset_ms = 0;
     params.no_context = true;
@@ -218,6 +239,7 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_fullTranscribe(
     } else {
         whisper_print_timings(context);
     }
+    (*env)->ReleaseStringUTFChars(env, lang_str, lang_chars);
     (*env)->ReleaseFloatArrayElements(env, audio_data, audio_data_arr, JNI_ABORT);
 }
 
@@ -282,4 +304,59 @@ Java_com_whispercpp_whisper_WhisperLib_00024Companion_benchGgmlMulMat(JNIEnv *en
     const char *bench_ggml_mul_mat = whisper_bench_ggml_mul_mat_str(n_threads);
     jstring string = (*env)->NewStringUTF(env, bench_ggml_mul_mat);
     return string;
+}
+
+// ADD (2026-09-15, user request: real noise cancellation). Three small
+// JNI functions bridging RNNoise's own tiny public API
+// (rnnoise_create/rnnoise_process_frame/rnnoise_destroy — see
+// rnnoise.h) to Kotlin. One DenoiseState is created per recording
+// session (see recordAudio() in WhisperVoicePlugin.kt) and freed when
+// that recording ends — it is NOT reused across recordings, since
+// RNNoise's own internal state (pitch history, spectral envelope
+// tracking) is meant to track one continuous audio stream, not be
+// reset mid-use.
+JNIEXPORT jlong JNICALL
+Java_com_whispercpp_whisper_WhisperLib_00024Companion_createDenoiseState(
+        JNIEnv *env, jobject thiz) {
+    UNUSED(env);
+    UNUSED(thiz);
+    DenoiseState *st = rnnoise_create(NULL); // NULL = use RNNoise's own built-in pretrained model
+    return (jlong) (intptr_t) st;
+}
+
+JNIEXPORT void JNICALL
+Java_com_whispercpp_whisper_WhisperLib_00024Companion_freeDenoiseState(
+        JNIEnv *env, jobject thiz, jlong state_ptr) {
+    UNUSED(env);
+    UNUSED(thiz);
+    DenoiseState *st = (DenoiseState *) (intptr_t) state_ptr;
+    if (st != NULL) {
+        rnnoise_destroy(st);
+    }
+}
+
+// Denoises exactly one frame — the caller MUST pass arrays of exactly
+// rnnoise_get_frame_size() samples (480, confirmed directly against
+// the real compiled library before this was ever wired in — see the
+// standalone test in the session that built this). Input and output
+// are in raw 16-bit-PCM-scale float (roughly ±32768), NOT normalized
+// to [-1, 1] — confirmed directly against RNNoise's own source (its
+// training/test I/O reads samples as `short` straight into `float`
+// with no division), not guessed from the header alone, since getting
+// this scale wrong would silently produce garbage output without ever
+// throwing an error. Returns the frame's voice-activity probability
+// (0..1) — used on the Kotlin side as a real, model-based replacement
+// for the earlier simple peak-amplitude silence heuristic.
+JNIEXPORT jfloat JNICALL
+Java_com_whispercpp_whisper_WhisperLib_00024Companion_denoiseFrame(
+        JNIEnv *env, jobject thiz, jlong state_ptr, jfloatArray input, jfloatArray output) {
+    UNUSED(thiz);
+    DenoiseState *st = (DenoiseState *) (intptr_t) state_ptr;
+    if (st == NULL) return 0.0f;
+    jfloat *in_arr = (*env)->GetFloatArrayElements(env, input, NULL);
+    jfloat *out_arr = (*env)->GetFloatArrayElements(env, output, NULL);
+    float vad_prob = rnnoise_process_frame(st, out_arr, in_arr);
+    (*env)->ReleaseFloatArrayElements(env, input, in_arr, JNI_ABORT); // input unmodified, no copy-back needed
+    (*env)->ReleaseFloatArrayElements(env, output, out_arr, 0); // copy denoised output back to the JVM array
+    return vad_prob;
 }

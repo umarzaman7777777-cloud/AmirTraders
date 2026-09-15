@@ -16,11 +16,11 @@ class WhisperContext private constructor(private var ptr: Long) {
         Executors.newSingleThreadExecutor().asCoroutineDispatcher()
     )
 
-    suspend fun transcribeData(data: FloatArray, printTimestamp: Boolean = true): String = withContext(scope.coroutineContext) {
+    suspend fun transcribeData(data: FloatArray, printTimestamp: Boolean = true, language: String = "auto"): String = withContext(scope.coroutineContext) {
         require(ptr != 0L)
         val numThreads = WhisperCpuConfig.preferredThreadCount
         Log.d(LOG_TAG, "Selecting $numThreads threads")
-        WhisperLib.fullTranscribe(ptr, numThreads, data)
+        WhisperLib.fullTranscribe(ptr, numThreads, data, language)
         val textCount = WhisperLib.getTextSegmentCount(ptr)
         return@withContext buildString {
             for (i in 0 until textCount) {
@@ -89,6 +89,44 @@ class WhisperContext private constructor(private var ptr: Long) {
     }
 }
 
+// ADD (2026-09-15, user request: real noise cancellation). Thin public
+// wrapper around the three RNNoise JNI functions, mirroring how
+// WhisperContext above wraps WhisperLib's other calls — WhisperLib
+// itself is private to this file, so callers elsewhere in the app
+// (WhisperVoicePlugin.kt) need this to reach it at all. One instance
+// is meant to live for exactly one recording session (RNNoise's
+// internal state tracks a continuous audio stream, not something to
+// reset mid-use) — see recordAudio() for how it's actually used.
+class RnnoiseDenoiser private constructor(private var ptr: Long) {
+    // RNNoise's own fixed frame size — every call to denoiseFrame must
+    // pass exactly this many samples, confirmed directly against the
+    // real compiled library (480, matching 48kHz audio in 10ms frames)
+    // rather than assumed.
+    companion object {
+        const val FRAME_SIZE = 480
+        fun create(): RnnoiseDenoiser? {
+            val ptr = WhisperLib.createDenoiseState()
+            return if (ptr == 0L) null else RnnoiseDenoiser(ptr)
+        }
+    }
+
+    // Denoises exactly one FRAME_SIZE-length frame of raw PCM-scale
+    // float samples (NOT normalized to [-1,1] — see jni.c's own note on
+    // why, confirmed against RNNoise's real source rather than guessed).
+    // Returns the frame's voice-activity probability (0..1).
+    fun denoiseFrame(input: FloatArray, output: FloatArray): Float {
+        if (ptr == 0L) return 0f
+        return WhisperLib.denoiseFrame(ptr, input, output)
+    }
+
+    fun release() {
+        if (ptr != 0L) {
+            WhisperLib.freeDenoiseState(ptr)
+            ptr = 0
+        }
+    }
+}
+
 private class WhisperLib {
     companion object {
         init {
@@ -134,7 +172,7 @@ private class WhisperLib {
         external fun initContextFromAsset(assetManager: AssetManager, assetPath: String): Long
         external fun initContext(modelPath: String): Long
         external fun freeContext(contextPtr: Long)
-        external fun fullTranscribe(contextPtr: Long, numThreads: Int, audioData: FloatArray)
+        external fun fullTranscribe(contextPtr: Long, numThreads: Int, audioData: FloatArray, lang: String)
         external fun getTextSegmentCount(contextPtr: Long): Int
         external fun getTextSegment(contextPtr: Long, index: Int): String
         external fun getTextSegmentT0(contextPtr: Long, index: Int): Long
@@ -142,6 +180,10 @@ private class WhisperLib {
         external fun getSystemInfo(): String
         external fun benchMemcpy(nthread: Int): String
         external fun benchGgmlMulMat(nthread: Int): String
+        // ADD (2026-09-15, user request: real noise cancellation).
+        external fun createDenoiseState(): Long
+        external fun freeDenoiseState(statePtr: Long)
+        external fun denoiseFrame(statePtr: Long, input: FloatArray, output: FloatArray): Float
     }
 }
 

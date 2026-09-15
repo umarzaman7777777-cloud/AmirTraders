@@ -15,6 +15,7 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
 import com.whispercpp.whisper.WhisperContext
+import com.whispercpp.whisper.RnnoiseDenoiser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -77,14 +78,60 @@ import java.net.URL
 class WhisperVoicePlugin : Plugin() {
 
     companion object {
-        // The community fine-tune the user reviewed and asked to test
-        // before any of this was built — see chat history for why this
-        // specific model (Roman-Urdu dictation, not a generic multilingual
-        // model) was chosen, and the accuracy research behind it.
-        private const val MODEL_URL =
-            "https://huggingface.co/femustafa/voicedictation-models/resolve/main/ggml-model-q4_0.bin"
-        private const val MODEL_FILENAME = "ggml-model-roman-urdu-q4_0.bin"
+        // REPLACED (2026-09-15, user request: "multilingual mic system
+        // which can understand both mixed words so there is no need
+        // [to] exchange languages and waste time... sometimes even in
+        // Urdu we hit an English word"). The Roman-Urdu fine-tune this
+        // used to point to (see prior history) was specifically
+        // SPECIALIZED for accurate Roman-script Urdu output — exactly
+        // that specialization is why it handled a whole sentence
+        // switching languages mid-way poorly: a fine-tune narrowed for
+        // one output style has less of the general multilingual
+        // capability a broader model has. Confirmed directly with the
+        // user this trade-off was understood and wanted before making
+        // this change: this general multilingual model should handle
+        // Urdu/English code-switching within a single sentence far
+        // better, but may be somewhat less sharp on PURE Roman-Urdu
+        // than the specialized fine-tune was. The now-redundant separate
+        // English-only fallback model (added one request earlier, before
+        // this one) is no longer used by default — a single multilingual
+        // pass replaces the need for a second, separate attempt in a
+        // different language entirely, which is the whole point of this
+        // change.
+        private data class ModelConfig(val url: String, val filename: String, val whisperLang: String)
+        private val MODEL_CONFIGS = mapOf(
+            "ur" to ModelConfig(
+                // ggerganov/whisper.cpp's own official multilingual
+                // "small" model, q5_1 quantized (~190MB) — confirmed
+                // directly against the real hosted file size before
+                // wiring this in, not assumed. "auto" (unchanged from
+                // before) lets it follow whichever language is actually
+                // being spoken, including switching mid-utterance, rather
+                // than committing to one language for the whole
+                // recording.
+                url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
+                filename = "ggml-model-multilingual-small-q5_1.bin",
+                whisperLang = "auto"
+            ),
+            "en" to ModelConfig(
+                url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en-q5_1.bin",
+                filename = "ggml-model-base-en-q5_1.bin",
+                whisperLang = "en"
+            )
+        )
+        private fun modelConfig(lang: String) = MODEL_CONFIGS[lang] ?: MODEL_CONFIGS.getValue("ur")
         private const val SAMPLE_RATE = 16000
+        // ADD (2026-09-15, user request: real noise cancellation). RNNoise
+        // (see jni.c/LibWhisper.kt's RnnoiseDenoiser) operates on 48kHz
+        // audio in fixed 480-sample frames — this is the rate audio is
+        // actually CAPTURED at now; SAMPLE_RATE above stays the FINAL rate
+        // handed to whisper.cpp, unchanged, via downsampling at the end of
+        // recordAudio(). Also a nice side benefit even before denoising:
+        // 48kHz is the native rate most Android mic hardware actually
+        // runs at internally, so requesting it directly avoids one layer
+        // of the OS's own resampling that a direct 16kHz request would
+        // have gone through anyway.
+        private const val CAPTURE_SAMPLE_RATE = 48000
         // Matches transcribeOnline_'s own recording window in index.html —
         // this plugin captures raw audio directly (no built-in silence
         // detection, unlike Android's own SpeechRecognizer), so a fixed
@@ -92,7 +139,7 @@ class WhisperVoicePlugin : Plugin() {
         // finishes early just gets trailing silence, which whisper.cpp
         // handles fine; a future version could add real silence detection
         // to cut this short automatically.
-        private const val MAX_RECORD_SECONDS = 8
+        private const val MAX_RECORD_SECONDS = 6
         // ADD (2026-09-08, user report: "listening interval too much, it
         // doesn't get and react" — the mic always recorded for the full
         // fixed window no matter how quickly the person actually finished
@@ -108,50 +155,52 @@ class WhisperVoicePlugin : Plugin() {
         // Silence held continuously for this long, AFTER speech was heard,
         // is treated as "done talking" — short enough to feel responsive,
         // long enough not to cut off a person\u0027s natural mid-sentence pause.
-        private const val SILENCE_STOP_SECONDS = 1.2
-        // 16-bit PCM samples range \u00b132767; genuine speech is typically
-        // several thousand in amplitude, normal background/room noise is
-        // usually well under this \u2014 conservative enough to avoid a quiet
-        // room falsely registering as "speech detected".
-        private const val SPEECH_AMPLITUDE_THRESHOLD = 800
-        // ADD (2026-09-14, user request): "mic should auto-adjust like a
-        // real mic system, not use one fixed number for every phone and
-        // every room". A single hardcoded threshold can't be right for
-        // both a cheap phone mic in a noisy shop AND a sensitive mic in a
-        // quiet room — one setting is always wrong for someone. Real
-        // voice-assistant mic pipelines instead measure the room's own
-        // noise floor for a brief moment the instant listening starts,
-        // then set the speech threshold relative to THAT measurement —
-        // this does the same thing. SPEECH_AMPLITUDE_THRESHOLD above is
-        // now only the fallback used if calibration can't run for some
-        // reason (e.g. the very first chunk read fails).
-        private const val NOISE_CALIBRATION_MS = 250
-        // Speech must be at least this many times louder than the
-        // measured noise floor to count as real speech, not just
-        // background sound — 3x is a common, conservative multiplier for
-        // this kind of simple peak-based detection.
-        private const val SPEECH_THRESHOLD_MULTIPLIER = 3.0
-        // Absolute bounds regardless of what calibration measures — a
-        // near-silent room shouldn't push the threshold so low that mic
-        // self-noise/hum falsely counts as speech, and a very noisy shop
-        // floor shouldn't push it so high that normal speech never
-        // registers at all.
-        private const val SPEECH_THRESHOLD_FLOOR = 300
-        private const val SPEECH_THRESHOLD_CEILING = 4000
+        private const val SILENCE_STOP_SECONDS = 0.9
+        // 16-bit PCM samples range \u00b132767 (kept only as context for
+        // RNNoise's own expected scale — see denoiseFrame's own notes).
+        // FIX (2026-09-15, user request: real noise cancellation, and the
+        // direct cause of "keeps recording too long in noisy places").
+        // Everything below this point used to be a hand-built amplitude
+        // heuristic (measure the room's noise floor, set a threshold
+        // relative to it, require a sound to persist across chunks).
+        // RNNoise's own VAD (voice-activity) output, returned by every
+        // denoiseFrame() call, replaces all of that with something far
+        // more robust: an actual trained classifier that has learned what
+        // speech looks like versus what fan/road/machine noise looks
+        // like, rather than just comparing loudness. A frame counts as
+        // speech when its VAD probability crosses this threshold — 0.5 is
+        // RNNoise's own natural midpoint for this.
+        private const val VAD_SPEECH_THRESHOLD = 0.5f
+        // How many consecutive above-threshold 10ms frames are needed
+        // before a sound counts as resumed speech rather than a brief
+        // noise transient (a passing truck, a machine cycling on/off) —
+        // 2 frames (20ms) filters single-frame spikes while staying
+        // responsive to someone genuinely still talking.
+        private const val VAD_FRAMES_TO_COUNT_AS_SPEECH = 2
         // How often a progress event is emitted at minimum — every 1%,
         // not on every single buffer read, so a fast WiFi download
         // doesn't flood the JS bridge with hundreds of events per second.
         private const val PROGRESS_STEP_PERCENT = 1
-        // FIX (2026-09-13): a genuinely well-formed ~139MB model loads in
-        // a few seconds even on modest hardware — 25s is generous headroom
-        // for a slow phone while still being far short of the JS side's
-        // 60s recognition timeout, so a hang gets caught and reported by
-        // THIS layer (with a clear, specific reason) rather than silently
+        // FIX (2026-09-13): a genuinely well-formed model loads in a few
+        // seconds even on modest hardware — this is generous headroom for
+        // a slow phone while still being far short of the JS side's 60s
+        // recognition timeout, so a hang gets caught and reported by THIS
+        // layer (with a clear, specific reason) rather than silently
         // surfacing as just another generic "recognition-timed-out".
-        private const val MODEL_LOAD_TIMEOUT_MS = 25000L
+        // Bumped from 25s (2026-09-15): the multilingual model that
+        // replaced the old Roman-Urdu one is ~190MB vs ~139MB before —
+        // real, if modest, extra load time to allow for on slower
+        // devices, still comfortably under the 60s ceiling.
+        private const val MODEL_LOAD_TIMEOUT_MS = 30000L
     }
 
     private var whisperContext: WhisperContext? = null
+    // ADD (2026-09-15): which language's model whisperContext currently
+    // holds. Only ONE model is ever kept in memory at a time — a phone
+    // that can only just about handle one ~60-140MB model comfortably
+    // shouldn't be asked to hold two, so switching languages releases the
+    // old context before loading the new one rather than keeping both.
+    @Volatile private var loadedContextLang: String? = null
     private val pluginScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     @Volatile private var isRecording = false
     @Volatile private var downloadCancelled = false
@@ -231,18 +280,30 @@ class WhisperVoicePlugin : Plugin() {
     // starts it, everyone else just awaits that one job.
     private val modelLoadLock = Any()
     @Volatile private var modelLoadJob: Deferred<WhisperContext>? = null
+    @Volatile private var modelLoadJobLang: String? = null
 
-    private fun ensureModelLoaded(file: File): Deferred<WhisperContext> {
+    private fun ensureModelLoaded(file: File, lang: String): Deferred<WhisperContext> {
         whisperContext?.let { existing ->
-            return pluginScope.async { existing }
+            if (loadedContextLang == lang) return pluginScope.async { existing }
         }
         synchronized(modelLoadLock) {
             whisperContext?.let { existing ->
-                return pluginScope.async { existing }
+                if (loadedContextLang == lang) return pluginScope.async { existing }
             }
-            modelLoadJob?.let { return it }
+            modelLoadJob?.let { if (modelLoadJobLang == lang) return it }
             val job = pluginScope.async {
                 withContext(Dispatchers.Main) { notifyListeners("modelLoadStart", JSObject()) }
+                // ADD (2026-09-15): switching to a different language than
+                // whatever's currently loaded — release it first rather
+                // than holding two models in memory at once (see
+                // loadedContextLang's own comment for why).
+                whisperContext?.let { old ->
+                    if (loadedContextLang != lang) {
+                        try { old.release() } catch (e: Exception) {}
+                        whisperContext = null
+                        loadedContextLang = null
+                    }
+                }
                 // FIX (2026-09-13): createContextFromFile is a blocking
                 // native/JNI call into whisper.cpp with no cancellation
                 // checkpoints of its own, so withTimeoutOrNull can't
@@ -261,29 +322,31 @@ class WhisperVoicePlugin : Plugin() {
                     // delete it and its meta so the very next attempt
                     // starts a clean, verified re-download instead of
                     // hitting this exact same hang again.
-                    deleteUnverifiedModel()
+                    deleteUnverifiedModel(lang)
                     throw java.io.IOException("model-load-timeout: native load did not return within ${MODEL_LOAD_TIMEOUT_MS}ms")
                 }
                 whisperContext = ctx
+                loadedContextLang = lang
                 ctx
             }
             job.invokeOnCompletion {
                 synchronized(modelLoadLock) {
-                    if (modelLoadJob === job) modelLoadJob = null
+                    if (modelLoadJob === job) { modelLoadJob = null; modelLoadJobLang = null }
                 }
             }
             modelLoadJob = job
+            modelLoadJobLang = lang
             return job
         }
     }
 
-    private fun modelFile(): File = File(context.filesDir, MODEL_FILENAME)
-    private fun partialFile(): File = File(context.filesDir, "$MODEL_FILENAME.part")
+    private fun modelFile(lang: String): File = File(context.filesDir, modelConfig(lang).filename)
+    private fun partialFile(lang: String): File = File(context.filesDir, "${modelConfig(lang).filename}.part")
     // Stores the remote file's ETag (or Last-Modified as a fallback, for
     // servers that don't send one) from the last completed download —
     // compared against on checkForUpdate to detect a real revision
     // without downloading the file itself.
-    private fun modelMetaFile(): File = File(context.filesDir, "$MODEL_FILENAME.meta")
+    private fun modelMetaFile(lang: String): File = File(context.filesDir, "${modelConfig(lang).filename}.meta")
 
     // FIX (2026-09-13, user report: voice always goes straight to
     // "Listening…" with no download bar, "Check for Voice Model Updates"
@@ -308,8 +371,8 @@ class WhisperVoicePlugin : Plugin() {
     // ready, which makes the JS side show the real download progress bar
     // and fetch a verified copy instead of trusting a possibly-broken one
     // forever.
-    private fun readModelMeta(): Pair<String, Long>? {
-        val f = modelMetaFile()
+    private fun readModelMeta(lang: String): Pair<String, Long>? {
+        val f = modelMetaFile(lang)
         if (!f.exists()) return null
         val lines = try { f.readText().trim().lines() } catch (e: Exception) { return null }
         if (lines.isEmpty()) return null
@@ -318,9 +381,9 @@ class WhisperVoicePlugin : Plugin() {
         return tag to size
     }
 
-    private fun writeModelMeta(tag: String, size: Long) {
+    private fun writeModelMeta(lang: String, tag: String, size: Long) {
         try {
-            modelMetaFile().writeText("$tag\n$size")
+            modelMetaFile(lang).writeText("$tag\n$size")
         } catch (e: Exception) {
             // Non-fatal — worst case, the next isModelReady() call treats
             // the file as unverified and re-downloads it, which is safe.
@@ -331,12 +394,12 @@ class WhisperVoicePlugin : Plugin() {
     // matches what downloadModel() itself confirmed and recorded — never
     // just "exists and is non-empty". Deletes the untrusted file+meta so
     // nothing else in the app can accidentally treat it as usable either.
-    private fun isModelFileVerified(): Boolean {
-        val file = modelFile()
+    private fun isModelFileVerified(lang: String): Boolean {
+        val file = modelFile(lang)
         if (!file.exists() || file.length() <= 0) return false
-        val meta = readModelMeta()
+        val meta = readModelMeta(lang)
         if (meta == null || meta.second != file.length()) {
-            deleteUnverifiedModel()
+            deleteUnverifiedModel(lang)
             return false
         }
         return true
@@ -347,14 +410,18 @@ class WhisperVoicePlugin : Plugin() {
     // show real, on-device proof (actual file size on disk right now,
     // not just a one-time toast message) instead of asking the person to
     // just trust that a download succeeded.
+    // ADD (2026-09-15): takes an optional "lang" param ("ur" default, for
+    // every existing caller that doesn't pass one) so Settings can show
+    // status for either model independently.
     @PluginMethod
     fun getModelInfo(call: PluginCall) {
-        val file = modelFile()
+        val lang = call.getString("lang") ?: "ur"
+        val file = modelFile(lang)
         val ret = JSObject()
         ret.put("exists", file.exists())
         ret.put("sizeBytes", if (file.exists()) file.length() else 0L)
-        ret.put("verified", isModelFileVerified())
-        ret.put("loadedInMemory", whisperContext != null)
+        ret.put("verified", isModelFileVerified(lang))
+        ret.put("loadedInMemory", whisperContext != null && loadedContextLang == lang)
         call.resolve(ret)
     }
 
@@ -364,14 +431,17 @@ class WhisperVoicePlugin : Plugin() {
     // automatic verification to catch it.
     @PluginMethod
     fun deleteModel(call: PluginCall) {
-        deleteUnverifiedModel()
+        deleteUnverifiedModel(call.getString("lang") ?: "ur")
         call.resolve()
     }
 
-    private fun deleteUnverifiedModel() {
-        try { modelFile().delete() } catch (e: Exception) {}
-        try { modelMetaFile().delete() } catch (e: Exception) {}
-        whisperContext = null
+    private fun deleteUnverifiedModel(lang: String) {
+        try { modelFile(lang).delete() } catch (e: Exception) {}
+        try { modelMetaFile(lang).delete() } catch (e: Exception) {}
+        if (loadedContextLang == lang) {
+            whisperContext = null
+            loadedContextLang = null
+        }
     }
 
     private fun isWifiConnected(): Boolean {
@@ -395,7 +465,7 @@ class WhisperVoicePlugin : Plugin() {
     @PluginMethod
     fun isModelReady(call: PluginCall) {
         val ret = JSObject()
-        ret.put("ready", isModelFileVerified())
+        ret.put("ready", isModelFileVerified(call.getString("lang") ?: "ur"))
         call.resolve(ret)
     }
 
@@ -420,7 +490,8 @@ class WhisperVoicePlugin : Plugin() {
     // download.
     @PluginMethod
     fun checkForUpdate(call: PluginCall) {
-        if (!isModelFileVerified()) {
+        val lang = call.getString("lang") ?: "ur"
+        if (!isModelFileVerified(lang)) {
             // Nothing downloaded (or verified) yet — this isn't an
             // "update" question, it's a first-download question, which
             // isModelReady/downloadModel already handle. Also covers the
@@ -441,7 +512,7 @@ class WhisperVoicePlugin : Plugin() {
         pluginScope.launch {
             var conn: HttpURLConnection? = null
             try {
-                conn = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
+                conn = (URL(modelConfig(lang).url).openConnection() as HttpURLConnection).apply {
                     requestMethod = "HEAD"
                     connectTimeout = 15000
                     readTimeout = 15000
@@ -449,7 +520,7 @@ class WhisperVoicePlugin : Plugin() {
                 }
                 val remoteTag = conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified") ?: ""
                 val remoteSize = conn.contentLengthLong
-                val storedTag = readModelMeta()?.first ?: ""
+                val storedTag = readModelMeta(lang)?.first ?: ""
                 val ret = JSObject()
                 // Only reports an update as available when there's an
                 // actual, comparable tag on both sides and they differ —
@@ -477,6 +548,7 @@ class WhisperVoicePlugin : Plugin() {
     // connection is more common than on WiFi.
     @PluginMethod
     fun downloadModel(call: PluginCall) {
+        val lang = call.getString("lang") ?: "ur"
         val allowMobileData = call.getBoolean("allowMobileData", false) ?: false
         if (!hasAnyConnection()) {
             call.reject("no-connection")
@@ -486,19 +558,19 @@ class WhisperVoicePlugin : Plugin() {
             call.reject("wifi-required")
             return
         }
-        if (isModelFileVerified()) {
+        if (isModelFileVerified(lang)) {
             call.resolve()
             return
         }
-        val file = modelFile()
+        val file = modelFile(lang)
         downloadCancelled = false
         pluginScope.launch {
             var conn: HttpURLConnection? = null
             try {
-                val tmp = partialFile()
+                val tmp = partialFile(lang)
                 val existingBytes = if (tmp.exists()) tmp.length() else 0L
 
-                conn = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
+                conn = (URL(modelConfig(lang).url).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 30000
                     readTimeout = 30000
                     if (existingBytes > 0) setRequestProperty("Range", "bytes=$existingBytes-")
@@ -535,6 +607,7 @@ class WhisperVoicePlugin : Plugin() {
                                         put("percent", percent)
                                         put("bytesDownloaded", downloaded)
                                         put("totalBytes", totalBytes)
+                                        put("lang", lang)
                                     })
                                 }
                             }
@@ -578,7 +651,7 @@ class WhisperVoicePlugin : Plugin() {
                 // matching meta was never confirmed complete by this code
                 // path, so it's always treated as unverified rather than
                 // silently assumed good.
-                writeModelMeta(tag, file.length())
+                writeModelMeta(lang, tag, file.length())
 
                 withContext(Dispatchers.Main) { call.resolve() }
             } catch (e: Exception) {
@@ -617,12 +690,13 @@ class WhisperVoicePlugin : Plugin() {
     // before the background preload has finished.
     @PluginMethod
     fun preloadModel(call: PluginCall) {
-        val file = modelFile()
-        if (!isModelFileVerified()) {
+        val lang = call.getString("lang") ?: "ur"
+        val file = modelFile(lang)
+        if (!isModelFileVerified(lang)) {
             call.reject("model-not-downloaded")
             return
         }
-        if (whisperContext != null) {
+        if (whisperContext != null && loadedContextLang == lang) {
             call.resolve()
             return
         }
@@ -632,7 +706,7 @@ class WhisperVoicePlugin : Plugin() {
                 // background startup preload, or a concurrent mic tap)
                 // instead of starting a second, competing native load of
                 // the same model — see ensureModelLoaded's comment.
-                ensureModelLoaded(file).await()
+                ensureModelLoaded(file, lang).await()
                 withContext(Dispatchers.Main) { call.resolve() }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -646,8 +720,9 @@ class WhisperVoicePlugin : Plugin() {
     // downloaded) state without triggering a load itself.
     @PluginMethod
     fun isModelLoaded(call: PluginCall) {
+        val lang = call.getString("lang") ?: "ur"
         val ret = JSObject()
-        ret.put("loaded", whisperContext != null)
+        ret.put("loaded", whisperContext != null && loadedContextLang == lang)
         call.resolve(ret)
     }
 
@@ -673,8 +748,9 @@ class WhisperVoicePlugin : Plugin() {
     }
 
     private fun beginTranscription(call: PluginCall) {
-        val file = modelFile()
-        if (!isModelFileVerified()) {
+        val lang = call.getString("lang") ?: "ur"
+        val file = modelFile(lang)
+        if (!isModelFileVerified(lang)) {
             call.reject("model-not-downloaded")
             return
         }
@@ -702,8 +778,8 @@ class WhisperVoicePlugin : Plugin() {
                 // Shares the same in-flight load as preloadModel() rather
                 // than starting a second concurrent one — see
                 // ensureModelLoaded's comment for why that mattered.
-                if (whisperContext == null) {
-                    ensureModelLoaded(file).await()
+                if (whisperContext == null || loadedContextLang != lang) {
+                    ensureModelLoaded(file, lang).await()
                 }
                 // Fires only once the model is actually loaded and audio
                 // capture is about to begin — this is the point the JS
@@ -724,8 +800,11 @@ class WhisperVoicePlugin : Plugin() {
                 // without this the mic modal looked frozen the whole time.
                 withContext(Dispatchers.Main) { notifyListeners("transcribing", JSObject()) }
                 // printTimestamp = false: this app wants plain command
-                // text, not a timestamped transcript.
-                val text = whisperContext!!.transcribeData(audio, printTimestamp = false)
+                // text, not a timestamped transcript. language: "auto" for
+                // the Roman-Urdu model (required by its own model card),
+                // "en" for the English-only model (whisper.cpp's own
+                // documented guidance for .en models) — see modelConfig.
+                val text = whisperContext!!.transcribeData(audio, printTimestamp = false, language = modelConfig(lang).whisperLang)
                 if (myToken != activeCallToken) return@launch // JS timed out while we were transcribing — drop this result
                 val cleaned = text.trim()
                 if (cleaned.isEmpty()) {
@@ -752,69 +831,114 @@ class WhisperVoicePlugin : Plugin() {
         }
     }
 
-    // Captures raw microphone audio and converts it to the float32,
-    // [-1, 1]-normalized, 16kHz mono format whisper.cpp's transcribeData
-    // expects — matching the official whisper.android example's own
-    // recording approach.
+    // Captures microphone audio at 48kHz (RNNoise's native rate),
+    // denoises it frame-by-frame through RNNoise, then downsamples the
+    // CLEANED audio to the float32, [-1, 1]-normalized, 16kHz mono format
+    // whisper.cpp's transcribeData expects.
     private fun recordAudio(): FloatArray {
         val minBufSize = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
+            CAPTURE_SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
+        // FIX (2026-09-15, user report: "should be active noise
+        // cancellation/voice focused"). VOICE_RECOGNITION is Android's own
+        // platform-level tuning for speech input (device-dependent, not
+        // guaranteed) — kept as a first layer even now that real DSP
+        // denoising (RNNoise, below) does the actual noise removal work.
         val record = AudioRecord(
-            MediaRecorder.AudioSource.MIC, SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO,
+            MediaRecorder.AudioSource.VOICE_RECOGNITION, CAPTURE_SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT, minBufSize * 4
         )
-        val maxSamples = SAMPLE_RATE * MAX_RECORD_SECONDS
-        val minSamplesBeforeEarlyStop = (SAMPLE_RATE * MIN_RECORD_SECONDS).toInt()
-        val silenceSamplesToStop = (SAMPLE_RATE * SILENCE_STOP_SECONDS).toInt()
-        val calibrationSamples = (SAMPLE_RATE * NOISE_CALIBRATION_MS / 1000.0).toInt()
-        val buffer = ShortArray(maxSamples)
-        var samplesRead = 0
+        // ADD (2026-09-15, user request: "did you install active noise
+        // cancellation" -> "yes do it"). One denoiser per recording — its
+        // internal state (pitch history, spectral tracking) is meant to
+        // follow one continuous stream, not be reused across separate
+        // recordings. If creation fails for any reason (should not happen
+        // given this was verified against the real compiled library
+        // before shipping, but native calls can still surprise), recording
+        // falls back to raw undenoised audio rather than failing outright.
+        val denoiser = RnnoiseDenoiser.create()
+        val frameSize = RnnoiseDenoiser.FRAME_SIZE // 480 samples = 10ms @ 48kHz
+        val maxCaptureSamples = CAPTURE_SAMPLE_RATE * MAX_RECORD_SECONDS
+        val minFramesBeforeEarlyStop = ((MIN_RECORD_SECONDS * 1000) / 10).toInt()
+        val silenceFramesToStop = ((SILENCE_STOP_SECONDS * 1000) / 10).toInt()
+        val readBuffer = ShortArray(minBufSize)
+        val frameCarry = FloatArray(frameSize) // accumulates samples until one full RNNoise frame is ready
+        var frameCarryLevel = 0
+        val denoiseInput = FloatArray(frameSize)
+        val denoiseOutput = FloatArray(frameSize)
+        // Denoised 48kHz output, preallocated to the worst case (full
+        // MAX_RECORD_SECONDS) — samplesWritten tracks how much is
+        // actually filled, same pattern as the plain-amplitude version
+        // this replaced.
+        val denoised48k = FloatArray(maxCaptureSamples)
+        var samplesWritten = 0
+        var framesProcessed = 0
         var hasDetectedSpeech = false
-        var silentSamplesInARow = 0
-        // Measured from this device's own mic during the first moment of
-        // listening, not assumed — see NOISE_CALIBRATION_MS above.
-        var noiseFloorPeak = 0
-        var calibrated = false
-        var speechThreshold = SPEECH_AMPLITUDE_THRESHOLD
+        var silentFramesInARow = 0
+        var consecutiveVadFrames = 0
         isRecording = true
         activeRecorder = record
         record.startRecording()
         try {
-            while (isRecording && samplesRead < maxSamples) {
-                val toRead = minOf(minBufSize, maxSamples - samplesRead)
-                val n = record.read(buffer, samplesRead, toRead)
+            while (isRecording && samplesWritten < maxCaptureSamples) {
+                val toRead = minOf(readBuffer.size, maxCaptureSamples - samplesWritten + (frameSize - frameCarryLevel))
+                val n = record.read(readBuffer, 0, minOf(toRead, readBuffer.size))
                 if (n <= 0) break
-                // Peak absolute amplitude of just this chunk — cheap and
-                // sufficient for a simple loud/quiet decision, no need for
-                // a full RMS calculation for this purpose.
-                var chunkPeak = 0
-                for (i in samplesRead until samplesRead + n) {
-                    val abs = kotlin.math.abs(buffer[i].toInt())
-                    if (abs > chunkPeak) chunkPeak = abs
-                }
-                samplesRead += n
-                if (!calibrated) {
-                    // Still within the calibration window — this chunk is
-                    // treated as ambient room/mic noise, not a speech
-                    // decision yet, however loud or quiet it actually is.
-                    if (chunkPeak > noiseFloorPeak) noiseFloorPeak = chunkPeak
-                    if (samplesRead >= calibrationSamples) {
-                        calibrated = true
-                        speechThreshold = (noiseFloorPeak * SPEECH_THRESHOLD_MULTIPLIER)
-                            .toInt()
-                            .coerceIn(SPEECH_THRESHOLD_FLOOR, SPEECH_THRESHOLD_CEILING)
+                var i = 0
+                while (i < n) {
+                    // Fill the current frame from wherever the raw read
+                    // left off, one sample at a time, in RNNoise's own
+                    // expected raw-PCM-scale float (no /32768 here — see
+                    // jni.c's note on why normalizing before RNNoise would
+                    // be wrong).
+                    val samplesToCopy = minOf(n - i, frameSize - frameCarryLevel)
+                    for (j in 0 until samplesToCopy) {
+                        frameCarry[frameCarryLevel + j] = readBuffer[i + j].toFloat()
                     }
-                    continue
-                }
-                if (chunkPeak >= speechThreshold) {
-                    hasDetectedSpeech = true
-                    silentSamplesInARow = 0
-                } else {
-                    silentSamplesInARow += n
-                }
-                if (hasDetectedSpeech && samplesRead >= minSamplesBeforeEarlyStop && silentSamplesInARow >= silenceSamplesToStop) {
-                    break
+                    frameCarryLevel += samplesToCopy
+                    i += samplesToCopy
+                    if (frameCarryLevel < frameSize) break // not a full frame yet — wait for more data next read()
+                    // A full 480-sample frame is ready — denoise it.
+                    System.arraycopy(frameCarry, 0, denoiseInput, 0, frameSize)
+                    frameCarryLevel = 0
+                    val vad = denoiser?.denoiseFrame(denoiseInput, denoiseOutput) ?: run {
+                        // No denoiser available — pass the frame through
+                        // unmodified rather than losing audio.
+                        System.arraycopy(denoiseInput, 0, denoiseOutput, 0, frameSize)
+                        0f
+                    }
+                    framesProcessed++
+                    val roomLeft = maxCaptureSamples - samplesWritten
+                    val toWrite = minOf(frameSize, roomLeft)
+                    System.arraycopy(denoiseOutput, 0, denoised48k, samplesWritten, toWrite)
+                    samplesWritten += toWrite
+                    // FIX (2026-09-15, user report: "keeps recording even
+                    // after I stopped speaking because of background
+                    // noise"). RNNoise's own VAD probability — a real
+                    // trained classifier, not a loudness comparison —
+                    // replaces the earlier amplitude-threshold heuristic
+                    // entirely. A frame has to cross VAD_SPEECH_THRESHOLD
+                    // for VAD_FRAMES_TO_COUNT_AS_SPEECH consecutive frames
+                    // before counting as resumed speech, same
+                    // noise-transient filtering idea as before, just
+                    // driven by a genuinely noise-robust signal now.
+                    if (vad >= VAD_SPEECH_THRESHOLD) {
+                        consecutiveVadFrames++
+                        if (consecutiveVadFrames >= VAD_FRAMES_TO_COUNT_AS_SPEECH) {
+                            hasDetectedSpeech = true
+                            silentFramesInARow = 0
+                        } else {
+                            silentFramesInARow++
+                        }
+                    } else {
+                        consecutiveVadFrames = 0
+                        silentFramesInARow++
+                    }
+                    if (hasDetectedSpeech && framesProcessed >= minFramesBeforeEarlyStop && silentFramesInARow >= silenceFramesToStop) {
+                        isRecording = false
+                        break
+                    }
+                    if (samplesWritten >= maxCaptureSamples) break
                 }
             }
         } finally {
@@ -822,8 +946,21 @@ class WhisperVoicePlugin : Plugin() {
             activeRecorder = null
             try { record.stop() } catch (e: Exception) {}
             try { record.release() } catch (e: Exception) {}
+            try { denoiser?.release() } catch (e: Exception) {}
         }
-        return FloatArray(samplesRead) { i -> buffer[i] / 32768.0f }
+        // Downsample the denoised 48kHz audio to whisper.cpp's expected
+        // 16kHz — an exact 3:1 ratio, decimated with a simple 3-sample box
+        // average for basic anti-aliasing (cheap, and more than adequate
+        // here: RNNoise's own denoising already dominates audio quality
+        // far more than this simple averaging step could hurt it).
+        // Normalizes to [-1, 1] at this same step, matching what
+        // transcribeData/whisper.cpp expects.
+        val outSamples = samplesWritten / 3
+        return FloatArray(outSamples) { idx ->
+            val base = idx * 3
+            val sum = denoised48k[base] + denoised48k[base + 1] + denoised48k[base + 2]
+            (sum / 3f) / 32768.0f
+        }
     }
 
     @PluginMethod
