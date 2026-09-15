@@ -1,5 +1,4 @@
 name: Build Android APK
-
 "on":
   push:
     branches: [main]
@@ -42,6 +41,15 @@ jobs:
       # match or the build will fail with an "NDK not found" style error.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # FIX (2026-09-15): Google removed the legacy 'tools' package from
+          # the SDK repo, and this action's default packages list ('tools
+          # platform-tools') requests it unconditionally, so sdkmanager now
+          # exits 1 on a fresh runner before any of our own steps run.
+          # We only ever needed platform-tools (adb) from this action —
+          # the NDK is installed explicitly in the next step, and Gradle
+          # pulls the platform/build-tools versions it needs on its own.
+          packages: 'platform-tools'
 
       - name: Install Android NDK
         run: sdkmanager --install "ndk;25.2.9519653"
